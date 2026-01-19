@@ -1,0 +1,218 @@
+
+# 1️⃣ Ý TƯỞNG TỔNG THỂ DỰ ÁN
+
+**Tên gợi ý**
+
+* CineOne Manager
+* SoloCinema
+* OneCinema CMS
+* MovieHouse Management System
+
+**Mô tả ngắn**
+
+> Hệ thống quản lý hoạt động của **một rạp chiếu phim duy nhất**, bao gồm quản lý phim, phòng chiếu, suất chiếu, vé, khách hàng, bán combo bắp nước, thanh toán và báo cáo doanh thu.
+
+🎯 **Mục tiêu**
+
+* Số hoá toàn bộ quy trình vận hành rạp
+* Giảm thao tác thủ công
+* Theo dõi doanh thu – suất chiếu – tình trạng ghế theo thời gian thực
+
+---
+
+# 2️⃣ CÁC ROLE TRONG HỆ THỐNG
+
+## 🔐 1. Admin (Quản trị hệ thống – cao nhất)
+
+👉 **Quản lý cấu hình & phân quyền**
+
+### Chức năng
+
+* Quản lý tài khoản nhân viên
+
+  * Tạo / sửa / khóa tài khoản
+  * Gán role (Manager, Staff)
+* Phân quyền chức năng (RBAC)
+* Quản lý danh mục chung:
+
+  * Thể loại phim
+  * Định dạng phim (2D, 3D, IMAX…)
+  * Khung giờ chiếu chuẩn
+* Cấu hình hệ thống:
+
+  * Giá vé theo ngày thường / cuối tuần
+  * Giá theo loại ghế (thường, VIP, couple)
+  * Thuế, phí dịch vụ
+* Xem **báo cáo tổng hợp toàn rạp**
+
+  * Doanh thu theo ngày/tháng/năm
+  * Tỷ lệ lấp ghế
+  * Phim bán chạy
+
+🚫 Admin **không bán vé**, không thao tác nghiệp vụ hằng ngày
+
+---
+
+## 🎬 2. Manager (Quản lý rạp)
+
+👉 **Quản lý nghiệp vụ vận hành rạp**
+
+### Chức năng
+
+### 📽️ Quản lý phim
+
+* Thêm / sửa / ngưng chiếu phim
+* Thông tin phim:
+
+  * Tên, mô tả, thời lượng
+  * Thể loại
+  * Ngày khởi chiếu – kết thúc
+  * Poster, trailer
+  * Độ tuổi (P, C13, C16…)
+
+---
+
+### 🏢 Quản lý phòng chiếu
+
+* Tạo phòng chiếu
+* Thiết kế sơ đồ ghế
+
+  * Hàng – cột
+  * Loại ghế
+* Trạng thái phòng (đang hoạt động / bảo trì)
+
+---
+
+### ⏰ Quản lý suất chiếu
+
+* Tạo suất chiếu cho từng phòng
+* Kiểm tra:
+
+  * Trùng thời gian
+  * Khoảng nghỉ giữa các suất
+* Tự động khóa suất đã bán vé
+
+---
+
+### 🎁 Quản lý combo / dịch vụ
+
+* Bắp rang, nước, combo
+* Giá bán
+* Trạng thái kinh doanh
+
+---
+
+### 📊 Báo cáo – thống kê
+
+* Doanh thu theo:
+
+  * Phim
+  * Suất chiếu
+  * Nhân viên
+* Tình trạng ghế:
+
+  * Tỷ lệ lấp đầy
+* Xuất báo cáo (PDF / Excel)
+
+---
+
+## 🎟️ 3. Staff (Nhân viên bán vé / quầy)
+
+👉 **Thao tác nghiệp vụ hằng ngày**
+
+### Chức năng
+
+### 🎫 Bán vé
+
+* Chọn phim → suất chiếu → ghế
+* Hiển thị sơ đồ ghế realtime
+* Giữ ghế trong X phút
+* Tạo hóa đơn
+
+---
+
+### 🍿 Bán combo
+
+* Thêm combo vào hóa đơn
+* Áp dụng khuyến mãi (nếu có)
+
+---
+
+### 💳 Thanh toán
+
+* Tiền mặt
+* Chuyển khoản / ví điện tử
+* Xác nhận thanh toán thành công
+
+---
+
+### 🧾 Quản lý vé
+
+* In vé
+* Check vé (QR / mã vé)
+* Hủy vé (theo chính sách)
+
+---
+
+### 👤 Khách hàng
+
+* Tạo nhanh khách hàng (tên + SĐT)
+* Tích điểm (nếu có)
+
+---
+
+🚫 Staff **không được**
+
+* Tạo phim
+* Tạo suất chiếu
+* Xem báo cáo tổng
+
+---
+
+## 👥 4. Customer (Khách hàng – Frontend)
+
+👉 **Đặt vé online**
+
+### Chức năng
+
+* Xem danh sách phim đang chiếu
+* Xem lịch chiếu theo ngày
+* Xem chi tiết phim
+* Chọn suất chiếu
+* Chọn ghế
+* Chọn combo
+* Thanh toán online
+* Nhận vé điện tử (QR code)
+* Xem lịch sử đặt vé
+* Hủy vé (nếu chính sách cho phép)
+
+---
+
+# 3️⃣ LUỒNG NGHIỆP VỤ CHÍNH (RẤT QUAN TRỌNG)
+
+## 🎬 Luồng tạo phim – chiếu phim
+
+```
+Manager tạo phim 
+→ Tạo phòng chiếu → Tạo suất chiếu → Mở bán vé
+```
+
+---
+
+## 🎟️ Luồng bán vé
+
+```
+Khách / Staff 
+chọn phim → Chọn suất → Chọn ghế → Giữ ghế → Thanh toán → Xuất vé
+```
+
+---
+
+## 💰 Luồng doanh thu
+
+```
+Bán vé + combo
+→ Ghi nhận hóa đơn → Cập nhật doanh thu → Báo cáo cho Manager / Admin
+```
+
+
