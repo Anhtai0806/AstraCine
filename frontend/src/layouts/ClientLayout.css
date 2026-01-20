@@ -1,0 +1,11 @@
+.client-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.client-container {
+  flex: 1;        /* chiếm toàn bộ khoảng trống giữa header & footer */
+  width: 100%;
+  display: flex;
+}
