@@ -1,0 +1,87 @@
+/* =========================
+   ASTRACINE HEADER
+   ========================= */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 40px;
+  background-color: #f08471; /* dark cinema + space */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* LEFT: LOGO */
+.header-left .logo {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.header-left img {
+  height: 42px;
+  width: auto;
+}
+
+.header-left span {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* RIGHT: NAV */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.nav a {
+  position: relative;
+  text-decoration: none;
+  color: #e0e0e0;
+  font-size: 16px;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+/* HOVER */
+.nav a:hover {
+  color: #f5c542; /* gold cinema */
+}
+
+/* UNDERLINE EFFECT */
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 0%;
+  height: 2px;
+  background-color: #f5c542;
+  transition: width 0.3s ease;
+}
+
+.nav a:hover::after {
+  width: 100%;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 20px;
+  }
+
+  .nav {
+    gap: 16px;
+  }
+
+  .header-left span {
+    font-size: 18px;
+  }
+}
