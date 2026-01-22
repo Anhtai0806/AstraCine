@@ -1,0 +1,67 @@
+SOFTWARE REQUIREMENT SPECIFICATION (SRS)
+PROJECT: CINEMA MANAGEMENT SYSTEM (SINGLE CINEMA)
+
+1. INTRODUCTION
+1.1 Purpose
+This document defines the functional and non-functional requirements of the Cinema Management System.
+It serves as a reference for Backend Developers (Spring Boot), Frontend Developers (React), QA, and Product Owner.
+
+1.2 Scope
+The system manages operations of a single cinema including movies, screening rooms, showtimes, ticket booking,
+combo sales, payments, and reporting. The system does not manage multiple cinema branches.
+
+1.3 Definitions
+- ShowTime: A specific screening time of a movie in a room
+- Seat: A seating position in a screening room
+- Combo: Food and beverage sold with tickets
+- Invoice: Billing information
+- Ticket: Movie ticket with QR code
+
+2. SYSTEM OVERVIEW
+Actors:
+- Admin
+- Manager
+- Staff
+- Customer
+
+Architecture:
+React Frontend -> REST API -> Spring Boot Backend -> Database (MySQL/PostgreSQL)
+
+3. ROLE & PERMISSION
+Admin: User management, system configuration, global reports
+Manager: Movie, room, showtime, combo management, reports
+Staff: Ticket selling, payment, ticket checking
+Customer: Online booking and payment
+
+4. FUNCTIONAL REQUIREMENTS
+FR-01 Admin can create, update, lock employee accounts
+FR-02 Manager can manage movies (add/update/disable)
+FR-03 Manager can manage screening rooms and seat layout
+FR-04 Manager can create and manage showtimes
+FR-05 Staff/Customer can book tickets and select seats
+FR-06 System locks seats temporarily during booking
+FR-07 Staff/Customer can add combo to invoice
+FR-08 System supports cash and online payment
+FR-09 System generates QR code tickets
+FR-10 System provides revenue and occupancy reports
+
+5. BUSINESS FLOWS
+Movie Setup Flow:
+Create Movie -> Create Room -> Create ShowTime -> Open Ticket Sale
+
+Booking Flow:
+Select Movie -> Select ShowTime -> Select Seats -> Payment -> Issue Ticket
+
+Revenue Flow:
+Ticket/Combo Sale -> Invoice -> Report
+
+6. NON-FUNCTIONAL REQUIREMENTS
+Performance: Seat map loading < 2 seconds
+Security: JWT Authentication, Role-based Authorization
+Scalability: Extendable for multiple cinemas in future
+Usability: Responsive UI, cross-browser support
+
+7. OUT OF SCOPE
+- Multi-cinema chain management
+- Advanced loyalty programs
+- AI recommendation

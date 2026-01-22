@@ -43,3 +43,11 @@ public class SecurityConfig {
         return source;
     }
 }
+                        .requestMatchers("/admin/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
+                        .anyRequest().authenticated())
+                .httpBasic();
+
+        return http.build();
+    }
+}
