@@ -1,0 +1,62 @@
+.movie-card {
+  background-color: #1a1f2e;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.movie-card:hover {
+  transform: translateY(-8px);
+}
+
+/* Poster */
+.poster {
+  position: relative;
+  height: 260px;
+  background: #2a2f45;
+}
+
+/* Age badge */
+.age {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: #e50914;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  color: #fff;
+}
+
+/* Buy button */
+.buy-btn-bottom {
+  display: block;
+  margin: 0 auto 16px;
+
+  background-color: #e50914;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.buy-btn-bottom:hover {
+  background-color: #ff2a2a;
+  transform: translateY(-2px);
+}
+
+
+/* Title */
+.title {
+  padding: 14px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+}

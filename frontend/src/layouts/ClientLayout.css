@@ -2,10 +2,10 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #0f0f0f;
 }
 
 .client-container {
-  flex: 1;        /* chiếm toàn bộ khoảng trống giữa header & footer */
+  flex: 1;
   width: 100%;
-  display: flex;
 }

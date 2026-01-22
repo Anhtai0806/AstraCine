@@ -1,38 +1,32 @@
+import { useState } from "react";
 import "./Home.css";
+import Banner from "./components/Banner/Banner";
+import MovieTabs from "./components/MovieTabs/MovieTabs";
+import MovieSection from "./components/MovieSection/MovieSection";
 
 function Home() {
+  const [activeTab, setActiveTab] = useState("NOW_SHOWING");
+
   return (
     <div className="home">
-      {/* BANNER */}
-      <section className="banner">
-        <h1>Welcome to AstraCine</h1>
-        <p>Enjoy the best movie experience</p>
-      </section>
+      <Banner />
 
-      {/* MOVIE SECTION */}
-      <section className="movie-section">
-  <div className="container-fluid">
-    <div className="container">
-      <h2>Now Showing</h2>
+      <MovieTabs
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
-      <div className="row mt-4">
-        <div className="col-lg-3 col-md-4 col-sm-6 mb-4">
-          <div className="movie-card">Movie 1</div>
-        </div>
-        <div className="col-lg-3 col-md-4 col-sm-6 mb-4">
-          <div className="movie-card">Movie 2</div>
-        </div>
-        <div className="col-lg-3 col-md-4 col-sm-6 mb-4">
-          <div className="movie-card">Movie 3</div>
-        </div>
-        <div className="col-lg-3 col-md-4 col-sm-6 mb-4">
-          <div className="movie-card">Movie 4</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      {activeTab === "NOW_SHOWING" && (
+        <MovieSection title="PHIM ĐANG CHIẾU"
+        type = "now-showing"
+         />
+      )}
 
+      {activeTab === "COMING_SOON" && (
+        <MovieSection title="PHIM SẮP CHIẾU"
+        type = "coming-soon"
+         />
+      )}
     </div>
   );
 }

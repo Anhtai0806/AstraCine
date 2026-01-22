@@ -1,87 +1,74 @@
-/* =========================
-   ASTRACINE HEADER
-   ========================= */
+/* ===== TOP BAR ===== */
+.topbar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
 
-.header {
+  background: linear-gradient(
+    90deg,
+    #0b1c56 0%,
+    #1a2b6f 40%,
+    #3a1c6e 70%,
+    #0b1c56 100%
+  );
+
+  box-shadow: inset 0 -1px 0 rgba(138, 99, 255, 0.35);
+}
+
+.topbar-container {
+  width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.topbar-right a {
+  color: #fff;
+  text-decoration: none;
+  margin: 0 6px;
+}
+
+.topbar-right span {
+  color: #fff;
+}
+
+/* ===== NAV BAR ===== */
+.navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #eee;
+}
+
+.navbar-container {
+  width: 1200px;
+  margin: 0 auto;
+  height: 72px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 40px;
-  background-color: #f08471; /* dark cinema + space */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
-/* LEFT: LOGO */
-.header-left .logo {
+/* LOGO */
+.logo img {
+  height: 100px; /* QUAN TRỌNG: logo phải đủ to */
+  margin-left: -150px;
+}
+
+/* MENU */
+.menu {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  text-decoration: none;
-  color: #ffffff;
+  list-style: none;
+  gap: 24px;
 }
 
-.header-left img {
-  height: 42px;
-  width: auto;
-}
-
-.header-left span {
-  font-size: 22px;
+.menu li {
   font-weight: 600;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #222;
 }
 
-/* RIGHT: NAV */
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
-
-.nav a {
-  position: relative;
-  text-decoration: none;
-  color: #e0e0e0;
-  font-size: 16px;
-  font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-/* HOVER */
-.nav a:hover {
-  color: #f5c542; /* gold cinema */
-}
-
-/* UNDERLINE EFFECT */
-.nav a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -6px;
-  width: 0%;
-  height: 2px;
-  background-color: #f5c542;
-  transition: width 0.3s ease;
-}
-
-.nav a:hover::after {
-  width: 100%;
-}
-
-/* =========================
-   RESPONSIVE
-   ========================= */
-
-@media (max-width: 768px) {
-  .header {
-    padding: 12px 20px;
-  }
-
-  .nav {
-    gap: 16px;
-  }
-
-  .header-left span {
-    font-size: 18px;
-  }
+.menu li:hover {
+  color: #1f4fa3;
 }

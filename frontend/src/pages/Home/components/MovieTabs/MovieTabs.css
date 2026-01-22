@@ -1,0 +1,41 @@
+/* Wrapper để tạo khoảng cách với banner */
+.movie-tabs-wrapper {
+  margin-top: 56px;
+  margin-bottom: 48px;
+}
+
+/* Tabs container */
+.movie-tabs {
+  display: flex;
+  justify-content: center;   /* 🔥 CĂN GIỮA */
+  gap: 20px;
+}
+
+/* Button tab */
+.movie-tabs .tab {
+  min-width: 160px;          /* 🔥 TO HƠN */
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+
+  border-radius: 999px;
+  border: 1px solid #444;
+  background: transparent;
+  color: #ccc;
+
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+/* Hover */
+.movie-tabs .tab:hover {
+  color: #fff;
+  border-color: #e50914;
+}
+
+/* Active tab */
+.movie-tabs .tab.active {
+  background: #e50914;
+  color: #fff;
+  border-color: #e50914;
+}

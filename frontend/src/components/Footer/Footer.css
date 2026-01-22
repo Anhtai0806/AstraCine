@@ -1,0 +1,10 @@
+.footer {
+  background-color: #0b0f1a; /* tông tối cinema */
+  color: #b5b5b5;
+
+  padding: 24px 0;
+  text-align: center;
+
+  font-size: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

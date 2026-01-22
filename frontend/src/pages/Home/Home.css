@@ -1,111 +1,15 @@
-/* =========================
-   HOME PAGE – ASTRACINE
-   ========================= */
-
 .home {
   width: 100%;
-  min-height: 100vh;
-  background-color: #0b0f1a; /* dark cinema theme */
-  color: #ffffff;
+  background-color: #0b0b0b;
 }
 
-/* =========================
-   BANNER / HERO
-   ========================= */
-
-.banner {
-  height: 360px;
-  background: linear-gradient(
-      rgba(0, 0, 0, 0.65),
-      rgba(0, 0, 0, 0.65)
-    ),
-    linear-gradient(to right, #000, #333);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 60px;
+/* Banner xong là tới Tabs */
+.home > .movie-tabs-wrapper {
+  margin-top: 48px;
 }
 
-.banner h1 {
-  font-size: 48px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.banner p {
-  font-size: 18px;
-  color: #f5c542; /* gold cinema */
-  max-width: 500px;
-}
-
-/* =========================
-   MOVIE SECTION
-   ========================= */
-
+/* Section phim */
 .movie-section {
-  padding: 60px 0;
-}
-
-.movie-section h2 {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #ffffff;
-}
-
-/* =========================
-   MOVIE CARD
-   ========================= */
-
-.movie-card {
-  height: 280px;
-  background-color: #1a1f2e;
-  border-radius: 10px;
-  color: #ffffff;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  font-size: 18px;
-  font-weight: 600;
-
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-/* Hover effect */
-.movie-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 10px 25px rgba(245, 197, 66, 0.25);
-  background-color: #23293d;
-}
-
-/* =========================
-   RESPONSIVE
-   ========================= */
-
-@media (max-width: 992px) {
-  .banner {
-    padding: 0 40px;
-  }
-
-  .banner h1 {
-    font-size: 40px;
-  }
-}
-
-@media (max-width: 576px) {
-  .banner {
-    height: 300px;
-    padding: 0 20px;
-  }
-
-  .banner h1 {
-    font-size: 32px;
-  }
-
-  .banner p {
-    font-size: 16px;
-  }
+  margin-top: 24px;
+  padding-bottom: 80px;
 }
