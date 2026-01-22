@@ -11,5 +11,11 @@ services:
       - mysql_data:/var/lib/mysql
       - ./initdb:/docker-entrypoint-initdb.d
 
+  redis:
+    image: redis:7-alpine
+    container_name: ojt-redis
+    ports:
+      - "6379:6379"
+
 volumes:
   mysql_data:
