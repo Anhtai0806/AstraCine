@@ -1,0 +1,183 @@
+/* =======================
+   BANNER WRAPPER
+======================= */
+.banner {
+  position: relative;
+  width: 78%;
+  height: 600px;
+  overflow: hidden;
+  background-color: #000;
+  margin: 0 auto;
+}
+
+/* =======================
+   SLIDE
+======================= */
+.banner-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center top; /* QUAN TRỌNG: tránh cắt chữ & đầu nhân vật */
+  opacity: 0;
+  transform: scale(1.06);
+  transition: opacity 0.9s ease, transform 1.3s ease;
+}
+
+.banner-slide.active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+}
+
+/* =======================
+   OVERLAY (cinematic)
+======================= */
+.banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.08) 0%,
+    rgba(0, 0, 0, 0.35) 55%,
+    rgba(0, 0, 0, 0.75) 85%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* =======================
+   ARROWS
+======================= */
+.banner-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  color: #fff;
+  font-size: 32px;
+  padding: 10px 16px;
+  cursor: pointer;
+  z-index: 3;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.banner-arrow:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.banner-arrow.left {
+  left: 24px;
+}
+
+.banner-arrow.right {
+  right: 24px;
+}
+
+/* =======================
+   DOTS
+======================= */
+.banner-dots {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 3;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.dot:hover {
+  transform: scale(1.2);
+}
+
+.dot.active {
+  background: #f26b38;
+  transform: scale(1.3);
+}
+
+/* =======================
+   RESPONSIVE
+======================= */
+
+/*tablet*/
+@media (max-width: 1024px) {
+  .banner {
+    height: 420px;
+  }
+}
+
+/*mobile large*/
+@media (max-width: 768px) {
+  .banner {
+    height: 320px;
+  }
+
+  .banner-arrow {
+    font-size: 26px;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner {
+    height: 260px;
+  }
+
+  .banner-arrow {
+    display: none; /* Mobile thường swipe */
+  }
+}
+
+.banner-wrapper {
+  width: 100%;
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    #060f3a 0%,
+    #040a22 60%,
+    #02040c 100%
+  );
+}
+
+.banner-wrapper::before,
+.banner-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.banner-wrapper::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.85),
+    transparent
+  );
+}
+
+.banner-wrapper::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0.85),
+    transparent
+  );
+}
+

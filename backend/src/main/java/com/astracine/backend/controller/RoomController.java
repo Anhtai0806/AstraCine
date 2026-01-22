@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/rooms")
-@CrossOrigin(origins = "http://localhost:3000") // Cho phép React gọi API
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}) // Cho phép React gọi API
 public class RoomController {
 
     @Autowired
