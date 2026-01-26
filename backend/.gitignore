@@ -32,6 +32,17 @@ build/
 ### VS Code ###
 .vscode/
 
-# Spring Boot local config
+# Backend
 backend/src/main/resources/application.properties
+
+# Frontend
+frontend/.vite/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
 
