@@ -32,4 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 
+# Spring Boot local config
 backend/src/main/resources/application.properties
+
