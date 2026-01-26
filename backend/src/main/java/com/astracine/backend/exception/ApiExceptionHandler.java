@@ -1,13 +1,13 @@
 package com.astracine.backend.exception;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -48,11 +48,26 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult().getFieldErrors().forEach(fe -> {
+            String field = fe.getField();
+            String msg = fe.getDefaultMessage();
+
+            errors.merge(field, msg, (oldVal, newVal) -> oldVal + " | " + newVal);
+        });
+
+        String message = errors.values().stream().findFirst().orElse("Dữ liệu không hợp lệ");
+
         Map<String, Object> body = new HashMap<>();
-        body.put("error", "VALIDATION_ERROR");
-        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("message", message);
+        body.put("errors", errors);
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneric(Exception ex) {

@@ -72,3 +72,23 @@
 .menu li:hover {
   color: #1f4fa3;
 }
+
+.logout-btn {
+  padding: 1px 3px;
+  background: linear-gradient(135deg, #a086ef, #4161ff);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 2px;
+  margin-left: 2px;
+}
+
+.logout-icon {
+  font-size: 15px;    
+  margin-left: 3px;   
+  vertical-align: middle;
+}
