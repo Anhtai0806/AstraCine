@@ -3,6 +3,7 @@ import ClientRoutes from "./routes/ClientRoutes";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
+import AdminLayout from "./layouts/AdminLayout";
 
 function App() {
   return (
@@ -20,8 +21,8 @@ function App() {
             path="/admin/*"
             element={
               <ProtectedRoute>
-                <RoleRoute allowRoles={["ADMIN"]}>
-                  {/* <AdminLayout /> */}
+                <RoleRoute allowRoles={["ROLE_ADMIN"]}>
+                  <AdminLayout />
                 </RoleRoute>
               </ProtectedRoute>
             }

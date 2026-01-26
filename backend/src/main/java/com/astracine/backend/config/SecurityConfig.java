@@ -11,27 +11,47 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 @Configuration
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                )
-                .httpBasic(basic -> basic.disable());
+SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        .authorizeHttpRequests(auth -> auth
 
-        return http.build();
-    }
+            // ===== PUBLIC =====
+            .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/uploads/**").permitAll()
 
+            // ===== ADMIN =====
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+            // ===== MANAGER =====
+            .requestMatchers("/api/manager/**").hasRole("MANAGER")
+
+            // ===== STAFF =====
+            .requestMatchers("/api/staff/**").hasRole("STAFF")
+
+            // ===== CUSTOMER (user thường) =====
+            .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+
+            // ===== LOGIN LÀ VÀO ĐƯỢC (trang chung) =====
+            .requestMatchers("/api/user/**")
+                .hasAnyRole("CUSTOMER", "STAFF", "MANAGER", "ADMIN")
+
+            // ===== CÒN LẠI =====
+            .anyRequest().authenticated()
+        )
+        .httpBasic();
+    return http.build();
+}
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {

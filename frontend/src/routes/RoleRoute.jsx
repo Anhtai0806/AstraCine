@@ -4,11 +4,17 @@ import { useAuth } from "../contexts/AuthContext";
 export default function RoleRoute({ allowRoles, children }) {
   const { user } = useAuth();
 
+  // Chưa login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowRoles.includes(user.role)) {
+  // Không có role hợp lệ
+  const hasPermission = user.roles?.some(role =>
+    allowRoles.includes(role)
+  );
+
+  if (!hasPermission) {
     return <Navigate to="/" replace />;
   }
 

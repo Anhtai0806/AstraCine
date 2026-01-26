@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Role customerRole = roleRepository
-                .findByName("CUSTOMER")
+                .findByName("ROLE_CUSTOMER")
                 .orElseThrow(() -> new RuntimeException("Role CUSTOMER not found"));
 
         User user = new User();
