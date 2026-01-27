@@ -1,5 +1,6 @@
 package com.astracine.backend.dto.ws;
 
+import com.astracine.backend.enums.SeatEventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

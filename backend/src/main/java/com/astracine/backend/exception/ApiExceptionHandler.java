@@ -46,13 +46,52 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(PaymentRequiredException.class)
+    public ResponseEntity<?> handlePaymentRequired(PaymentRequiredException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "PAYMENT_REQUIRED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    @ExceptionHandler(PaymentSessionNotFoundException.class)
+    public ResponseEntity<?> handlePaymentNotFound(PaymentSessionNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "PAYMENT_SESSION_NOT_FOUND");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(PaymentUnauthorizedException.class)
+    public ResponseEntity<?> handlePaymentUnauthorized(PaymentUnauthorizedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "PAYMENT_UNAUTHORIZED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult().getFieldErrors().forEach(fe -> {
+            String field = fe.getField();
+            String msg = fe.getDefaultMessage();
+
+            errors.merge(field, msg, (oldVal, newVal) -> oldVal + " | " + newVal);
+        });
+
+        String message = errors.values().stream().findFirst().orElse("Dữ liệu không hợp lệ");
+
         Map<String, Object> body = new HashMap<>();
-        body.put("error", "VALIDATION_ERROR");
-        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("message", message);
+        body.put("errors", errors);
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneric(Exception ex) {

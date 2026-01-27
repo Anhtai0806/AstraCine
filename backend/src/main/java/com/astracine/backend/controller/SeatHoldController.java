@@ -23,9 +23,10 @@ public class SeatHoldController {
     public ResponseEntity<HoldResponse> holdSeats(
             @PathVariable Long showtimeId,
             @Valid @RequestBody HoldRequest req,
-            @AuthenticationPrincipal UserDetails user
+            @AuthenticationPrincipal UserDetails user,
+            @RequestHeader(value = "X-User-Id", required = false) String guestUserId
     ) {
-        String userId = user != null ? user.getUsername() : "anonymous";
+        String userId = user != null ? user.getUsername() : (guestUserId != null && !guestUserId.isBlank() ? guestUserId : "anonymous");
         HoldResponse resp = seatHoldService.holdSeats(showtimeId, req.getSeatIds(), userId);
         return ResponseEntity.ok(resp);
     }
@@ -33,9 +34,10 @@ public class SeatHoldController {
     @DeleteMapping("/api/holds/{holdId}")
     public ResponseEntity<?> releaseHold(
             @PathVariable String holdId,
-            @AuthenticationPrincipal UserDetails user
+            @AuthenticationPrincipal UserDetails user,
+            @RequestHeader(value = "X-User-Id", required = false) String guestUserId
     ) {
-        String userId = user != null ? user.getUsername() : "anonymous";
+        String userId = user != null ? user.getUsername() : (guestUserId != null && !guestUserId.isBlank() ? guestUserId : "anonymous");
         seatHoldService.releaseHold(holdId, userId);
         return ResponseEntity.ok().build();
     }
@@ -43,9 +45,10 @@ public class SeatHoldController {
     @PostMapping("/api/holds/{holdId}/renew")
     public ResponseEntity<HoldResponse> renewHold(
             @PathVariable String holdId,
-            @AuthenticationPrincipal UserDetails user
+            @AuthenticationPrincipal UserDetails user,
+            @RequestHeader(value = "X-User-Id", required = false) String guestUserId
     ) {
-        String userId = user != null ? user.getUsername() : "anonymous";
+        String userId = user != null ? user.getUsername() : (guestUserId != null && !guestUserId.isBlank() ? guestUserId : "anonymous");
         return ResponseEntity.ok(seatHoldService.renewHold(holdId, userId));
     }
 }

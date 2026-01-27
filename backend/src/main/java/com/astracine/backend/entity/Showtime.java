@@ -1,5 +1,6 @@
 package com.astracine.backend.entity;
 
+import com.astracine.backend.enums.ShowtimeStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,7 +31,7 @@ import java.time.LocalDateTime;
         private LocalDateTime endTime;
 
         @Column(length = 20)
-        private String status = "OPEN";
+        private ShowtimeStatus status = ShowtimeStatus.OPEN;
     }
 
 

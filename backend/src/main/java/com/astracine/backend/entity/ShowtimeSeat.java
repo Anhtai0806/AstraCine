@@ -1,5 +1,6 @@
 package com.astracine.backend.entity;
 
+import com.astracine.backend.enums.SeatBookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,7 +33,7 @@ public class ShowtimeSeat {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private ShowtimeSeatStatus status = ShowtimeSeatStatus.AVAILABLE;
+    private SeatBookingStatus status = SeatBookingStatus.AVAILABLE;
 
     @Column(name = "hold_expired_at")
     private LocalDateTime holdExpiredAt;

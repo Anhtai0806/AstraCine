@@ -1,4 +1,4 @@
-package com.astracine.backend.dto.ws;
+package com.astracine.backend.enums;
 
 public enum SeatEventType {
     SEAT_HELD,
