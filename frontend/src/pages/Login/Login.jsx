@@ -39,19 +39,7 @@ function Login() {
 
       login(res.data);
 
-<<<<<<< HEAD
-      // Lấy role đầu tiên từ roles set
-      const userRole = res.data.roles && res.data.roles.length > 0
-        ? res.data.roles[0]
-        : "CUSTOMER";
-
-      switch (userRole) {
-        case "ADMIN":
-          navigate("/admin");
-          break;
-=======
       const roles = res.data.roles || [];
->>>>>>> b9d646e2b48bcd8c96c9f3f58d597f51b9f7b8b5
 
       if (roles.includes("ROLE_ADMIN")) {
         navigate("/admin");

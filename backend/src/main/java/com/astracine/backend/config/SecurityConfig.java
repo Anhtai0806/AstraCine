@@ -15,72 +15,39 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
-<<<<<<< HEAD
-        @Bean
-        SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-                http
-                                .csrf(csrf -> csrf.disable())
-                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                                .authorizeHttpRequests(auth -> auth
-                                                .anyRequest().permitAll())
-                                .httpBasic(basic -> basic.disable());
-
-                return http.build();
-        }
-
-        @Bean
-        public PasswordEncoder passwordEncoder() {
-                return new BCryptPasswordEncoder();
-        }
-
-        @Bean
-        CorsConfigurationSource corsConfigurationSource() {
-                CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of(
-                                "http://localhost:5173",
-                                "http://localhost:3000"));
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                config.setAllowedHeaders(List.of("*"));
-                config.setAllowCredentials(true);
-
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", config);
-                return source;
-        }
-=======
     @Bean
-SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http
-        .csrf(csrf -> csrf.disable())
-        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-        .authorizeHttpRequests(auth -> auth
+    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
 
-            // ===== PUBLIC =====
-            .requestMatchers("/api/auth/**").permitAll()
-            .requestMatchers("/uploads/**").permitAll()
+                        // ===== PUBLIC =====
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
 
-            // ===== ADMIN =====
-            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // ===== ADMIN =====
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-            // ===== MANAGER =====
-            .requestMatchers("/api/manager/**").hasRole("MANAGER")
+                        // ===== MANAGER =====
+                        .requestMatchers("/api/manager/**").hasRole("MANAGER")
 
-            // ===== STAFF =====
-            .requestMatchers("/api/staff/**").hasRole("STAFF")
+                        // ===== STAFF =====
+                        .requestMatchers("/api/staff/**").hasRole("STAFF")
 
-            // ===== CUSTOMER (user thường) =====
-            .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+                        // ===== CUSTOMER (user thường) =====
+                        .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
 
-            // ===== LOGIN LÀ VÀO ĐƯỢC (trang chung) =====
-            .requestMatchers("/api/user/**")
-                .hasAnyRole("CUSTOMER", "STAFF", "MANAGER", "ADMIN")
+                        // ===== LOGIN LÀ VÀO ĐƯỢC (trang chung) =====
+                        .requestMatchers("/api/user/**")
+                        .hasAnyRole("CUSTOMER", "STAFF", "MANAGER", "ADMIN")
 
-            // ===== CÒN LẠI =====
-            .anyRequest().authenticated()
-        )
-        .httpBasic();
-    return http.build();
-}
+                        // ===== CÒN LẠI =====
+                        .anyRequest().authenticated())
+                .httpBasic();
+        return http.build();
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -91,8 +58,7 @@ SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "http://localhost:3000"
-        ));
+                "http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -101,7 +67,6 @@ SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
->>>>>>> b9d646e2b48bcd8c96c9f3f58d597f51b9f7b8b5
 }
 // .requestMatchers("/admin/**").permitAll()
 // .requestMatchers("/uploads/**").permitAll()
