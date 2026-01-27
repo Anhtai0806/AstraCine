@@ -260,3 +260,55 @@ CREATE TABLE invoice_promotions (
     FOREIGN KEY (promotion_id) REFERENCES promotions(id)
 );
 
+
+
+
+-- ======================
+-- Thêm bảng mới time_slots để quản lý khung giờ chiếu
+
+USE astracine;
+
+-- ========================================================
+-- 1. CREATE NEW TABLE: TIME_SLOTS
+-- ========================================================
+-- This table stores time ranges (e.g., Morning, Evening) and their price multipliers.
+CREATE TABLE IF NOT EXISTS time_slots (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,              -- e.g., 'Morning Standard', 'Prime Time'
+    start_time TIME NOT NULL,               -- e.g., '08:00:00'
+    end_time TIME NOT NULL,                 -- e.g., '17:00:00'
+    price_multiplier DECIMAL(3, 2) NOT NULL DEFAULT 1.00, -- e.g., 1.00, 1.20, 1.50
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+-- ========================================================
+-- 2. UPDATE TABLE: SEATS
+-- ========================================================
+-- Add base_price to store the default price for a specific seat type in a specific room.
+ALTER TABLE seats
+ADD COLUMN base_price DECIMAL(12, 2) NOT NULL DEFAULT 50000;
+
+-- ========================================================
+-- 3. UPDATE TABLE: SHOWTIMES
+-- ========================================================
+-- Add time_slot_id to link a showtime to a specific pricing strategy.
+ALTER TABLE showtimes
+ADD COLUMN time_slot_id BIGINT,
+ADD CONSTRAINT fk_showtimes_timeslot
+    FOREIGN KEY (time_slot_id) REFERENCES time_slots(id);
+
+-- ========================================================
+-- 4. UPDATE TABLE: SHOWTIME_SEATS
+-- ========================================================
+-- Add final_price to store the calculated price (Base Price * Multiplier) for that specific show.
+ALTER TABLE showtime_seats
+ADD COLUMN final_price DECIMAL(12, 2) NOT NULL DEFAULT 0;
+
+-- ========================================================
+-- 5. SEED DATA (OPTIONAL BUT RECOMMENDED)
+-- ========================================================
+-- Insert some default Time Slots so you can test immediately.
+
+
+
+

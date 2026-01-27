@@ -9,6 +9,8 @@ import com.astracine.backend.entity.Seat;
 import com.astracine.backend.entity.Showtime;
 import com.astracine.backend.entity.ShowtimeSeat;
 import com.astracine.backend.entity.ShowtimeSeatStatus;
+import com.astracine.backend.enums.SeatBookingStatus;
+import com.astracine.backend.enums.SeatType;
 import com.astracine.backend.exception.HoldConflictException;
 import com.astracine.backend.exception.HoldNotFoundException;
 import com.astracine.backend.exception.HoldUnauthorizedException;
@@ -92,7 +94,7 @@ public class SeatHoldService {
                 .thenComparing(Seat::getColumnNumber));
 
         Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, ShowtimeSeatStatus.SOLD)
+                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, SeatBookingStatus.SOLD)
         );
 
         // Multi-get holds for all seats (không scan pattern, tránh nặng)
@@ -154,7 +156,7 @@ public class SeatHoldService {
 
         // sold check (DB)
         Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, ShowtimeSeatStatus.SOLD)
+                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, SeatBookingStatus.SOLD)
         );
         List<Long> soldConflicts = seatIds.stream().filter(soldSeatIds::contains).toList();
         if (!soldConflicts.isEmpty()) {
@@ -273,7 +275,7 @@ public class SeatHoldService {
 
         // Double-check sold in DB inside transaction
         Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(summary.showtimeId, ShowtimeSeatStatus.SOLD)
+                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(summary.showtimeId, SeatBookingStatus.SOLD)
         );
         List<Long> soldConflicts = summary.seatIds.stream().filter(soldSeatIds::contains).toList();
         if (!soldConflicts.isEmpty()) {
@@ -291,7 +293,7 @@ public class SeatHoldService {
                         return created;
                     });
 
-            ss.setStatus(ShowtimeSeatStatus.SOLD);
+            ss.setStatus(SeatBookingStatus.SOLD);
             showtimeSeatRepository.save(ss);
         }
 
