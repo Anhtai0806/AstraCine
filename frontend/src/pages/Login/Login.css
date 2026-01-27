@@ -1,0 +1,131 @@
+/* ===== AUTH PAGE LAYOUT ===== */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center; /* căn ngang */
+  align-items: center;     /* căn dọc */
+}
+
+
+/* ===== LEFT BANNER ===== */
+.auth-left {
+  flex: 1;
+  background-image: linear-gradient(
+      rgba(11, 15, 43, 0.7),
+      rgba(11, 15, 43, 0.9)
+    ),
+    url("/assets/login-bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* ===== RIGHT FORM ===== */
+.auth-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== CARD ===== */
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  padding: 36px 32px;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ===== TITLE ===== */
+.auth-card h2 {
+  margin-bottom: 8px;
+  color: #0b0f2b;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.auth-card p {
+  margin-bottom: 28px;
+  color: #555;
+  font-size: 14px;
+}
+
+/* ===== FORM ===== */
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-card input {
+  padding: 12px 14px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.auth-card input:focus {
+  border-color: #1b2cff;
+  box-shadow: 0 0 0 2px rgba(27, 44, 255, 0.15);
+}
+
+/* ===== BUTTON ===== */
+.auth-card button {
+  margin-top: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, #1b2cff, #3f51ff);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.25s ease;
+}
+
+.auth-card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(27, 44, 255, 0.35);
+}
+
+/* ===== FOOTER ===== */
+.auth-footer {
+  margin-top: 22px;
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: #1b2cff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .auth-left {
+    display: none;
+  }
+
+  .auth-page {
+    justify-content: center;
+  }
+}
+
+.auth-error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}

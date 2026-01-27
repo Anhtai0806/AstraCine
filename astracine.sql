@@ -11,7 +11,7 @@ USE astracine;
 -- ======================
 CREATE TABLE roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(30) NOT NULL UNIQUE -- ADMIN / STAFF
+    name VARCHAR(30) NOT NULL UNIQUE -- ADMIN / STAFF/ MANAGER/ CUSTOMER
 );
 
 -- ======================

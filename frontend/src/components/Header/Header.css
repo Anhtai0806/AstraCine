@@ -5,13 +5,11 @@
   align-items: center;
   font-size: 13px;
 
-  background: linear-gradient(
-    90deg,
-    #0b1c56 0%,
-    #1a2b6f 40%,
-    #3a1c6e 70%,
-    #0b1c56 100%
-  );
+  background: linear-gradient(90deg,
+      #0b1c56 0%,
+      #1a2b6f 40%,
+      #3a1c6e 70%,
+      #0b1c56 100%);
 
   box-shadow: inset 0 -1px 0 rgba(138, 99, 255, 0.35);
 }
@@ -51,7 +49,8 @@
 
 /* LOGO */
 .logo img {
-  height: 100px; /* QUAN TRỌNG: logo phải đủ to */
+  height: 100px;
+  /* QUAN TRỌNG: logo phải đủ to */
   margin-left: -150px;
 }
 
@@ -71,4 +70,104 @@
 
 .menu li:hover {
   color: #1f4fa3;
+}
+
+.logout-btn {
+  padding: 1px 3px;
+  background: linear-gradient(135deg, #a086ef, #4161ff);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 2px;
+  margin-left: 2px;
+}
+
+.logout-icon {
+  font-size: 15px;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+/* ===== USER DROPDOWN ===== */
+.user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Button hiển thị tên user */
+.user-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.user-icon {
+  font-size: 16px;
+}
+
+/* Vùng hover nối liền (quan trọng để không bị tắt menu) */
+.user-dropdown::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 10px;
+}
+
+/* Dropdown box */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 999;
+}
+
+/* Hover vào user hoặc dropdown đều giữ menu */
+.user-dropdown:hover .dropdown-menu,
+.dropdown-menu:hover {
+  display: flex;
+}
+
+/* Dùng lại style logout-btn */
+.dropdown-menu .logout-btn {
+  width: 100%;
+  border-radius: 0;
+  text-align: left;
+  padding: 6px 10px;
+}
+
+/* Hover cho menu item */
+.dropdown-menu .logout-btn:hover {
+  filter: brightness(1.05);
+}
+
+/* Bo góc chuẩn */
+.dropdown-menu .logout-btn:first-child {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.dropdown-menu .logout-btn:last-child {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
