@@ -42,7 +42,7 @@ async function request(path, options = {}) {
 }
 
 export const seatHoldApi = {
-    getSeats: (showtimeId) => request(`/api/showtimes/${showtimeId}/seats`, { method: "GET" }),
+    getSeats: (showtimeId) => request(`/api/showtimes/${showtimeId}/seat-states`, { method: "GET" }),
 
     holdSeats: (showtimeId, seatIds, clientRequestId) =>
         request(`/api/showtimes/${showtimeId}/holds`, {

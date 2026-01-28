@@ -20,44 +20,59 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @EnableMethodSecurity
 public class SecurityConfig {
 
+
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-
-                // 1. Tắt CSRF (cần thiết cho API REST)
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // 2. Kích hoạt CORS với cấu hình bên dưới
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
                 .authorizeHttpRequests(auth -> auth
-                        // ===== PUBLIC =====
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/uploads/**").permitAll()
-                        .requestMatchers("/api/admin/**").permitAll() // TEMPORARY: For testing without auth
+                        // Mở cửa tất cả API để bạn test Frontend
+                        .requestMatchers("/api/**").permitAll()
+                        .anyRequest().permitAll()
+                );
 
-                        // ===== ADMIN =====
-                        // .requestMatchers("/api/admin/**").hasRole("ADMIN") // TODO: Re-enable after
-                        // testing
-
-                        // ===== MANAGER =====
-                        .requestMatchers("/api/manager/**").hasRole("MANAGER")
-
-                        // ===== STAFF =====
-                        .requestMatchers("/api/staff/**").hasRole("STAFF")
-
-                        // ===== CUSTOMER (user thường) =====
-                        .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
-
-                        // ===== LOGIN LÀ VÀO ĐƯỢC (trang chung) =====
-                        .requestMatchers("/api/user/**")
-                        .hasAnyRole("CUSTOMER", "STAFF", "MANAGER", "ADMIN")
-
-                        // ===== CÒN LẠI =====
-                        .anyRequest().authenticated())
-                .httpBasic(withDefaults());
         return http.build();
     }
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//        http
+//
+//                // 1. Tắt CSRF (cần thiết cho API REST)
+//                .csrf(AbstractHttpConfigurer::disable)
+//
+//                // 2. Kích hoạt CORS với cấu hình bên dưới
+//                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+//
+//                .authorizeHttpRequests(auth -> auth
+//                        // ===== PUBLIC =====
+//                        .requestMatchers("/api/auth/**").permitAll()
+//                        .requestMatchers("/uploads/**").permitAll()
+//                        .requestMatchers("/api/admin/**").permitAll() // TEMPORARY: For testing without auth
+//
+//                        // ===== ADMIN =====
+//                        // .requestMatchers("/api/admin/**").hasRole("ADMIN") // TODO: Re-enable after
+//                        // testing
+//
+//                        // ===== MANAGER =====
+//                        .requestMatchers("/api/manager/**").hasRole("MANAGER")
+//
+//                        // ===== STAFF =====
+//                        .requestMatchers("/api/staff/**").hasRole("STAFF")
+//
+//                        // ===== CUSTOMER (user thường) =====
+//                        .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+//
+//                        // ===== LOGIN LÀ VÀO ĐƯỢC (trang chung) =====
+//                        .requestMatchers("/api/user/**")
+//                        .hasAnyRole("CUSTOMER", "STAFF", "MANAGER", "ADMIN")
+//
+//                        // ===== CÒN LẠI =====
+//                        .anyRequest().authenticated())
+//                .httpBasic(withDefaults());
+//        return http.build();
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

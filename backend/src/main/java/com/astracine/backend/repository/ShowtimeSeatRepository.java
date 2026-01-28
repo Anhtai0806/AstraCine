@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface ShowtimeSeatRepository extends JpaRepository<ShowtimeSeat, Long> {
-    
+
     // Lấy danh sách ghế của suất chiếu
     List<ShowtimeSeat> findByShowtimeId(Long showtimeId);
 
@@ -25,5 +25,5 @@ public interface ShowtimeSeatRepository extends JpaRepository<ShowtimeSeat, Long
                                               @Param("status") SeatBookingStatus status);
 
     Optional<ShowtimeSeat> findByShowtimeIdAndSeatId(Long showtimeId, Long seatId);
-                                          
+
 }

@@ -6,6 +6,8 @@ import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
 import ProfilePage from "../pages/Profile/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
+import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
+import SeatSelection from "../pages/Booking/SeatSelection";
 
 export default function ClientRoutes() {
   return (
@@ -21,6 +23,9 @@ export default function ClientRoutes() {
           </ProtectedRoute>
         }
       />
+
+        <Route path="booking" element={<ShowtimeBrowser />} />
+        <Route path="booking/showtimes/:showtimeId" element={<SeatSelection />} />
     </Route>
   );
 }

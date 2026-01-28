@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.astracine.backend.enums.SeatType;
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -16,6 +17,8 @@ public class SeatStateDto {
     private String rowLabel;
     private Integer columnNumber;
     private SeatType seatType;
+
+    private BigDecimal finalPrice;
 
     private SeatBookingStatus status;
 

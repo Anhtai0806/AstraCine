@@ -81,22 +81,30 @@ public class SeatHoldService {
     // Public APIs
     // ===============================
 
+
     public List<SeatStateDto> getSeatStates(Long showtimeId) {
-        Showtime showtime = showtimeRepository.findById(showtimeId)
-                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtimeId));
+        // Lấy toàn bộ ghế của showtime (đã có finalPrice) từ bảng showtime_seats
+        List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtimeId);
+        if (showtimeSeats.isEmpty()) {
+            // Nếu showtime chưa generate showtime_seats (hoặc showtimeId sai) thì báo rõ
+            showtimeRepository.findById(showtimeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtimeId));
+            return Collections.emptyList();
+        }
 
-        List<Seat> seats = seatRepository.findByRoomId(showtime.getRoom().getId());
-        seats.sort(Comparator
-                .comparing(Seat::getRowLabel)
-                .thenComparing(Seat::getColumnNumber));
+        // sort theo row/col để FE render đẹp
+        showtimeSeats.sort(Comparator
+                .comparing((ShowtimeSeat ss) -> ss.getSeat().getRowLabel())
+                .thenComparing(ss -> ss.getSeat().getColumnNumber()));
 
-        Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, SeatBookingStatus.SOLD)
-        );
+        Set<Long> soldSeatIds = showtimeSeats.stream()
+                .filter(ss -> ss.getStatus() == SeatBookingStatus.SOLD)
+                .map(ss -> ss.getSeat().getId())
+                .collect(Collectors.toSet());
 
         // Multi-get holds for all seats (không scan pattern, tránh nặng)
-        List<String> holdKeys = seats.stream()
-                .map(s -> seatHoldKey(showtimeId, s.getId()))
+        List<String> holdKeys = showtimeSeats.stream()
+                .map(ss -> seatHoldKey(showtimeId, ss.getSeat().getId()))
                 .collect(Collectors.toList());
 
         List<String> values = redis.opsForValue().multiGet(holdKeys);
@@ -105,14 +113,16 @@ public class SeatHoldService {
             for (int i = 0; i < values.size(); i++) {
                 String v = values.get(i);
                 if (v == null) continue;
-                Long seatId = seats.get(i).getId();
+                Long seatId = showtimeSeats.get(i).getSeat().getId();
                 Long exp = parseExpiresAt(v);
                 heldExpiresBySeatId.put(seatId, exp);
             }
         }
 
-        List<SeatStateDto> out = new ArrayList<>(seats.size());
-        for (Seat s : seats) {
+        List<SeatStateDto> out = new ArrayList<>(showtimeSeats.size());
+        for (ShowtimeSeat ss : showtimeSeats) {
+            Seat s = ss.getSeat();
+
             SeatBookingStatus status;
             Long heldExpiresAt = null;
 
@@ -130,6 +140,7 @@ public class SeatHoldService {
                     .rowLabel(s.getRowLabel())
                     .columnNumber(s.getColumnNumber())
                     .seatType(s.getSeatType())
+                    .finalPrice(ss.getFinalPrice())
                     .status(status)
                     .heldExpiresAt(heldExpiresAt)
                     .build());
@@ -137,6 +148,7 @@ public class SeatHoldService {
 
         return out;
     }
+
 
     public HoldResponse holdSeats(Long showtimeId, List<Long> seatIds, String userId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)

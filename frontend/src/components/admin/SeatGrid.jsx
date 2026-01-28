@@ -10,19 +10,16 @@ const SEAT_TYPES = {
     PREMIUM: { label: 'Premium',class: 'type-PREMIUM' }
 };
 
-const SeatGrid = ({ seats, totalColumns, onSeatClick }) => {
+const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle }) => {
     if (!seats || seats.length === 0) return null;
 
-    // Hàm format tiền tệ (VD: 50000 -> 50.000đ)
-    const formatPrice = (price) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-    };
+    const formatPrice = (price) =>
+        new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
 
     return (
         <div className="visual-editor-wrapper">
-            {/* Legend Bar */}
             <div className="legend-bar">
-                {Object.keys(SEAT_TYPES).map(key => (
+                {Object.keys(SEAT_TYPES).map((key) => (
                     <div key={key} className="legend-item">
                         <span className={`dot ${SEAT_TYPES[key].class}`}></span>
                         {SEAT_TYPES[key].label}
@@ -32,26 +29,28 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick }) => {
 
             <div className="screen-curve">MÀN HÌNH</div>
 
-            {/* Seat Grid */}
-            <div className="seat-grid" style={{
-                gridTemplateColumns: `repeat(${totalColumns}, 36px)`
-            }}>
-                {seats.map(seat => {
+            <div className="seat-grid" style={{ gridTemplateColumns: `repeat(${totalColumns}, 36px)` }}>
+                {seats.map((seat) => {
                     const config = SEAT_TYPES[seat.seatType] || SEAT_TYPES.NORMAL;
-                    
-                    // ✅ HIỂN THỊ GIÁ TIỀN TRONG TOOLTIP
-                    // Lấy giá từ object ghế (backend gửi về) hoặc lấy mặc định nếu chưa có
-                    const priceDisplay = seat.basePrice ? formatPrice(seat.basePrice) : 'Chưa set giá';
+                    const priceDisplay = seat.basePrice ? formatPrice(seat.basePrice) : "Chưa set giá";
+
+                    const extra = getExtraClass ? getExtraClass(seat) : "";
+                    const title =
+                        (getTitle && getTitle(seat)) ||
+                        `Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\nGiá: ${priceDisplay}\nTrạng thái: ${
+                            seat.effectiveStatus || seat.status || "AVAILABLE"
+                        }`;
 
                     return (
-                        <div 
+                        <div
                             key={seat.id}
-                            className={`seat-item ${config.class}`}
+                            className={`seat-item ${config.class} ${extra}`}
+                            data-status={seat.effectiveStatus || seat.status || "AVAILABLE"}
                             onClick={() => onSeatClick(seat)}
-                            // 👇 Tooltip hiển thị đầy đủ thông tin khi rê chuột vào
-                            title={`Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\nGiá gốc: ${priceDisplay}`}
+                            title={title}
                         >
-                            {seat.rowLabel}{seat.columnNumber}
+                            {seat.rowLabel}
+                            {seat.columnNumber}
                         </div>
                     );
                 })}
