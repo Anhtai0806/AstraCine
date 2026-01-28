@@ -1,29 +1,39 @@
 package com.astracine.backend.config;
 
+
+
+
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import static org.springframework.security.config.Customizer.withDefaults;
-
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity 
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
 
+            // 1. Tắt CSRF (cần thiết cho API REST)
+            .csrf(AbstractHttpConfigurer::disable)
+            
+            // 2. Kích hoạt CORS với cấu hình bên dưới
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+           
+                .authorizeHttpRequests(auth -> auth
                         // ===== PUBLIC =====
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
@@ -56,13 +66,23 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+
+        
+        
+        // Cho phép các method
+
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "http://localhost:3000"));
+                "http://localhost:3000",
+                "http://localhost:5174" ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        
+        // Cho phép mọi header
         config.setAllowedHeaders(List.of("*"));
+        
+        // Cho phép gửi credentials (nếu sau này cần)
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -70,11 +90,3 @@ public class SecurityConfig {
         return source;
     }
 }
-// .requestMatchers("/admin/**").permitAll()
-// .requestMatchers("/uploads/**").permitAll()
-// .anyRequest().authenticated())
-// .httpBasic();
-
-// return http.build();
-// }
-// }

@@ -1,0 +1,145 @@
+/* =========================================
+   4. CÁC STYLE PHỤ TRỢ CHO CÁC TRANG CON
+   (Giữ lại để RoomManager không bị vỡ giao diện)
+   ========================================= */
+
+/* Layout chia cột (Panel Trái/Phải) */
+.room-manager-page {
+    display: flex;
+    height: 100%;
+}
+.panel-left {
+    width: 360px;
+    background: var(--surface);
+    padding: 24px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+.panel-right {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* Form Styles */
+.form-card {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+.input-field {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: white;
+}
+.input-field:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.btn-primary {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+.room-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Khoảng cách giữa các ô */
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border); /* Đường kẻ ngăn cách với Form */
+}
+
+/* Tiêu đề nhỏ phía trên (Nếu có thẻ h4/h3) */
+.room-list h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b; /* Slate 500 */
+    font-weight: 700;
+}
+
+/* 2. Từng ô phòng (Item) */
+.room-item {
+    background: white;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px; /* Bo góc mềm mại */
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Flexbox để căn chỉnh nội dung */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    /* Typography */
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #334155; /* Slate 700 */
+    position: relative;
+    overflow: hidden;
+}
+
+/* 3. Hiệu ứng Hover (Di chuột vào) */
+.room-item:hover {
+    border-color: var(--primary); /* Đổi màu viền sang tím */
+    transform: translateY(-2px);  /* Nổi lên nhẹ */
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15); /* Đổ bóng tím nhạt */
+}
+
+/* 4. Trạng thái ĐANG CHỌN (Active) */
+.room-item.active {
+    background-color: #eef2ff; /* Màu nền tím rất nhạt (Indigo 50) */
+    border-color: var(--primary);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* Thêm một vạch màu tím bên trái để đánh dấu đang chọn */
+.room-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--primary);
+    border-radius: 4px 0 0 4px;
+}
+
+/* 5. Icon mũi tên nhỏ bên phải (Optional) */
+.room-item::after {
+    content: "›"; /* Ký tự mũi tên */
+    font-size: 1.2rem;
+    color: #cbd5e1; /* Xám nhạt */
+    transition: 0.2s;
+    line-height: 1;
+}
+
+.room-item:hover::after,
+.room-item.active::after {
+    color: var(--primary);
+    transform: translateX(3px);
+}

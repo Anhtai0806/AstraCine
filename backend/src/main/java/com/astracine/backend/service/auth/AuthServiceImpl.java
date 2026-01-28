@@ -14,6 +14,7 @@ import com.astracine.backend.entity.User;
 import com.astracine.backend.repository.RoleRepository;
 import com.astracine.backend.repository.UserRepository;
 
+
 @Service
 public class AuthServiceImpl implements AuthService {
 

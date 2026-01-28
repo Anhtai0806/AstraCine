@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.astracine.backend.enums.SeatType;
 
 @Data
 @NoArgsConstructor
@@ -14,7 +15,7 @@ public class SeatStateDto {
     private Long seatId;
     private String rowLabel;
     private Integer columnNumber;
-    private String seatType;
+    private SeatType seatType;
 
     private SeatBookingStatus status;
 

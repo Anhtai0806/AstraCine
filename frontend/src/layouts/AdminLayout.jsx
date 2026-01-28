@@ -1,50 +1,77 @@
-import React from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import "./AdminLayout.css";
+import React from 'react';
+import { Outlet, NavLink } from 'react-router-dom';
+import './AdminLayout.css';
+
 
 const AdminLayout = () => {
-  const navigate = useNavigate();
-  const { logout, user } = useAuth();
+    return (
+        <div className="portal-layout"> {/* Dùng class portal-layout để ăn CSS layout */}
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+            {/* --- SIDEBAR --- */}
+            <aside className="sidebar">
+                {/* Logo Brand */}
+                <div className="brand">
+                    Astra<span>Cine</span> Admin
+                </div>
 
-  return (
-    <div className="admin-layout">
-      <nav className="admin-nav">
-        <div className="nav-header">
-          <h1>🎬 AstraCine Admin</h1>
+                {/* Menu Navigation */}
+                <nav className="portal-nav">
+                    {/* 1. Dashboard */}
+                    <NavLink
+                        to="/admin/dashboard"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        📊 Dashboard
+                    </NavLink>
 
-          {/* 👤 Thông tin + Logout */}
-          <div className="admin-user">
-            <button onClick={handleLogout} className="logout-btn">
-              Đăng xuất
-            </button>
-          </div>
+                    {/* 2. Quản lý Phim (Từ AdminLayout cũ) */}
+                    <NavLink
+                        to="/admin/movies"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🎥 Quản lý Phim
+                    </NavLink>
+
+                    {/* 3. Thể loại (Từ AdminLayout cũ) */}
+                    <NavLink
+                        to="/admin/genres"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🎭 Thể loại
+                    </NavLink>
+
+                    {/* 4. Quản lý Phòng (Từ PortalLayout) */}
+                    <NavLink
+                        to="/admin/rooms"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🛠 Quản lý Phòng
+                    </NavLink>
+
+                    {/* MỚI: Quản lý Khung giờ */}
+                    <NavLink
+                        to="/admin/time-slots"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🕒 Khung giờ
+                    </NavLink>
+
+                    {/* 5. Lịch chiếu (Sắp làm) */}
+                    <NavLink
+                        to="/admin/showtimes"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🎬 Lịch Chiếu
+                    </NavLink>
+                </nav>
+            </aside>
+
+            {/* --- MAIN CONTENT --- */}
+            <main className="content">
+                <Outlet /> {/* Nơi nội dung các trang con hiển thị */}
+            </main>
         </div>
-
-        <ul className="nav-menu">
-          <li>
-            <Link to="/admin/genres" className="nav-link">
-              🎭 Genres
-            </Link>
-          </li>
-          <li>
-            <Link to="/admin/movies" className="nav-link">
-              🎥 Movies
-            </Link>
-          </li>
-        </ul>
-      </nav>
-
-      <main className="admin-content">
-        <Outlet />
-      </main>
-    </div>
-  );
+    );
 };
 
 export default AdminLayout;
