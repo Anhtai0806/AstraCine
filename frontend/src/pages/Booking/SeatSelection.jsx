@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { seatHoldApi } from "../../services/seatHoldApi";
 import { connectSeatSocket } from "/src/services/seatHoldSocket.js";
+import PaymentQrModal from "./PaymentQrModal.jsx";
 import "./SeatSelection.css";
 
 function nowMs() {
@@ -16,6 +17,10 @@ export default function SeatSelection() {
     const [hold, setHold] = useState(null); // {holdId, expiresAt, ttlSeconds, seatIds}
     const [selectedSeatIds, setSelectedSeatIds] = useState([]);
     const [error, setError] = useState(null);
+
+    const [payment, setPayment] = useState(null); // {paymentSessionId, amount, qrPayload, expiresAt, status}
+    const [paymentOpen, setPaymentOpen] = useState(false);
+    const [paymentBusy, setPaymentBusy] = useState(false);
 
     // store cleanup functions/timers
     const disconnectRef = useRef(null);
@@ -139,13 +144,36 @@ export default function SeatSelection() {
         setError(null);
         if (!hold?.holdId) return;
         try {
-            await seatHoldApi.confirmHold(hold.holdId, "demo");
+            // Step 1: create mock payment session and open QR popup
+            const p = await seatHoldApi.createMockPayment(hold.holdId);
+            setPayment(p);
+            setPaymentOpen(true);
+        } catch (e) {
+            console.error("confirm failed", e);
+            setError(e);
+        }
+    }
+
+    async function confirmPaid() {
+        if (!payment?.paymentSessionId || !hold?.holdId) return;
+        setError(null);
+        setPaymentBusy(true);
+        try {
+            // Step 2: mock confirm payment
+            await seatHoldApi.confirmMockPayment(payment.paymentSessionId);
+            // Step 3: now allow SOLD
+            await seatHoldApi.confirmHold(hold.holdId, payment.paymentSessionId);
+
+            setPaymentOpen(false);
+            setPayment(null);
             setHold(null);
             setSelectedSeatIds([]);
             await load();
         } catch (e) {
-            console.error("confirm failed", e);
+            console.error("payment confirm failed", e);
             setError(e);
+        } finally {
+            setPaymentBusy(false);
         }
     }
 
@@ -210,6 +238,18 @@ export default function SeatSelection() {
                     );
                 })}
             </div>
+
+            <PaymentQrModal
+                open={paymentOpen}
+                payment={payment}
+                remainingSeconds={remainingSeconds}
+                busy={paymentBusy}
+                onClose={() => {
+                    if (paymentBusy) return;
+                    setPaymentOpen(false);
+                }}
+                onConfirmPaid={confirmPaid}
+            />
         </div>
     );
 }

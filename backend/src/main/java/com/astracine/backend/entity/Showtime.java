@@ -1,5 +1,6 @@
 package com.astracine.backend.entity;
 
+import com.astracine.backend.enums.ShowtimeStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

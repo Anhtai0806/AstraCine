@@ -1,5 +1,6 @@
 package com.astracine.backend.dto.seat;
 
+import com.astracine.backend.enums.SeatBookingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +17,7 @@ public class SeatStateDto {
     private Integer columnNumber;
     private SeatType seatType;
 
-    private SeatDisplayStatus status;
+    private SeatBookingStatus status;
 
     /** epoch millis - chỉ có khi status=HELD */
     private Long heldExpiresAt;

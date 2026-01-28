@@ -1,5 +1,6 @@
 package com.astracine.backend.entity;
 
+import com.astracine.backend.enums.SeatBookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

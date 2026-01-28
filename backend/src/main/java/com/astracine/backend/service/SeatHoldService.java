@@ -1,10 +1,9 @@
 package com.astracine.backend.service;
 
 import com.astracine.backend.dto.hold.HoldResponse;
-import com.astracine.backend.dto.seat.SeatDisplayStatus;
 import com.astracine.backend.dto.seat.SeatStateDto;
 import com.astracine.backend.dto.ws.SeatEventDto;
-import com.astracine.backend.dto.ws.SeatEventType;
+import com.astracine.backend.enums.SeatEventType;
 import com.astracine.backend.entity.Seat;
 import com.astracine.backend.entity.Showtime;
 import com.astracine.backend.entity.ShowtimeSeat;
@@ -114,16 +113,16 @@ public class SeatHoldService {
 
         List<SeatStateDto> out = new ArrayList<>(seats.size());
         for (Seat s : seats) {
-            SeatDisplayStatus status;
+            SeatBookingStatus status;
             Long heldExpiresAt = null;
 
             if (soldSeatIds.contains(s.getId())) {
-                status = SeatDisplayStatus.SOLD;
+                status = SeatBookingStatus.SOLD;
             } else if (heldExpiresBySeatId.containsKey(s.getId())) {
-                status = SeatDisplayStatus.HELD;
+                status = SeatBookingStatus.HELD;
                 heldExpiresAt = heldExpiresBySeatId.get(s.getId());
             } else {
-                status = SeatDisplayStatus.AVAILABLE;
+                status = SeatBookingStatus.AVAILABLE;
             }
 
             out.add(SeatStateDto.builder()
