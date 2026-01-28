@@ -15,9 +15,12 @@ const AdminMovies = () => {
         description: '',
         duration: '',
         releaseDate: '',
+        endDate: '',
+        ageRating: 'ALL_AGE',
         status: 'NOW_SHOWING',
         genreId: '',
-        poster: null
+        poster: null,
+        trailer: null
     });
     const [isEditing, setIsEditing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -69,10 +72,23 @@ const AdminMovies = () => {
 
     const handleShowModal = (movie = null) => {
         if (movie) {
+            // Find the primary genre ID if available (backend returns a set of genres)
+            let primaryGenreId = '';
+            if (movie.genres && movie.genres.length > 0) {
+                primaryGenreId = movie.genres[0].id;
+            } else if (movie.genre && movie.genre.id) {
+                // Fallback for older structure just in case
+                primaryGenreId = movie.genre.id;
+            }
+
             setCurrentMovie({
                 ...movie,
-                genreId: movie.genre ? movie.genre.id : '',
-                poster: null // Reset poster file on edit, we don't re-upload unless changed
+                duration: movie.durationMinutes || '', // Map durationMinutes to duration
+                endDate: movie.endDate || '',
+                ageRating: movie.ageRating || 'ALL_AGE',
+                genreId: primaryGenreId,
+                poster: null, // Reset poster file on edit, we don't re-upload unless changed
+                trailer: null // Reset trailer file on edit
             });
             setIsEditing(true);
         } else {
@@ -81,9 +97,12 @@ const AdminMovies = () => {
                 description: '',
                 duration: '',
                 releaseDate: '',
+                endDate: '',
+                ageRating: 'ALL_AGE',
                 status: 'NOW_SHOWING',
                 genreId: '',
-                poster: null
+                poster: null,
+                trailer: null
             });
             setIsEditing(false);
         }
@@ -97,9 +116,12 @@ const AdminMovies = () => {
             description: '',
             duration: '',
             releaseDate: '',
+            endDate: '',
+            ageRating: 'ALL_AGE',
             status: 'NOW_SHOWING',
             genreId: '',
-            poster: null
+            poster: null,
+            trailer: null
         });
     };
 
@@ -109,7 +131,8 @@ const AdminMovies = () => {
     };
 
     const handleFileChange = (e) => {
-        setCurrentMovie({ ...currentMovie, poster: e.target.files[0] });
+        const { name } = e.target;
+        setCurrentMovie({ ...currentMovie, [name]: e.target.files[0] });
     };
 
     const handleSave = async (e) => {
@@ -117,12 +140,17 @@ const AdminMovies = () => {
         const formData = new FormData();
         formData.append('title', currentMovie.title);
         formData.append('description', currentMovie.description);
-        formData.append('duration', currentMovie.duration);
+        formData.append('durationMinutes', currentMovie.duration);
         formData.append('releaseDate', currentMovie.releaseDate);
+        formData.append('endDate', currentMovie.endDate);
+        formData.append('ageRating', currentMovie.ageRating);
         formData.append('status', currentMovie.status);
-        formData.append('genreId', currentMovie.genreId);
+        formData.append('genreIds', currentMovie.genreId);
         if (currentMovie.poster) {
             formData.append('poster', currentMovie.poster);
+        }
+        if (currentMovie.trailer) {
+            formData.append('trailer', currentMovie.trailer);
         }
 
         try {
@@ -196,8 +224,12 @@ const AdminMovies = () => {
                             <th>Poster</th>
                             <th>Title</th>
                             <th>Genre</th>
+                            <th>Duration (min)</th>
+                            <th>Age Rating</th>
                             <th>Status</th>
                             <th>Release Date</th>
+                            <th>End Date</th>
+                            <th>Trailer</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -207,17 +239,32 @@ const AdminMovies = () => {
                                 <td>{movie.id}</td>
                                 <td>
                                     {movie.posterUrl && (
-                                        <img src={`http://localhost:8080${movie.posterUrl}`} alt={movie.title} className="movie-poster-thumb" />
+                                        <img src={`${movie.posterUrl}`} alt={movie.title} className="movie-poster-thumb" />
                                     )}
                                 </td>
                                 <td className="movie-title">{movie.title}</td>
-                                <td className="movie-genre">{movie.genre ? movie.genre.name : 'N/A'}</td>
+                                <td className="movie-genre">
+                                    {movie.genres && movie.genres.length > 0
+                                        ? movie.genres.map(g => g.name).join(', ')
+                                        : 'N/A'
+                                    }
+                                </td>
+                                <td>{movie.durationMinutes}</td>
+                                <td>{movie.ageRating || 'N/A'}</td>
                                 <td>
                                     <Badge className={`status-badge ${movie.status === 'NOW_SHOWING' ? 'bg-success' : 'bg-secondary'}`}>
                                         {movie.status}
                                     </Badge>
                                 </td>
                                 <td>{movie.releaseDate}</td>
+                                <td>{movie.endDate || 'N/A'}</td>
+                                <td>
+                                    {movie.trailerUrl ? (
+                                        <a href={movie.trailerUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-info">
+                                            View
+                                        </a>
+                                    ) : 'N/A'}
+                                </td>
                                 <td>
                                     <div className="movie-actions">
                                         <Button variant="warning" size="sm" className="btn-edit-movie" onClick={() => handleShowModal(movie)}>
@@ -233,14 +280,15 @@ const AdminMovies = () => {
                     </tbody>
                 </Table>
 
-                <Modal show={showModal} onHide={handleCloseModal} size="lg" className="movie-modal">
+                <Modal show={showModal} onHide={handleCloseModal} size="lg" className="movie-modal" dialogClassName="modal-dialog-scrollable">
                     <Modal.Header closeButton>
                         <Modal.Title>{isEditing ? 'Edit Movie' : 'Add New Movie'}</Modal.Title>
                     </Modal.Header>
                     <Form onSubmit={handleSave}>
                         <Modal.Body>
+                            {/* ===== BASIC INFO ===== */}
                             <Row>
-                                <Col md={6}>
+                                <Col md={12}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Title</Form.Label>
                                         <Form.Control
@@ -252,6 +300,9 @@ const AdminMovies = () => {
                                         />
                                     </Form.Group>
                                 </Col>
+                            </Row>
+
+                            <Row>
                                 <Col md={6}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Genre</Form.Label>
@@ -268,22 +319,8 @@ const AdminMovies = () => {
                                         </Form.Select>
                                     </Form.Group>
                                 </Col>
-                            </Row>
 
-                            <Form.Group className="mb-3">
-                                <Form.Label>Description</Form.Label>
-                                <Form.Control
-                                    as="textarea"
-                                    rows={3}
-                                    name="description"
-                                    value={currentMovie.description}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </Form.Group>
-
-                            <Row>
-                                <Col md={4}>
+                                <Col md={6}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Duration (mins)</Form.Label>
                                         <Form.Control
@@ -295,19 +332,22 @@ const AdminMovies = () => {
                                         />
                                     </Form.Group>
                                 </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Release Date</Form.Label>
-                                        <Form.Control
-                                            type="date"
-                                            name="releaseDate"
-                                            value={currentMovie.releaseDate}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
+                            </Row>
+
+                            <Form.Group className="mb-3">
+                                <Form.Label>Description</Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={4}
+                                    name="description"
+                                    value={currentMovie.description}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Form.Group>
+
+                            <Row>
+                                <Col md={6}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Status</Form.Label>
                                         <Form.Select
@@ -322,24 +362,77 @@ const AdminMovies = () => {
                                         </Form.Select>
                                     </Form.Group>
                                 </Col>
+
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Age Rating</Form.Label>
+                                        <Form.Select
+                                            name="ageRating"
+                                            value={currentMovie.ageRating}
+                                            onChange={handleInputChange}
+                                            required
+                                        >
+                                            <option value="ALL_AGE">All Age</option>
+                                            <option value="16+">16+</option>
+                                            <option value="18+">18+</option>
+                                        </Form.Select>
+                                    </Form.Group>
+                                </Col>
                             </Row>
 
+                            <hr />
+
+                            {/* ===== SCHEDULE ===== */}
+                            <Row className="mb-3">
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label>Release Date</Form.Label>
+                                        <Form.Control
+                                            type="date"
+                                            name="releaseDate"
+                                            value={currentMovie.releaseDate}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </Form.Group>
+                                </Col>
+
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label>End Date</Form.Label>
+                                        <Form.Control
+                                            type="date"
+                                            name="endDate"
+                                            value={currentMovie.endDate}
+                                            onChange={handleInputChange}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+
+                            <hr />
+
+                            {/* ===== MEDIA ===== */}
                             <Form.Group className="mb-3">
                                 <Form.Label>Poster Image</Form.Label>
                                 <Form.Control
                                     type="file"
+                                    name="poster"
                                     onChange={handleFileChange}
                                     accept="image/*"
                                     required={!isEditing}
                                 />
-                                {isEditing && currentMovie.posterUrl && (
-                                    <div className="current-poster-preview">
-                                        <small>Current Poster:</small>
-                                        <img src={`http://localhost:8080${currentMovie.posterUrl}`} alt="Current" height="50" className="d-block mt-1" />
-                                    </div>
-                                )}
                             </Form.Group>
 
+                            <Form.Group className="mb-3">
+                                <Form.Label>Trailer Video</Form.Label>
+                                <Form.Control
+                                    type="file"
+                                    name="trailer"
+                                    onChange={handleFileChange}
+                                    accept="video/*"
+                                />
+                            </Form.Group>
                         </Modal.Body>
                         <Modal.Footer>
                             <Button variant="secondary" onClick={handleCloseModal}>

@@ -56,7 +56,7 @@ public class MovieService {
                 .collect(Collectors.toList());
     }
 
-    public MovieResponse createMovie(MovieRequest request, MultipartFile posterFile) {
+    public MovieResponse createMovie(MovieRequest request, MultipartFile posterFile, MultipartFile trailerFile) {
         Movie movie = new Movie();
         updateMovieFromRequest(movie, request);
 
@@ -69,13 +69,25 @@ public class MovieService {
             movie.setPosterUrl(posterPath);
         }
 
+        // Handle trailer upload
+        if (trailerFile != null && !trailerFile.isEmpty()) {
+            if (!fileStorageService.isValidVideoFile(trailerFile)) {
+                throw new RuntimeException("Invalid video file. Only MP4, WebM, MOV, and AVI are allowed.");
+            }
+            String trailerPath = fileStorageService.storeVideoFile(trailerFile);
+            movie.setTrailerUrl(trailerPath);
+        }
+
         Movie savedMovie = movieRepository.save(movie);
         return convertToResponse(savedMovie);
     }
 
-    public MovieResponse updateMovie(Long id, MovieRequest request, MultipartFile posterFile) {
+    public MovieResponse updateMovie(Long id, MovieRequest request, MultipartFile posterFile,
+            MultipartFile trailerFile) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+
+        updateMovieFromRequest(movie, request);
 
         // Delete old poster if new one is uploaded
         if (posterFile != null && !posterFile.isEmpty()) {
@@ -93,7 +105,22 @@ public class MovieService {
             movie.setPosterUrl(posterPath);
         }
 
-        updateMovieFromRequest(movie, request);
+        // Delete old trailer if new one is uploaded
+        if (trailerFile != null && !trailerFile.isEmpty()) {
+            if (!fileStorageService.isValidVideoFile(trailerFile)) {
+                throw new RuntimeException("Invalid video file. Only MP4, WebM, MOV, and AVI are allowed.");
+            }
+
+            // Delete old trailer
+            if (movie.getTrailerUrl() != null) {
+                fileStorageService.deleteVideoFile(movie.getTrailerUrl());
+            }
+
+            // Upload new trailer
+            String trailerPath = fileStorageService.storeVideoFile(trailerFile);
+            movie.setTrailerUrl(trailerPath);
+        }
+
         Movie updatedMovie = movieRepository.save(movie);
         return convertToResponse(updatedMovie);
     }
@@ -105,6 +132,11 @@ public class MovieService {
         // Delete poster file
         if (movie.getPosterUrl() != null) {
             fileStorageService.deleteFile(movie.getPosterUrl());
+        }
+
+        // Delete trailer file
+        if (movie.getTrailerUrl() != null) {
+            fileStorageService.deleteVideoFile(movie.getTrailerUrl());
         }
 
         movieRepository.deleteById(id);

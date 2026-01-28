@@ -55,8 +55,9 @@ public class AdminMovieController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MovieResponse> createMovie(
             @Valid @ModelAttribute MovieRequest request,
-            @RequestParam(required = false) MultipartFile poster) {
-        MovieResponse createdMovie = movieService.createMovie(request, poster);
+            @RequestParam(required = false) MultipartFile poster,
+            @RequestParam(required = false) MultipartFile trailer) {
+        MovieResponse createdMovie = movieService.createMovie(request, poster, trailer);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdMovie);
     }
 
@@ -64,8 +65,9 @@ public class AdminMovieController {
     public ResponseEntity<MovieResponse> updateMovie(
             @PathVariable Long id,
             @Valid @ModelAttribute MovieRequest request,
-            @RequestParam(required = false) MultipartFile poster) {
-        MovieResponse updatedMovie = movieService.updateMovie(id, request, poster);
+            @RequestParam(required = false) MultipartFile poster,
+            @RequestParam(required = false) MultipartFile trailer) {
+        MovieResponse updatedMovie = movieService.updateMovie(id, request, poster, trailer);
         return ResponseEntity.ok(updatedMovie);
     }
 

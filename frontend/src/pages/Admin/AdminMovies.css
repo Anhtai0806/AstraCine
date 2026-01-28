@@ -190,6 +190,7 @@
     color: white;
     border-radius: 20px 20px 0 0;
     padding: 1.5rem;
+    border-bottom: none;
 }
 
 .movie-modal .modal-title {
@@ -221,14 +222,107 @@
     box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
 }
 
-.current-poster-preview {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    background: #f7fafc;
+/* New Styles for Tabs and Uploads */
+.custom-tabs .nav-link {
+    color: #718096;
+    font-weight: 600;
+    border: none;
+    padding: 1rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.custom-tabs .nav-link:hover {
+    color: #f5576c;
+    background-color: #fff5f7;
+    border-radius: 10px;
+}
+
+.custom-tabs .nav-link.active {
+    color: #f5576c;
+    background-color: transparent;
+    border-bottom: 3px solid #f5576c;
+    border-radius: 0;
+}
+
+.custom-file-upload {
+    background: #f8fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.custom-file-upload:hover {
+    border-color: #f5576c;
+    background: #fff5f7;
+}
+
+.custom-file-upload .form-control {
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+.current-poster-preview,
+.current-trailer-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fff;
     border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: inline-block;
 }
 
 .current-poster-preview img {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== CENTER MODAL POPUP ===== */
+.movie-modal.modal {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Làm nền phía sau mờ & tối hơn */
+.movie-modal .modal-backdrop.show {
+    opacity: 0.6;
+    backdrop-filter: blur(4px);
+}
+
+/* Popup nằm giữa + animation nhẹ */
+.movie-modal .modal-dialog {
+    margin: 0;
+    max-width: 900px;
+    width: 100%;
+    animation: popupScale 0.25s ease;
+}
+
+/* Modal vẫn ở giữa nhưng cho phép scroll */
+.movie-modal .modal-dialog {
+    max-height: 90vh;
+    transform: translateY(-5vh);
+}
+
+/* Body cuộn, header & footer cố định */
+.movie-modal .modal-body {
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+    /* header + footer */
+}
+
+
+/* Hiệu ứng scale khi bật popup */
+@keyframes popupScale {
+    from {
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { roomService } from '../../services/roomService'; // Ensure this path is correct
 import SeatGrid from '../../components/admin/SeatGrid';
- import '../../layouts/Portal.css'; // Import CSS // Ensure this path is correct
+import '../../layouts/AdminLayout.css'; // Import CSS // Ensure this path is correct
 
 const RoomManager = () => {
     // --- STATE ---
@@ -11,7 +11,7 @@ const RoomManager = () => {
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [seats, setSeats] = useState([]);
     const [formData, setFormData] = useState({ name: '', totalRows: 10, totalColumns: 12 });
-    
+
     // ✨ New States for Batch Saving
     const [pendingChanges, setPendingChanges] = useState(new Set()); // Tracks modified seat IDs
     const [isSaving, setIsSaving] = useState(false);
@@ -36,7 +36,7 @@ const RoomManager = () => {
         try {
             const res = await roomService.create(formData);
             alert(`Tạo phòng ${res.data.name} thành công!`);
-            fetchRooms(); 
+            fetchRooms();
             handleSelectRoom(res.data); // Automatically select new room
             setFormData({ name: '', totalRows: 10, totalColumns: 12 });
         } catch {
@@ -88,7 +88,7 @@ const RoomManager = () => {
             const seatsToUpdate = seats.filter(s => pendingChanges.has(s.id));
 
             // Send concurrent requests
-            await Promise.all(seatsToUpdate.map(seat => 
+            await Promise.all(seatsToUpdate.map(seat =>
                 roomService.updateSeatType(seat.id, seat.seatType)
             ));
 
@@ -126,14 +126,14 @@ const RoomManager = () => {
                     <h3>➕ Thêm Phòng</h3>
                     <form onSubmit={handleCreateRoom}>
                         <input className="input-field" placeholder="Tên phòng" required
-                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} 
+                            value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
                         />
                         <div className="row-col-group">
                             <input className="input-field" type="number" placeholder="Hàng" min="5"
-                                value={formData.totalRows} onChange={e => setFormData({...formData, totalRows: parseInt(e.target.value)})} 
+                                value={formData.totalRows} onChange={e => setFormData({ ...formData, totalRows: parseInt(e.target.value) })}
                             />
                             <input className="input-field" type="number" placeholder="Cột" min="5"
-                                value={formData.totalColumns} onChange={e => setFormData({...formData, totalColumns: parseInt(e.target.value)})} 
+                                value={formData.totalColumns} onChange={e => setFormData({ ...formData, totalColumns: parseInt(e.target.value) })}
                             />
                         </div>
                         <button disabled={isLoadingRoom} className="btn-primary">
@@ -141,13 +141,13 @@ const RoomManager = () => {
                         </button>
                     </form>
                 </div>
-                
+
                 <div className="room-list">
                     <h4>Danh sách phòng</h4>
                     {rooms.map(room => (
-                        <div key={room.id} 
-                             className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}
-                             onClick={() => handleSelectRoom(room)}>
+                        <div key={room.id}
+                            className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}
+                            onClick={() => handleSelectRoom(room)}>
                             {room.name} ({room.totalRows}x{room.totalColumns})
                         </div>
                     ))}
@@ -160,26 +160,26 @@ const RoomManager = () => {
                     <div className="editor-container">
                         {/* ✨ EDITOR HEADER WITH ACTIONS */}
                         <div style={{
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center', 
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
                             marginBottom: '20px',
                             borderBottom: '1px solid #eee',
                             paddingBottom: '15px'
                         }}>
-                            <div style={{textAlign: 'left'}}>
-                                <h3 style={{margin: '0 0 5px 0'}}>⚙️ Sơ đồ: {selectedRoom.name}</h3>
-                                <small style={{color: pendingChanges.size > 0 ? '#ef4444' : '#64748b', fontWeight: 500}}>
-                                    {pendingChanges.size > 0 
-                                        ? `⚠️ Có ${pendingChanges.size} ghế chưa lưu` 
+                            <div style={{ textAlign: 'left' }}>
+                                <h3 style={{ margin: '0 0 5px 0' }}>⚙️ Sơ đồ: {selectedRoom.name}</h3>
+                                <small style={{ color: pendingChanges.size > 0 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
+                                    {pendingChanges.size > 0
+                                        ? `⚠️ Có ${pendingChanges.size} ghế chưa lưu`
                                         : 'Trạng thái: Đã đồng bộ'}
                                 </small>
                             </div>
 
                             {/* Buttons show only when there are changes */}
                             {pendingChanges.size > 0 && (
-                                <div style={{display: 'flex', gap: '10px'}}>
-                                    <button 
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
                                         onClick={handleCancelChanges}
                                         style={{
                                             padding: '8px 16px',
@@ -193,7 +193,7 @@ const RoomManager = () => {
                                     >
                                         Hủy bỏ
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={handleSaveChanges}
                                         disabled={isSaving}
                                         style={{
@@ -216,10 +216,10 @@ const RoomManager = () => {
                             )}
                         </div>
 
-                        <SeatGrid 
-                            seats={seats} 
-                            totalColumns={selectedRoom.totalColumns} 
-                            onSeatClick={handleSeatClick} 
+                        <SeatGrid
+                            seats={seats}
+                            totalColumns={selectedRoom.totalColumns}
+                            onSeatClick={handleSeatClick}
                         />
                     </div>
                 ) : (
