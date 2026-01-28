@@ -1,0 +1,131 @@
+/* =========================================
+   LAYOUT CHIA 2 CỘT (GIỐNG ROOM MANAGER)
+   ========================================= */
+.timeslot-page {
+    display: flex;
+    height: 100%; /* Full chiều cao của Content */
+    gap: 0;
+}
+
+/* CỘT TRÁI: DANH SÁCH */
+.panel-left {
+    width: 360px;
+    background: white;
+    padding: 24px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+/* CỘT PHẢI: FORM NHẬP LIỆU */
+.panel-right {
+    flex: 1;
+    padding: 40px;
+    background-color: var(--bg-body); /* Màu xám nhạt */
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* =========================================
+   STYLE CHO DANH SÁCH (CARD MENU)
+   ========================================= */
+.slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.slot-item {
+    background: white;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.slot-item:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.slot-item.active {
+    background-color: #eef2ff;
+    border-color: var(--primary);
+}
+
+/* Vạch tím bên trái khi active */
+.slot-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--primary);
+}
+
+/* Nội dung bên trong Card */
+.slot-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.slot-time {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.slot-name {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.btn-delete-icon {
+    background: none;
+    border: none;
+    color: #ef4444; /* Đỏ */
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 4px;
+    opacity: 0; /* Ẩn đi */
+    transition: 0.2s;
+}
+
+.slot-item:hover .btn-delete-icon {
+    opacity: 1; /* Hiện khi di chuột vào card */
+}
+
+/* =========================================
+   FORM STYLES
+   ========================================= */
+.form-card {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.form-header {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.form-header h3 {
+    margin: 0;
+    color: var(--primary);
+}

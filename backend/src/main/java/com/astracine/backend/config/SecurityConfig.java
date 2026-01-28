@@ -1,5 +1,8 @@
 package com.astracine.backend.config;
 
+
+
+
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -12,9 +15,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import static org.springframework.security.config.Customizer.withDefaults;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity 
 public class SecurityConfig {
 
     @Bean
@@ -26,16 +32,8 @@ public class SecurityConfig {
             
             // 2. Kích hoạt CORS với cấu hình bên dưới
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            
-            // 3. Cho phép truy cập API
-            
-                // Cho phép Options request và các API public
            
-
-               
                 .authorizeHttpRequests(auth -> auth
-
-
                         // ===== PUBLIC =====
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
@@ -60,7 +58,7 @@ public class SecurityConfig {
 
                         // ===== CÒN LẠI =====
                         .anyRequest().authenticated())
-                .httpBasic();
+                .httpBasic(withDefaults());
         return http.build();
     }
 
@@ -74,14 +72,13 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         
-        // QUAN TRỌNG: Cho phép đúng cổng Frontend đang chạy (trong ảnh là 5174)
-        config.setAllowedOrigins(List.of("http://localhost:5174")); 
         
         // Cho phép các method
 
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "http://localhost:3000"));
+                "http://localhost:3000",
+                "http://localhost:5174" ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         
         // Cho phép mọi header

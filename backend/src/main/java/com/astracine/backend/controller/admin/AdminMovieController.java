@@ -14,7 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
+<<<<<<< HEAD
 @RequestMapping("/api/admin/movies")
+=======
+
+@RequestMapping("/admin/movies")
+>>>>>>> 9e86ed7ab229e096bde335ced0312381a6d208e9
 @RequiredArgsConstructor
 public class AdminMovieController {
 

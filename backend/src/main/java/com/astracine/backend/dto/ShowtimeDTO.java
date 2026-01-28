@@ -41,6 +41,10 @@ public class ShowtimeDTO {
         private LocalDateTime startTime;
         private LocalDateTime endTime;
         private String status;
+
+        private String movieTitle;
+        private String roomName;
+        private Integer movieDuration;
     }
     /** DTO trả về SƠ ĐỒ GHẾ (Booking Map) - Cấu trúc lồng nhau */
     @Data

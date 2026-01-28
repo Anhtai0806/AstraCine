@@ -158,10 +158,7 @@ public class ShowtimeService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<Showtime> getAllShowtimes() {
-        return showtimeRepository.findAll();
-    }
+    
 
     // --- JDBC Helpers ---
 
@@ -188,4 +185,31 @@ public class ShowtimeService {
             return "Unknown Movie";
         }
     }
+
+    @Transactional(readOnly = true)
+public List<ShowtimeDTO.Response> getAllShowtimes() {
+    return showtimeRepository.findAll().stream()
+            .map(this::mapToResponse) // Gọi hàm map
+            .collect(Collectors.toList());
+}
+
+// 2. Viết thêm hàm Mapper ở dưới cùng class
+private ShowtimeDTO.Response mapToResponse(Showtime entity) {
+    ShowtimeDTO.Response dto = new ShowtimeDTO.Response();
+    dto.setId(entity.getId());
+    dto.setMovieId(entity.getMovieId());
+    dto.setRoomId(entity.getRoom().getId());
+    dto.setStartTime(entity.getStartTime());
+    dto.setEndTime(entity.getEndTime());
+    dto.setStatus(entity.getStatus().name());
+
+    // Map tên phòng (Lấy từ object Room lồng bên trong)
+    dto.setRoomName(entity.getRoom().getName());
+
+    // Map tên phim (Dùng hàm helper có sẵn của bạn)
+    dto.setMovieTitle(getMovieTitle(entity.getMovieId()));
+    dto.setMovieDuration(getMovieDuration(entity.getMovieId()));
+
+    return dto;
+}
 }
