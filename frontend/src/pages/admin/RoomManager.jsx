@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { roomService } from '../../services/roomService'; // Ensure this path is correct
 import SeatGrid from '../../components/admin/SeatGrid';
-<<<<<<< HEAD
-import '../../layouts/AdminLayout.css'; // Import CSS // Ensure this path is correct
-
-=======
 import './RoomManager.css';
->>>>>>> 9e86ed7ab229e096bde335ced0312381a6d208e9
 const RoomManager = () => {
     // --- STATE ---
     const [rooms, setRooms] = useState([]);

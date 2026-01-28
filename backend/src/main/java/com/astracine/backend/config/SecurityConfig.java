@@ -1,8 +1,5 @@
 package com.astracine.backend.config;
 
-
-
-
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -20,19 +17,19 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity 
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
 
-            // 1. Tắt CSRF (cần thiết cho API REST)
-            .csrf(AbstractHttpConfigurer::disable)
-            
-            // 2. Kích hoạt CORS với cấu hình bên dưới
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-           
+                // 1. Tắt CSRF (cần thiết cho API REST)
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // 2. Kích hoạt CORS với cấu hình bên dưới
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 .authorizeHttpRequests(auth -> auth
                         // ===== PUBLIC =====
                         .requestMatchers("/api/auth/**").permitAll()
@@ -71,19 +68,17 @@ public class SecurityConfig {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        
-        
         // Cho phép các method
 
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "http://localhost:5174" ));
+                "http://localhost:5174"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        
+
         // Cho phép mọi header
         config.setAllowedHeaders(List.of("*"));
-        
+
         // Cho phép gửi credentials (nếu sau này cần)
         config.setAllowCredentials(true);
 

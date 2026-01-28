@@ -4,10 +4,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
 import AdminRoutes from "./routes/AdminRoutes";
-<<<<<<< HEAD
-
-=======
->>>>>>> 9e86ed7ab229e096bde335ced0312381a6d208e9
 function App() {
   return (
     <AuthProvider>
@@ -19,22 +15,17 @@ function App() {
             {ClientRoutes()}
           </Route>
 
-<<<<<<< HEAD
-          {/* ADMIN - TEMPORARY: No auth for testing */}
-          <Route path="/admin/*" element={<AdminRoutes />} />
-=======
           {/* ADMIN */}
           <Route
             path="/admin/*"
             element={
               <ProtectedRoute>
                 <RoleRoute allowRoles={["ROLE_ADMIN"]}>
-                 <AdminRoutes />
+                  <AdminRoutes />
                 </RoleRoute>
               </ProtectedRoute>
             }
           />
->>>>>>> 9e86ed7ab229e096bde335ced0312381a6d208e9
 
           {/* STAFF */}
           <Route
