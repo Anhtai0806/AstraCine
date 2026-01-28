@@ -1,34 +1,27 @@
 import React from 'react';
-import { Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom'; // 👈 Nhớ import Routes
 
-// 1. Import Layout Mới (đã gộp)
 import AdminLayout from '../layouts/AdminLayout';
-
-// 2. Import Các Page (Cũ & Mới)
 import Dashboard from '../pages/admin/Dashboard';
 import RoomManager from '../pages/admin/RoomManager';
- // Giả sử bạn có trang này
-
+import TimeSlotManager from '../pages/admin/TimeSlotManager';
+import ShowtimeManager from '../pages/admin/ShowtimeManager';
 const AdminRoutes = () => {
     return (
-        /* ✅ Base Path là "/admin"
-           Tất cả trang con sẽ dùng chung AdminLayout (có Sidebar đẹp)
-        */
-        <Route path="/admin" element={<AdminLayout />}>
-            
-            {/* Mặc định vào /admin sẽ nhảy sang Dashboard */}
-            <Route index element={<Navigate to="dashboard" replace />} />
+        /* 👇 QUAN TRỌNG: Phải bọc trong <Routes> vì đây là một Component độc lập */
+        <Routes>
+            <Route element={<AdminLayout />}>
+                {/* Mặc định vào /admin -> nhảy sang dashboard */}
+                <Route index element={<Navigate to="dashboard" replace />} />
 
-            {/* --- NHÓM QUẢN LÝ RẠP (Từ Portal cũ) --- */}
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="rooms" element={<RoomManager />} />
-            
-          
-            
-            {/* --- NHÓM LỊCH CHIẾU (Sắp làm) --- */}
-            {/* <Route path="showtimes" element={<ShowtimeManager />} /> */}
-
-        </Route>
+                {/* Các trang con */}
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="rooms" element={<RoomManager />} />
+                <Route path="time-slots" element={<TimeSlotManager />} />
+                <Route path="showtimes" element={<ShowtimeManager />} />
+             
+            </Route>
+        </Routes>
     );
 };
 

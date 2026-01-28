@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { roomService } from '../../services/roomService'; // Ensure this path is correct
 import SeatGrid from '../../components/admin/SeatGrid';
- import '../../layouts/Portal.css'; // Import CSS // Ensure this path is correct
-
+import './RoomManager.css';
 const RoomManager = () => {
     // --- STATE ---
     const [rooms, setRooms] = useState([]);
@@ -123,7 +122,7 @@ const RoomManager = () => {
             {/* PANEL TRÁI: FORM & LIST */}
             <div className="panel-left">
                 <div className="form-card">
-                    <h3>➕ Thêm Phòng</h3>
+                    <h3> Thêm Phòng</h3>
                     <form onSubmit={handleCreateRoom}>
                         <input className="input-field" placeholder="Tên phòng" required
                             value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} 
@@ -143,7 +142,7 @@ const RoomManager = () => {
                 </div>
                 
                 <div className="room-list">
-                    <h4>Danh sách phòng</h4>
+                    <h3>Danh sách phòng</h3>
                     {rooms.map(room => (
                         <div key={room.id} 
                              className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}

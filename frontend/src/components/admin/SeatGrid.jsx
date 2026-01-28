@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-
+import './SeatGrid.css'; // 👈 Import CSS riêng của ghế
 // Cấu hình màu sắc
 const SEAT_TYPES = {
     NORMAL:  { label: 'Thường', class: 'type-NORMAL' },

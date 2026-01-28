@@ -41,7 +41,8 @@ public class ShowtimeController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Showtime>> getAllShowtimes() {
-        return ResponseEntity.ok(showtimeService.getAllShowtimes());
-    }
+// Sửa List<Showtime> thành List<ShowtimeDTO.Response>
+public ResponseEntity<List<ShowtimeDTO.Response>> getAllShowtimes() {
+    return ResponseEntity.ok(showtimeService.getAllShowtimes());
+}
 }

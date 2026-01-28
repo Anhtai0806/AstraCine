@@ -33,8 +33,9 @@ import java.time.LocalDateTime;
 
         @Column(name = "end_time", nullable = false)
         private LocalDateTime endTime;
-
-        @Column(length = 20)
+        
+        @Enumerated(EnumType.STRING)
+        @Column(name = "status")
         private ShowtimeStatus status = ShowtimeStatus.OPEN;
     
       public Showtime(Long movieId, Room room, Long timeSlotId, LocalDateTime startTime, LocalDateTime endTime) {
