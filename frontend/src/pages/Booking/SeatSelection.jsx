@@ -20,6 +20,22 @@ function formatCurrencyVND(value) {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(num);
 }
 
+/**
+ * ✅ Booking price source (tạm thời): theo seatType giống Admin.
+ * Sau này thêm TimeSlot multiplier thì chỉ cần sửa hàm getSeatTypePrice()
+ * hoặc thay bằng getFinalPrice(seatType, multiplier)
+ */
+const PRICE_BY_TYPE = {
+    NORMAL: 50000,
+    VIP: 80000,
+    COUPLE: 120000,
+    PREMIUM: 100000,
+};
+
+function getSeatTypePrice(seatType) {
+    return PRICE_BY_TYPE?.[seatType] ?? PRICE_BY_TYPE.NORMAL;
+}
+
 export default function SeatSelection() {
     const { showtimeId } = useParams();
     const sid = useMemo(() => Number(showtimeId), [showtimeId]);
@@ -111,16 +127,21 @@ export default function SeatSelection() {
 
     const seatById = useMemo(() => new Map(sortedSeats.map((s) => [s.seatId, s])), [sortedSeats]);
 
+    /**
+     * ✅ Tổng tiền theo seatType (đồng bộ Admin)
+     */
     const selectedTotal = useMemo(() => {
         if (!selectedSeatIds?.length) return 0;
         return selectedSeatIds.reduce((sum, id) => {
             const seat = seatById.get(id);
-            const price = seat?.finalPrice;
-            const num = typeof price === "string" ? Number(price) : (price ?? 0);
-            return sum + (Number.isNaN(num) ? 0 : num);
+            if (!seat) return sum;
+            return sum + getSeatTypePrice(seat.seatType);
         }, 0);
     }, [selectedSeatIds, seatById]);
 
+    /**
+     * ✅ Summary theo seatType (đồng bộ Admin)
+     */
     const selectedSeatDetails = useMemo(() => {
         return (selectedSeatIds || [])
             .map((id) => seatById.get(id))
@@ -129,30 +150,29 @@ export default function SeatSelection() {
                 seatId: s.seatId,
                 code: `${s.rowLabel}${s.columnNumber}`,
                 seatType: s.seatType,
-                finalPrice: s.finalPrice,
+                finalPrice: getSeatTypePrice(s.seatType),
             }));
     }, [selectedSeatIds, seatById]);
 
-    // ✅ ADAPTER: map SeatStateDto -> shape SeatGrid Admin expects
-    // SeatGrid Admin đang dùng: seat.id, seat.rowLabel, seat.columnNumber, seat.seatType, seat.basePrice
-    // Mình dùng basePrice = finalPrice để tooltip hiển thị đúng
+    /**
+     * ✅ Adapter cho SeatGrid Admin:
+     * - SeatGrid dùng seat.basePrice để hiển thị tooltip giá
+     * - Booking muốn giá giống Admin => basePrice = giá theo seatType
+     */
     const seatsForGrid = useMemo(() => {
         return (sortedSeats || []).map((s) => {
             const isSelected = selectedSeatIds.includes(s.seatId);
 
-            // ✅ quan trọng: selected ưu tiên hơn HELD để không bị "vàng như người khác"
+            // selected ưu tiên hơn HELD để không bị "vàng như người khác"
             const effectiveStatus = isSelected ? "SELECTED" : s.status;
+
+            const typePrice = getSeatTypePrice(s.seatType);
 
             return {
                 ...s,
-
-                // SeatGrid Admin key uses `id`
                 id: s.seatId,
-
-                // tooltip price field SeatGrid uses basePrice
-                basePrice: s.finalPrice,
-
-                // để SeatSelection.css override style theo trạng thái
+                basePrice: typePrice,   // ✅ tooltip SeatGrid
+                finalPrice: typePrice,  // ✅ nếu có chỗ nào lỡ dùng finalPrice thì vẫn đúng
                 effectiveStatus,
             };
         });
@@ -166,20 +186,24 @@ export default function SeatSelection() {
 
         const isMine = selectedSeatIds.includes(seatId);
 
-        // ✅ chỉ chặn nếu HELD/SOLD mà KHÔNG phải ghế mình
+        // chỉ chặn nếu HELD/SOLD mà không phải ghế mình
         if (seat.status !== "AVAILABLE" && !isMine) return;
 
-        const next = isMine ? selectedSeatIds.filter((id) => id !== seatId) : [...selectedSeatIds, seatId];
+        const next = isMine
+            ? selectedSeatIds.filter((id) => id !== seatId)
+            : [...selectedSeatIds, seatId];
 
         try {
-            // MVP: thay selection => release hold cũ rồi hold lại
+            // ✅ set trước để tránh nhấp nháy status khi WS event đến nhanh
+            setSelectedSeatIds(next);
+
+            // MVP: đổi selection => release hold cũ rồi hold lại
             if (hold?.holdId) {
                 await seatHoldApi.releaseHold(hold.holdId);
             }
 
             if (next.length === 0) {
                 setHold(null);
-                setSelectedSeatIds([]);
                 await load();
                 return;
             }
@@ -188,10 +212,10 @@ export default function SeatSelection() {
             const resp = await seatHoldApi.holdSeats(sid, next, clientRequestId);
 
             setHold(resp);
-            setSelectedSeatIds(next);
         } catch (e) {
             console.error("toggleSeat hold failed", e);
             setError(e);
+            // rollback bằng snapshot mới
             await load();
         }
     }
@@ -278,11 +302,10 @@ export default function SeatSelection() {
 
             <div className="seat-content">
                 <div className="seat-map booking-seat-map">
-                    {/* SeatGrid Admin giữ nguyên UI, mình chỉ truyền seats + totalColumns */}
                     <SeatGrid
                         seats={seatsForGrid}
                         totalColumns={totalColumns}
-                        onSeatClick={(seat) => toggleSeat(seat.id)} // seat.id = seatId
+                        onSeatClick={(seat) => toggleSeat(seat.id)}
                     />
                 </div>
 
