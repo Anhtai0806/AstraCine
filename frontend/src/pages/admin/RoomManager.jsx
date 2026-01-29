@@ -1,75 +1,62 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { roomService } from '../../services/roomService'; // Ensure this path is correct
+import { roomService } from '../../services/roomService';
 import SeatGrid from '../../components/admin/SeatGrid';
 import './RoomManager.css';
+
 const RoomManager = () => {
     // --- STATE ---
     const [rooms, setRooms] = useState([]);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [seats, setSeats] = useState([]);
     const [formData, setFormData] = useState({ name: '', totalRows: 10, totalColumns: 12 });
-
-    // ✨ New States for Batch Saving
-    const [pendingChanges, setPendingChanges] = useState(new Set()); // Tracks modified seat IDs
+    
+    // Batch Logic
+    const [pendingChanges, setPendingChanges] = useState(new Set());
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoadingRoom, setIsLoadingRoom] = useState(false); // Loading state for room creation
+    const [isLoading, setIsLoading] = useState(false);
 
     // --- EFFECT ---
-    useEffect(() => {
-        fetchRooms();
-    }, []);
+    useEffect(() => { loadRooms(); }, []);
 
-    // --- LOGIC ---
-    const fetchRooms = async () => {
+    // --- API ---
+    const loadRooms = async () => {
         try {
             const res = await roomService.getAll();
             setRooms(res.data);
-        } catch (err) { console.error("Lỗi load rooms", err); }
+        } catch (e) { console.error(e); }
     };
 
     const handleCreateRoom = async (e) => {
         e.preventDefault();
-        setIsLoadingRoom(true);
+        setIsLoading(true);
         try {
             const res = await roomService.create(formData);
-            alert(`Tạo phòng ${res.data.name} thành công!`);
-            fetchRooms();
-            handleSelectRoom(res.data); // Automatically select new room
+            alert(`✅ Tạo phòng ${res.data.name} thành công!`);
+            loadRooms();
+            handleSelectRoom(res.data);
             setFormData({ name: '', totalRows: 10, totalColumns: 12 });
-        } catch {
-            alert("Lỗi tạo phòng!");
-        } finally {
-            setIsLoadingRoom(false);
-        }
+        } catch { alert("Lỗi tạo phòng"); } finally { setIsLoading(false); }
     };
 
     const handleSelectRoom = async (room) => {
-        // Warning if there are unsaved changes
         if (pendingChanges.size > 0) {
-            const confirm = window.confirm("Bạn có thay đổi chưa lưu. Có chắc muốn chuyển phòng không?");
-            if (!confirm) return;
+            if (!window.confirm("Dữ liệu chưa lưu sẽ bị mất. Tiếp tục?")) return;
         }
-
         setSelectedRoom(room);
-        setPendingChanges(new Set()); // Reset pending changes
+        setPendingChanges(new Set());
         try {
             const res = await roomService.getSeats(room.id);
             setSeats(res.data);
-        } catch (err) { console.error("Lỗi load ghế", err); }
+        } catch (e) { console.error(e); }
     };
 
-    // ✨ Modified: Update Local State ONLY (No API call here)
+    // --- EDITOR LOGIC ---
     const handleSeatClick = (seat) => {
         const types = ['NORMAL', 'VIP', 'COUPLE', 'PREMIUM'];
         const nextType = types[(types.indexOf(seat.seatType) + 1) % types.length];
-
-        // 1. Update UI immediately
         const newSeats = seats.map(s => s.id === seat.id ? { ...s, seatType: nextType } : s);
         setSeats(newSeats);
-
-        // 2. Add to pending changes
+        
         setPendingChanges(prev => {
             const newSet = new Set(prev);
             newSet.add(seat.id);
@@ -77,153 +64,95 @@ const RoomManager = () => {
         });
     };
 
-    // ✨ New: Save All Changes to API
-    const handleSaveChanges = async () => {
+    const handleSave = async () => {
         if (pendingChanges.size === 0) return;
-
         setIsSaving(true);
         try {
-            // Filter only modified seats
-            const seatsToUpdate = seats.filter(s => pendingChanges.has(s.id));
-
-            // Send concurrent requests
-            await Promise.all(seatsToUpdate.map(seat =>
-                roomService.updateSeatType(seat.id, seat.seatType)
-            ));
-
-            alert("✅ Đã lưu tất cả thay đổi thành công!");
-            setPendingChanges(new Set()); // Clear pending changes
-        } catch (error) {
-            console.error("Lỗi lưu ghế:", error);
-            alert("❌ Có lỗi xảy ra khi lưu! Đang tải lại dữ liệu cũ...");
-            // Reload original data on error
-            if (selectedRoom) handleSelectRoom(selectedRoom);
-        } finally {
-            setIsSaving(false);
-        }
+            const updates = seats.filter(s => pendingChanges.has(s.id));
+            await Promise.all(updates.map(s => roomService.updateSeatType(s.id, s.seatType)));
+            alert("✅ Đã lưu thành công!");
+            setPendingChanges(new Set());
+        } catch { alert("Lỗi khi lưu!"); } finally { setIsSaving(false); }
     };
 
-    // ✨ New: Cancel/Revert Changes
-    const handleCancelChanges = () => {
-        if (pendingChanges.size === 0) return;
-        if (window.confirm("Bạn muốn hủy mọi thay đổi chưa lưu?")) {
-            // Simply re-fetch data from server to revert
-            if (selectedRoom) {
-                // We call the logic of handleSelectRoom but bypass the confirmation check
-                setSelectedRoom(selectedRoom);
-                setPendingChanges(new Set());
-                roomService.getSeats(selectedRoom.id).then(res => setSeats(res.data));
-            }
-        }
+    const handleCancel = () => {
+        if (window.confirm("Hủy mọi thay đổi?")) handleSelectRoom(selectedRoom);
     };
 
+    // --- RENDER ---
     return (
-        <div className="room-manager-page">
-            {/* PANEL TRÁI: FORM & LIST */}
-            <div className="panel-left">
-                <div className="form-card">
-                    <h3> Thêm Phòng</h3>
+        <div className="room-manager-layout">
+            {/* PANEL TRÁI */}
+            <div className="manager-sidebar">
+                <div className="sidebar-card">
+                    <div className="sidebar-header">✨ Thêm Phòng Mới</div>
                     <form onSubmit={handleCreateRoom}>
-                        <input className="input-field" placeholder="Tên phòng" required
-                            value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        <input className="form-input" placeholder="Tên phòng (VD: Cinema 01)" required
+                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} 
                         />
-                        <div className="row-col-group">
-                            <input className="input-field" type="number" placeholder="Hàng" min="5"
-                                value={formData.totalRows} onChange={e => setFormData({ ...formData, totalRows: parseInt(e.target.value) })}
+                        <div className="form-grid">
+                            <input className="form-input" type="number" placeholder="Hàng" min="5"
+                                value={formData.totalRows} onChange={e => setFormData({...formData, totalRows: e.target.value})} 
                             />
-                            <input className="input-field" type="number" placeholder="Cột" min="5"
-                                value={formData.totalColumns} onChange={e => setFormData({ ...formData, totalColumns: parseInt(e.target.value) })}
+                            <input className="form-input" type="number" placeholder="Cột" min="5"
+                                value={formData.totalColumns} onChange={e => setFormData({...formData, totalColumns: e.target.value})} 
                             />
                         </div>
-                        <button disabled={isLoadingRoom} className="btn-primary">
-                            {isLoadingRoom ? 'Đang tạo...' : 'Lưu Phòng'}
+                        <button disabled={isLoading} className="btn-submit">
+                            {isLoading ? 'Đang tạo...' : '+ Tạo Ngay'}
                         </button>
                     </form>
                 </div>
 
-                <div className="room-list">
-                    <h3>Danh sách phòng</h3>
+                <div className="room-list-container">
+                    <div className="list-label">Danh sách phòng</div>
                     {rooms.map(room => (
-                        <div key={room.id}
-                            className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}
-                            onClick={() => handleSelectRoom(room)}>
-                            {room.name} ({room.totalRows}x{room.totalColumns})
+                        <div key={room.id} className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`} onClick={() => handleSelectRoom(room)}>
+                            <div style={{fontWeight: 600}}>{room.name}</div>
+                            <div style={{fontSize:'0.8rem', opacity: 0.7}}>{room.totalRows}x{room.totalColumns}</div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* PANEL PHẢI: EDITOR */}
-            <div className="panel-right">
+            {/* PANEL PHẢI */}
+            <div className="manager-editor">
                 {selectedRoom ? (
-                    <div className="editor-container">
-                        {/* ✨ EDITOR HEADER WITH ACTIONS */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '20px',
-                            borderBottom: '1px solid #eee',
-                            paddingBottom: '15px'
-                        }}>
-                            <div style={{ textAlign: 'left' }}>
-                                <h3 style={{ margin: '0 0 5px 0' }}>⚙️ Sơ đồ: {selectedRoom.name}</h3>
-                                <small style={{ color: pendingChanges.size > 0 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
-                                    {pendingChanges.size > 0
-                                        ? `⚠️ Có ${pendingChanges.size} ghế chưa lưu`
-                                        : 'Trạng thái: Đã đồng bộ'}
-                                </small>
+                    <>
+                        {/* Header Toolbar */}
+                        <div className="editor-toolbar">
+                            <div style={{display:'flex', alignItems:'center'}}>
+                                <h2 className="room-name">{selectedRoom.name}</h2>
+                                <span className={`sync-badge ${pendingChanges.size > 0 ? 'unsaved' : 'saved'}`}>
+                                    {pendingChanges.size > 0 ? `⚠️ ${pendingChanges.size} chưa lưu` : '● Đã đồng bộ'}
+                                </span>
                             </div>
-
-                            {/* Buttons show only when there are changes */}
+                            
                             {pendingChanges.size > 0 && (
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button
-                                        onClick={handleCancelChanges}
-                                        style={{
-                                            padding: '8px 16px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            background: 'white',
-                                            cursor: 'pointer',
-                                            color: '#64748b',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Hủy bỏ
-                                    </button>
-                                    <button
-                                        onClick={handleSaveChanges}
-                                        disabled={isSaving}
-                                        style={{
-                                            padding: '8px 16px',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            background: isSaving ? '#94a3b8' : '#10b981', // Green color
-                                            color: 'white',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '5px'
-                                        }}
-                                    >
-                                        {isSaving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
+                                <div className="action-buttons">
+                                    <button onClick={handleCancel} className="btn-cancel">Hủy bỏ</button>
+                                    <button onClick={handleSave} disabled={isSaving} className="btn-save">
+                                        {isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                                     </button>
                                 </div>
                             )}
                         </div>
 
-                        <SeatGrid
-                            seats={seats}
-                            totalColumns={selectedRoom.totalColumns}
-                            onSeatClick={handleSeatClick}
-                        />
-                    </div>
+                        {/* Editor Canvas - Chỉ chứa SeatGrid */}
+                        <div className="editor-canvas">
+                            {/* SeatGrid đã bao gồm màn hình và chú thích bên trong */}
+                            <SeatGrid 
+                                seats={seats} 
+                                totalColumns={selectedRoom.totalColumns} 
+                                onSeatClick={handleSeatClick} 
+                            />
+                        </div>
+                    </>
                 ) : (
-                    <div className="empty-placeholder">
-                        <p>👈 Chọn một phòng bên trái để chỉnh sửa ghế</p>
+                    <div className="empty-state">
+                        <div className="empty-emoji">🍿</div>
+                        <h3 style={{fontSize:'1.5rem', margin:0, color:'#374151'}}>Chào mừng trở lại!</h3>
+                        <p>Chọn một phòng từ danh sách bên trái để bắt đầu thiết kế.</p>
                     </div>
                 )}
             </div>

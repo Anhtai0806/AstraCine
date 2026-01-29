@@ -1,123 +1,117 @@
 /* =========================================
-   FILE: src/components/admin/SeatGrid.css
+   1. Container bao quanh
    ========================================= */
-
-/* 1. Container bao quanh (Màn hình + Ghế + Chú thích) */
 .visual-editor-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 20px 0;
+    width: 100%;
 }
 
-/* 2. Thanh chú thích (Legend Bar) */
+/* =========================================
+   2. Chú thích màu ghế (Legend Bar) - Đã chỉnh màu chuẩn
+   ========================================= */
 .legend-bar {
     display: flex;
     justify-content: center;
     gap: 20px;
     margin-bottom: 30px;
-    padding: 10px 20px;
-    background: #f8fafc;
+    padding: 10px 24px;
+    background: #ffffff;
     border-radius: 50px;
     border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
 }
 
+/* Chấm tròn đại diện màu */
 .dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0,0,0,0.1);
 }
 
-/* 3. Màn hình cong */
+/* Định nghĩa màu trực tiếp tại đây để chắc chắn hiện */
+.dot.type-NORMAL, .seat-item.type-NORMAL { background-color: #08419d; } /* Xanh dương */
+.dot.type-VIP,    .seat-item.type-VIP    { background-color: #f59e0b; } /* Vàng cam */
+.dot.type-COUPLE, .seat-item.type-COUPLE { background-color: #ea2cd3bf; } /* Đỏ */
+.dot.type-PREMIUM,.seat-item.type-PREMIUM{ background-color: hwb(0 8% 6%); } /* Tím */
+
+/* =========================================
+   3. Màn hình cong (Screen Curve) - Đã chỉnh chữ
+   ========================================= */
+.screen-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
 .screen-curve {
-    height: 8px;
+    height: 12px;
     background: linear-gradient(to right, #cbd5e1, #94a3b8, #cbd5e1);
     width: 70%;
-    margin: 0 auto 40px;
-    border-radius: 4px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-    position: relative;
-    opacity: 0.8;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%; /* Cong xuống dưới */
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.15); /* Bóng đổ 3D */
+    opacity: 0.9;
+    margin-bottom: 8px;
 }
 
-.screen-curve::after {
-    content: "MÀN HÌNH";
-    position: absolute;
-    top: -25px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.75rem;
-    letter-spacing: 2px;
-    color: #64748b;
-    font-weight: bold;
-}
-
-/* 4. Lưới ghế */
-.seat-grid {
-    display: grid;
-    gap: 8px; /* Khoảng cách giữa các ghế */
-    justify-content: center;
-}
-
-/* 5. Style chung cho từng ghế */
-.seat-item {
-    aspect-ratio: 1; /* Giữ ghế luôn vuông */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    /* Hình dáng ghế */
-    border-radius: 8px 8px 4px 4px; 
-    
-    color: white;
+.screen-text {
+    font-size: 0.8rem;
+    letter-spacing: 4px;
+    color: #94a3b8;
     font-weight: 700;
-    font-size: 0.75rem;
-    cursor: pointer;
-    user-select: none;
-    
-    /* Hiệu ứng */
-    box-shadow: 0 2px 0 rgba(0,0,0,0.1);
-    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.seat-item:hover {
-    transform: scale(1.15) translateY(-2px);
-    z-index: 2;
-    box-shadow: 0 5px 10px rgba(0,0,0,0.2);
-}
-
-.seat-item:active {
-    transform: scale(0.95);
+    text-transform: uppercase;
 }
 
 /* =========================================
-   6. MÀU SẮC TỪNG LOẠI GHẾ (QUAN TRỌNG NHẤT)
-   Dùng var(--ten-bien) lấy từ AdminLayout.css
+   4. Lưới ghế (Grid)
    ========================================= */
-
-.type-NORMAL { 
-    background-color: var(--seat-normal); /* Màu xanh */
+.seat-grid {
+    display: grid;
+    gap: 8px; /* Khoảng cách ghế */
+    justify-content: center;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
 }
 
-.type-VIP { 
-    background-color: var(--seat-vip);    /* Màu vàng */
+/* =========================================
+   5. Từng ghế (Seat Item)
+   ========================================= */
+.seat-item {
+    aspect-ratio: 1; /* Vuông */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.type-COUPLE { 
-    background-color: var(--seat-couple); /* Màu đỏ */
-
+.seat-item:hover {
+    transform: scale(1.15);
+    z-index: 10;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 
-.type-PREMIUM { 
-    background-color: var(--seat-premium); /* Màu tím */
-}
-
+.seat-item:active { transform: scale(0.95); }

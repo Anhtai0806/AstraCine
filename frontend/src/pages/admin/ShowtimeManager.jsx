@@ -5,25 +5,26 @@ import './ShowtimeManager.css';
 
 // --- CONFIG ---
 const START_HOUR = 7; 
-const END_HOUR = 31; // 07:00 hôm sau
+const END_HOUR = 31; // 7h sáng hôm sau
 const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
 
 const ShowtimeManager = () => {
-    // --- STATE GLOBAL ---
-    const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'calendar'
-    const [currentDate, setCurrentDate] = useState(new Date());
+    // --- STATES ---
+    const [view, setView] = useState('timeline'); // 'timeline' | 'calendar'
+    const [date, setDate] = useState(new Date());
     
     // Data
     const [movies, setMovies] = useState([]);
     const [rooms, setRooms] = useState([]);
     const [showtimes, setShowtimes] = useState([]);
 
-    // Modal
-    const [modalType, setModalType] = useState(null); // 'create' | 'seat'
-    const [selectedSeatsData, setSelectedSeatsData] = useState(null);
+    // UI & Modals
+    const [modal, setModal] = useState(null); // { type: 'create' | 'seat', data: ... }
     const [createForm, setCreateForm] = useState({ movieId: '', roomId: '', startTime: '' });
+    const [selectedSeats, setSelectedSeats] = useState(null);
     const [roomCols, setRoomCols] = useState(10);
 
+    // --- INIT ---
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
@@ -36,138 +37,145 @@ const ShowtimeManager = () => {
             setMovies(m.data);
             setRooms(r.data);
             setShowtimes(s.data);
-        } catch (e) { console.error("Load Error", e); }
+        } catch (e) { console.error(e); }
     };
 
-    // --- NAVIGATION LOGIC ---
-    const handlePrev = () => {
-        const d = new Date(currentDate);
-        if (viewMode === 'timeline') d.setDate(d.getDate() - 1);
-        else d.setMonth(d.getMonth() - 1);
-        setCurrentDate(d);
+    // --- LOGIC: CALENDAR GENERATION (GLOBAL STANDARD) ---
+    // Sinh ra lưới 42 ngày (6 tuần) để lấp đầy lịch mà không bị lỗi thiếu ngày
+    const generateCalendarGrid = (currentDate) => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        const firstDayOfMonth = new Date(year, month, 1);
+        
+        // Tìm ngày bắt đầu của lưới (Chủ nhật tuần chứa ngày mùng 1)
+        const startDate = new Date(firstDayOfMonth);
+        startDate.setDate(startDate.getDate() - startDate.getDay()); // Lùi về Chủ nhật
+
+        const days = [];
+        // Sinh ra 42 ngày (7 ngày x 6 hàng)
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            days.push(d);
+        }
+        return days;
     };
 
-    const handleNext = () => {
-        const d = new Date(currentDate);
-        if (viewMode === 'timeline') d.setDate(d.getDate() + 1);
-        else d.setMonth(d.getMonth() + 1);
-        setCurrentDate(d);
+    // --- LOGIC: TIMELINE POSITION ---
+    const getTimelineStyle = (startStr, duration) => {
+        const d = new Date(startStr);
+        let h = d.getHours();
+        if (h < START_HOUR) h += 24; // Xử lý qua đêm
+        
+        const startMinutes = (h * 60 + d.getMinutes()) - (START_HOUR * 60);
+        const left = (startMinutes / TOTAL_MINUTES) * 100;
+        const width = ((duration + 15) / TOTAL_MINUTES) * 100; // +15p dọn dẹp
+        
+        return { left: `${left}%`, width: `${width}%` };
     };
 
-    // --- VIEW SEATS LOGIC (FIX LỖI HIỂN THỊ) ---
-    const openSeatModal = async (showtime) => {
-        try {
-            const res = await axiosClient.get(`/admin/showtimes/${showtime.id}/seats`);
-            const data = res.data;
-            
-            // Flatten & Sort
-            let flat = data.seatRows.flatMap(r => r.seats).map(s => ({
-                ...s, id: s.showtimeSeatId, seatType: s.type, basePrice: s.finalPrice
-            }));
-            
-            flat.sort((a,b) => a.rowLabel.localeCompare(b.rowLabel) || a.columnNumber - b.columnNumber);
-            
-            // Tính lại số cột thực tế
-            const max = Math.max(...flat.map(s => s.columnNumber));
-            setRoomCols(max > 0 ? max : 10);
-            
-            setSelectedSeatsData({...data, seats: flat});
-            setModalType('seat');
-        } catch  { alert("Lỗi tải ghế!"); }
+    // --- ACTIONS ---
+    const handleNav = (direction) => {
+        const newDate = new Date(date);
+        if (view === 'timeline') newDate.setDate(newDate.getDate() + direction);
+        else newDate.setMonth(newDate.getMonth() + direction);
+        setDate(newDate);
     };
 
-    // --- CREATE LOGIC ---
-    const openCreateModal = (roomId = '', time = '') => {
+    const handleTrackClick = (e, roomId) => {
+        if (e.target.className !== 'tl-track') return;
+        const rect = e.target.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        const totalMins = percent * TOTAL_MINUTES + (START_HOUR * 60);
+        
+        let h = Math.floor(totalMins / 60); if (h >= 24) h -= 24;
+        const m = Math.floor(totalMins % 60);
+        
         setCreateForm({
-            movieId: '', 
-            roomId: roomId || (rooms[0]?.id || ''), 
-            startTime: time
+            movieId: '', roomId,
+            startTime: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
         });
-        setModalType('create');
+        setModal({ type: 'create' });
     };
 
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Nếu đang ở Calendar view mà tạo mới, dùng ngày đang chọn
-            // Nếu ở timeline click vào track, nó đã tính ngày rồi.
-            // Logic đơn giản: Lấy ngày hiện tại của state
-            const dateStr = currentDate.toISOString().split('T')[0];
-            
+            const dStr = date.toISOString().split('T')[0]; // Lấy ngày hiện tại đang xem
             await axiosClient.post('/admin/showtimes', {
-                movieId: createForm.movieId,
-                roomId: createForm.roomId,
-                startTime: `${dateStr}T${createForm.startTime}:00`
+                ...createForm,
+                startTime: `${dStr}T${createForm.startTime}:00`
             });
-            alert("✅ Thành công!");
-            setModalType(null);
+            alert("✅ Đã tạo lịch chiếu!");
+            setModal(null);
             loadData();
-        } catch (e) { alert("❌ Lỗi: " + (e.response?.data?.message || "Trùng lịch")); }
+        } catch (e) { alert("Lỗi: " + e.response?.data?.message); }
     };
 
-    // --- TIMELINE HELPERS ---
-    const getPos = (start, dur) => {
-        const d = new Date(start);
-        let h = d.getHours(); if(h < START_HOUR) h += 24;
-        const mins = (h * 60 + d.getMinutes()) - (START_HOUR * 60);
-        return {
-            left: `${(mins / TOTAL_MINUTES) * 100}%`,
-            width: `${((dur + 15) / TOTAL_MINUTES) * 100}%`
-        };
+    const openSeatModal = async (showtime) => {
+        try {
+            const res = await axiosClient.get(`/admin/showtimes/${showtime.id}/seats`);
+            const data = res.data;
+            // Xử lý dữ liệu ghế (Flatten & Sort)
+            let flat = data.seatRows.flatMap(r => r.seats).map(s => ({
+                ...s, id: s.showtimeSeatId, seatType: s.type, basePrice: s.finalPrice
+            }));
+            flat.sort((a,b) => a.rowLabel.localeCompare(b.rowLabel) || a.columnNumber - b.columnNumber);
+            const max = Math.max(...flat.map(s => s.columnNumber));
+            
+            setRoomCols(max > 0 ? max : 10);
+            setSelectedSeats({ ...data, seats: flat });
+            setModal({ type: 'seat' });
+        } catch (e) { alert("Lỗi tải ghế"); }
     };
 
-    // Click track to create
-    const handleTrackClick = (e, roomId) => {
-        if (e.target.className !== 'room-track-area') return;
-        const rect = e.target.getBoundingClientRect();
-        const mins = (e.clientX - rect.left) / rect.width * TOTAL_MINUTES;
-        const absMins = (START_HOUR * 60) + mins;
-        let h = Math.floor(absMins / 60); if (h>=24) h-=24;
-        const m = Math.floor(absMins % 60);
-        const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        openCreateModal(roomId, timeStr);
-    };
-
-    // --- RENDER HELPERS ---
+    // --- RENDERS ---
     const renderTimeline = () => {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const daily = showtimes.filter(s => s.startTime.startsWith(dateStr));
+        const dateStr = date.toISOString().split('T')[0];
+        const todayShows = showtimes.filter(s => s.startTime.startsWith(dateStr));
 
         return (
-            <div className="timeline-viewport">
-                <div className="timeline-grid">
-                    {/* Header */}
-                    <div className="sticky-header">
-                        <div className="corner-header">ROOM / TIME</div>
-                        {Array.from({length: END_HOUR - START_HOUR}).map((_, i) => (
-                            <div key={i} className="hour-cell">
-                                {String((START_HOUR + i) % 24).padStart(2,'0')}:00
-                            </div>
-                        ))}
+            <div className="timeline-wrapper">
+                <div className="timeline-body">
+                    {/* Sticky Header */}
+                    <div className="tl-header-row">
+                        <div className="tl-corner">Phòng / Giờ</div>
+                        <div className="tl-hours">
+                            {Array.from({length: END_HOUR - START_HOUR}).map((_, i) => (
+                                <div key={i} className="tl-hour-cell">
+                                    {String((START_HOUR + i) % 24).padStart(2,'0')}:00
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    {/* Body */}
+
+                    {/* Rooms Tracks */}
                     {rooms.map(r => (
-                        <div key={r.id} className="room-row">
-                            <div className="room-sticky-col">
-                                <div style={{fontWeight:'700', fontSize:'0.9rem'}}>{r.name}</div>
-                                <div style={{fontSize:'0.75rem', color:'#94a3b8'}}>{r.seatCount || 0} ghế</div>
+                        <div key={r.id} className="tl-room-row">
+                            <div className="tl-room-info">
+                                <div className="tl-room-name">{r.name}</div>
+                                {/* 👇 FIX: Hiển thị chính xác số ghế */}
+                                <div className="tl-room-cap">
+                                    {r.seatCount || (r.totalRows * r.totalColumns) || 0} ghế
+                                </div>
                             </div>
                             <div 
-                                className="room-track-area"
+                                className="tl-track" 
                                 onClick={(e) => handleTrackClick(e, r.id)}
-                                title="Click để thêm suất chiếu"
+                                title="Click để tạo suất chiếu"
                             >
-                                {daily.filter(s => s.roomId === r.id).map(s => (
+                                {todayShows.filter(s => s.roomId === r.id).map(s => (
                                     <div 
                                         key={s.id}
-                                        className={`event-pill clr-${s.movieId % 5}`}
-                                        style={getPos(s.startTime, s.movieDuration || 120)}
+                                        className={`show-card c-${s.movieId % 5}`}
+                                        style={getTimelineStyle(s.startTime, s.movieDuration || 120)}
                                         onClick={(e) => { e.stopPropagation(); openSeatModal(s); }}
                                     >
-                                        <div className="ep-time">
-                                            {s.startTime.split('T')[1].slice(0,5)} - {s.endTime.split('T')[1].slice(0,5)}
+                                        <div style={{fontWeight:'700'}}>{s.movieTitle}</div>
+                                        <div style={{opacity:0.9, fontSize:'0.7rem'}}>
+                                            {s.startTime.split('T')[1].slice(0,5)}
                                         </div>
-                                        <div className="ep-title">{s.movieTitle}</div>
                                     </div>
                                 ))}
                             </div>
@@ -179,130 +187,127 @@ const ShowtimeManager = () => {
     };
 
     const renderCalendar = () => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-
-        const grid = [];
-        // Empty cells
-        for(let i=0; i<firstDay; i++) grid.push(<div key={`e-${i}`} className="cal-day empty"/>);
+        const days = generateCalendarGrid(date);
         
-        // Days
-        for(let d=1; d<=daysInMonth; d++) {
-            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const count = showtimes.filter(s => s.startTime.startsWith(dStr)).length;
-            const isToday = new Date().toISOString().startsWith(dStr);
-            
-            grid.push(
-                <div 
-                    key={d} 
-                    className={`cal-day ${isToday ? 'today' : ''}`}
-                    onClick={() => { setCurrentDate(new Date(year, month, d)); setViewMode('timeline'); }}
-                >
-                    <div className="day-num">
-                        {d} {isToday && <span className="today-badge">Today</span>}
-                    </div>
-                    {count > 0 && (
-                        <div className="day-summary">
-                            <span className="mini-stat">🎬 {count} suất</span>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
         return (
-            <div className="calendar-viewport">
-                <div className="cal-grid">
-                    {['CN','T2','T3','T4','T5','T6','T7'].map(h => <div key={h} className="cal-head">{h}</div>)}
-                    {grid}
+            <div className="calendar-wrapper">
+                <div className="cal-container">
+                    <div className="cal-header">
+                        {['CN', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy'].map(d => (
+                            <div key={d} className="cal-weekday">{d}</div>
+                        ))}
+                    </div>
+                    <div className="cal-grid">
+                        {days.map((d, i) => {
+                            const dStr = d.toISOString().split('T')[0];
+                            const isCurrentMonth = d.getMonth() === date.getMonth();
+                            const isToday = new Date().toISOString().startsWith(dStr);
+                            const count = showtimes.filter(s => s.startTime.startsWith(dStr)).length;
+
+                            return (
+                                <div 
+                                    key={i} 
+                                    className={`cal-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                                    onClick={() => { setDate(d); setView('timeline'); }}
+                                >
+                                    <div className="day-num">{d.getDate()}</div>
+                                    {count > 0 && (
+                                        <div className="day-dots">
+                                            {/* Chỉ hiện tối đa 5 chấm đại diện */}
+                                            {Array.from({length: Math.min(count, 5)}).map((_, idx) => (
+                                                <div key={idx} className="dot"/>
+                                            ))}
+                                            {count > 5 && <span className="more-tag">+{count-5}</span>}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="manager-container">
-            {/* 1. TOP BAR */}
-            <div className="toolbar-wrapper">
-                <div className="nav-controls">
-                    <div className="view-switcher">
-                        <button className={`btn-view ${viewMode==='timeline'?'active':''}`} onClick={()=>setViewMode('timeline')}>Timeline</button>
-                        <button className={`btn-view ${viewMode==='calendar'?'active':''}`} onClick={()=>setViewMode('calendar')}>Tháng</button>
-                    </div>
-                    <div className="date-navigator">
-                        <button className="btn-nav-icon" onClick={handlePrev}>‹</button>
-                        <span className="current-date-label">
-                            {viewMode === 'timeline' 
-                                ? currentDate.toLocaleDateString('vi-VN', {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric'})
-                                : `Tháng ${currentDate.getMonth()+1}, ${currentDate.getFullYear()}`
-                            }
-                        </span>
-                        <button className="btn-nav-icon" onClick={handleNext}>›</button>
+        <div className="app-container">
+            {/* HEADER */}
+            <div className="app-header">
+                <div className="header-left">
+                    <div className="app-title">Lịch Chiếu Phim</div>
+                    <div className="view-toggles">
+                        <button className={`toggle-btn ${view === 'timeline' ? 'active' : ''}`} onClick={() => setView('timeline')}>Timeline</button>
+                        <button className={`toggle-btn ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Lịch Tháng</button>
                     </div>
                 </div>
-                <button className="btn-primary" onClick={() => openCreateModal()}>+ Tạo Lịch</button>
+
+                <div className="date-controls">
+                    <button className="nav-btn" onClick={() => handleNav(-1)}>‹</button>
+                    <div className="current-date">
+                        {view === 'timeline' 
+                            ? date.toLocaleDateString('vi-VN', {weekday: 'long', day:'2-digit', month:'2-digit', year:'numeric'})
+                            : `Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
+                        }
+                    </div>
+                    <button className="nav-btn" onClick={() => handleNav(1)}>›</button>
+                </div>
+
+                <button className="btn-create" onClick={() => { 
+                    setCreateForm({ movieId: '', roomId: rooms[0]?.id || '', startTime: '' });
+                    setModal({ type: 'create' });
+                }}>+ Tạo Mới</button>
             </div>
 
-            {/* 2. MAIN CONTENT */}
-            {viewMode === 'timeline' ? renderTimeline() : renderCalendar()}
+            {/* BODY */}
+            {view === 'timeline' ? renderTimeline() : renderCalendar()}
 
-            {/* 3. MODAL CREATE */}
-            {modalType === 'create' && (
-                <div className="modal-overlay" onClick={() => setModalType(null)}>
-                    <div className="modal-box" style={{maxWidth:'500px'}} onClick={e=>e.stopPropagation()}>
-                        <div className="modal-header">
-                            <div className="modal-title"><h3>Thêm Suất Chiếu</h3></div>
-                            <button className="btn-nav-icon" onClick={()=>setModalType(null)}>✕</button>
+            {/* MODAL: CREATE */}
+            {modal?.type === 'create' && (
+                <div className="modal-backdrop" onClick={() => setModal(null)}>
+                    <div className="modal-panel" onClick={e => e.stopPropagation()}>
+                        <div className="modal-head">
+                            <h3>Thêm Suất Chiếu Mới</h3>
+                            <button className="nav-btn" onClick={() => setModal(null)}>✕</button>
                         </div>
-                        <form onSubmit={handleCreateSubmit} style={{padding:'24px'}}>
-                            <div style={{marginBottom:'16px'}}>
-                                <label style={{display:'block',marginBottom:'8px',fontWeight:'600'}}>Phim</label>
-                                <select style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid #cbd5e1'}}
-                                    value={createForm.movieId} onChange={e=>setCreateForm({...createForm, movieId: e.target.value})} required>
-                                    <option value="">-- Chọn phim --</option>
-                                    {movies.map(m=><option key={m.id} value={m.id}>{m.title} ({m.durationMinutes}p)</option>)}
-                                </select>
-                            </div>
-                            <div style={{marginBottom:'16px'}}>
-                                <label style={{display:'block',marginBottom:'8px',fontWeight:'600'}}>Phòng</label>
-                                <select style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid #cbd5e1'}}
-                                    value={createForm.roomId} onChange={e=>setCreateForm({...createForm, roomId: e.target.value})} required>
-                                    {rooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-                                </select>
-                            </div>
-                            <div style={{marginBottom:'24px'}}>
-                                <label style={{display:'block',marginBottom:'8px',fontWeight:'600'}}>Giờ Chiếu</label>
-                                <input type="time" style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid #cbd5e1'}}
-                                    value={createForm.startTime} onChange={e=>setCreateForm({...createForm, startTime: e.target.value})} required />
-                            </div>
-                            <div style={{display:'flex',justifyContent:'flex-end',gap:'12px'}}>
-                                <button type="button" onClick={()=>setModalType(null)} style={{padding:'8px 16px',borderRadius:'6px',border:'1px solid #cbd5e1',background:'white',cursor:'pointer'}}>Hủy</button>
-                                <button type="submit" className="btn-primary">Lưu</button>
-                            </div>
-                        </form>
+                        <div className="modal-content">
+                            <form onSubmit={handleCreateSubmit}>
+                                <div style={{marginBottom: 16}}>
+                                    <label style={{fontWeight:600, display:'block', marginBottom:8}}>Phim</label>
+                                    <select style={{width:'100%', padding:10, borderRadius:8, border:'1px solid #cbd5e1'}}
+                                        value={createForm.movieId} onChange={e => setCreateForm({...createForm, movieId: e.target.value})} required>
+                                        <option value="">-- Chọn phim --</option>
+                                        {movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{marginBottom: 16}}>
+                                    <label style={{fontWeight:600, display:'block', marginBottom:8}}>Phòng</label>
+                                    <select style={{width:'100%', padding:10, borderRadius:8, border:'1px solid #cbd5e1'}}
+                                        value={createForm.roomId} onChange={e => setCreateForm({...createForm, roomId: e.target.value})} required>
+                                        {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{marginBottom: 24}}>
+                                    <label style={{fontWeight:600, display:'block', marginBottom:8}}>Giờ Bắt Đầu</label>
+                                    <input type="time" style={{width:'100%', padding:10, borderRadius:8, border:'1px solid #cbd5e1'}}
+                                        value={createForm.startTime} onChange={e => setCreateForm({...createForm, startTime: e.target.value})} required />
+                                </div>
+                                <button type="submit" className="btn-create" style={{width:'100%'}}>Lưu Lịch Chiếu</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* 4. MODAL SEAT VIEW (ĐÃ FIX Z-INDEX) */}
-            {modalType === 'seat' && selectedSeatsData && (
-                <div className="modal-overlay" onClick={() => setModalType(null)}>
-                    <div className="modal-box" onClick={e=>e.stopPropagation()}>
-                        <div className="modal-header">
-                            <div className="modal-title">
-                                <h3>{selectedSeatsData.movieTitle}</h3>
-                                <p>{selectedSeatsData.timeSlotName} • {selectedSeatsData.startTime.replace('T',' ')}</p>
-                            </div>
-                            <button className="btn-nav-icon" onClick={()=>setModalType(null)}>✕</button>
+            {/* MODAL: SEAT */}
+            {modal?.type === 'seat' && selectedSeats && (
+                <div className="modal-backdrop" onClick={() => setModal(null)}>
+                    <div className="modal-panel" style={{maxWidth:'900px'}} onClick={e => e.stopPropagation()}>
+                        <div className="modal-head">
+                            <h3>{selectedSeats.movieTitle}</h3>
+                            <button className="nav-btn" onClick={() => setModal(null)}>✕</button>
                         </div>
-                        <div className="modal-body">
-                            {/* Component Ghế của bạn */}
-                            <SeatGrid 
-                                seats={selectedSeatsData.seats} 
-                                totalColumns={roomCols} 
-                            />
+                        <div className="modal-content" style={{background:'#f8fafc', display:'flex', justifyContent:'center'}}>
+                            <SeatGrid seats={selectedSeats.seats} totalColumns={roomCols} />
                         </div>
                     </div>
                 </div>
