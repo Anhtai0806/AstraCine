@@ -72,7 +72,8 @@ function ProfilePage() {
             console.log("Sending normalized profileData:", normalizedData);
             console.log("Current user email:", user.email);
 
-            const response = await userApi.updateProfile(normalizedData);
+            const userId = user.userId || user.id;
+            const response = await userApi.updateProfile(normalizedData, userId);
 
             // Cập nhật user context với dữ liệu mới
             login({
@@ -100,15 +101,26 @@ function ProfilePage() {
             return;
         }
 
-        if (passwordData.newPassword.length < 6) {
-            setError("Mật khẩu mới phải có ít nhất 6 ký tự");
+        if (passwordData.newPassword.length < 8) {
+            setError("Mật khẩu mới phải có ít nhất 8 ký tự");
+            return;
+        }
+
+        if (!/[A-Z]/.test(passwordData.newPassword)) {
+            setError("Mật khẩu mới phải chứa ít nhất một chữ cái viết hoa");
+            return;
+        }
+
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword)) {
+            setError("Mật khẩu mới phải chứa ít nhất một ký tự đặc biệt");
             return;
         }
 
         try {
             setLoading(true);
             setError("");
-            await userApi.changePassword(passwordData);
+            const userId = user.userId || user.id;
+            await userApi.changePassword(passwordData, userId);
             setSuccessMessage("Đổi mật khẩu thành công!");
             setPasswordData({
                 currentPassword: "",
@@ -250,7 +262,7 @@ function ProfilePage() {
                                         className="form-control"
                                         required
                                     />
-                                    <small>Phải có ít nhất 6 ký tự</small>
+                                    <small>Phải có ít nhất 8 ký tự, 1 chữ hoa, 1 ký tự đặc biệt</small>
                                 </div>
 
                                 <div className="form-group">

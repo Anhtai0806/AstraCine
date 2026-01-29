@@ -4,114 +4,88 @@
 }
 
 .admin-movies-container {
-    max-width: 1400px;
-    margin: 0 auto;
+    max-width: 1300px;
+    padding: 2rem;
     background: white;
     border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     padding: 2.5rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
 }
 
 .admin-movies-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 3px solid #667eea;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #667eea;
 }
 
 .admin-movies-header h2 {
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: 700;
     color: #2d3748;
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.admin-movies-header h2::before {
-    content: "🎥";
-    font-size: 2.5rem;
 }
 
 .btn-add-movie {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, #f093fb, #f5576c);
     border: none;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
     border-radius: 10px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
-}
-
-.btn-add-movie:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+    padding: .6rem 1.4rem;
 }
 
 .search-section {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
+    padding: 1rem;
+    border-radius: 14px;
+    margin-bottom: 1.5rem;
 }
 
 .search-input {
-    border: 2px solid #fff;
-    border-radius: 10px;
-    padding: 0.75rem;
-    font-size: 1rem;
-}
-
-.search-input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+    height: 42px;
+    font-size: 0.95rem;
+    border-radius: 999px;
 }
 
 .btn-search {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    border: none;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    border-radius: 10px;
+    height: 42px;
+    font-size: 0.95rem;
+    border-radius: 999px;
 }
 
 .movies-table {
-    margin-top: 1.5rem;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Nếu movies-table đang bọc table */
+.movies-table table {
+    width: 100%;
+    min-width: 1100px;
+    /* chỉnh theo số cột */
+    table-layout: auto;
+}
+
+/* Nếu có overflow thì cho scroll ngang */
+.movies-table {
+    overflow-x: auto;
 }
 
 .movies-table thead {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
 }
 
-.movies-table thead th {
-    padding: 1rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: none;
-}
-
-.movies-table tbody tr {
-    transition: all 0.3s ease;
+.movies-table tbody td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.95rem;
 }
 
 .movies-table tbody tr:hover {
-    background-color: #fff5f7;
-    transform: scale(1.01);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.movies-table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-color: #fee;
+    background: #fff5f7;
 }
 
 .movie-poster-thumb {
@@ -119,210 +93,68 @@
     height: 90px;
     object-fit: cover;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.movie-title {
-    font-weight: 600;
-    color: #2d3748;
-    font-size: 1.1rem;
-}
-
-.movie-genre {
-    color: #718096;
-    font-size: 0.95rem;
-}
-
-.status-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.85rem;
-}
-
-.status-badge.bg-success {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
-}
-
-.status-badge.bg-secondary {
-    background: linear-gradient(135deg, #a0aec0 0%, #718096 100%) !important;
 }
 
 .movie-actions {
     display: flex;
-    gap: 0.5rem;
-}
-
-.btn-edit-movie {
-    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.btn-edit-movie:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(246, 173, 85, 0.5);
-}
-
-.btn-delete-movie {
-    background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.btn-delete-movie:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(252, 129, 129, 0.5);
-}
-
-.movie-modal .modal-content {
-    border-radius: 20px;
-    border: none;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.movie-modal .modal-header {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-    border-radius: 20px 20px 0 0;
-    padding: 1.5rem;
-    border-bottom: none;
-}
-
-.movie-modal .modal-title {
-    font-weight: 700;
-    font-size: 1.5rem;
-}
-
-.movie-modal .modal-body {
-    padding: 2rem;
-}
-
-.movie-modal .form-label {
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 0.5rem;
-}
-
-.movie-modal .form-control,
-.movie-modal .form-select {
-    border: 2px solid #fee;
-    border-radius: 10px;
-    padding: 0.75rem;
-    transition: all 0.3s ease;
-}
-
-.movie-modal .form-control:focus,
-.movie-modal .form-select:focus {
-    border-color: #f5576c;
-    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
-}
-
-/* New Styles for Tabs and Uploads */
-.custom-tabs .nav-link {
-    color: #718096;
-    font-weight: 600;
-    border: none;
-    padding: 1rem 1.5rem;
-    transition: all 0.3s ease;
-}
-
-.custom-tabs .nav-link:hover {
-    color: #f5576c;
-    background-color: #fff5f7;
-    border-radius: 10px;
-}
-
-.custom-tabs .nav-link.active {
-    color: #f5576c;
-    background-color: transparent;
-    border-bottom: 3px solid #f5576c;
-    border-radius: 0;
-}
-
-.custom-file-upload {
-    background: #f8fafc;
-    border: 2px dashed #cbd5e0;
-    border-radius: 10px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-
-.custom-file-upload:hover {
-    border-color: #f5576c;
-    background: #fff5f7;
-}
-
-.custom-file-upload .form-control {
-    border: none;
-    background: transparent;
-    padding: 0;
-}
-
-.current-poster-preview,
-.current-trailer-preview {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    display: inline-block;
-}
-
-.current-poster-preview img {
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* ===== CENTER MODAL POPUP ===== */
-.movie-modal.modal {
-    display: flex !important;
-    align-items: center;
     justify-content: center;
+    gap: 0.4rem;
 }
 
-/* Làm nền phía sau mờ & tối hơn */
-.movie-modal .modal-backdrop.show {
-    opacity: 0.6;
+.btn-edit-movie,
+.btn-delete-movie {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 10px;
+}
+
+/* ===== MODAL FIX ===== */
+.modal-backdrop.show {
+    opacity: .6;
     backdrop-filter: blur(4px);
 }
 
-/* Popup nằm giữa + animation nhẹ */
+/* 
 .movie-modal .modal-dialog {
-    margin: 0;
-    max-width: 900px;
-    width: 100%;
-    animation: popupScale 0.25s ease;
-}
+    max-width: 1200px !important;
+} */
 
-/* Modal vẫn ở giữa nhưng cho phép scroll */
-.movie-modal .modal-dialog {
+.movie-modal .modal-content {
     max-height: 90vh;
-    transform: translateY(-5vh);
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    animation: popupScale .25s ease;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Body cuộn, header & footer cố định */
 .movie-modal .modal-body {
+    flex: 1;
     overflow-y: auto;
-    max-height: calc(90vh - 140px);
-    /* header + footer */
 }
 
-
-/* Hiệu ứng scale khi bật popup */
 @keyframes popupScale {
     from {
-        transform: scale(0.9) translateY(20px);
+        transform: scale(.9);
         opacity: 0;
     }
 
     to {
-        transform: scale(1) translateY(0);
+        transform: scale(1);
         opacity: 1;
     }
+}
+
+.movies-table tbody td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
 }

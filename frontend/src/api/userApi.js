@@ -4,11 +4,12 @@ const API_URL = "http://localhost:8080/api/user";
 
 // Lấy userId từ localStorage
 const getUserId = () => {
-    const user = localStorage.getItem("user");
-    if (user) {
-        return JSON.parse(user).id;
+    const userString = localStorage.getItem("user");
+    if (userString) {
+        const user = JSON.parse(userString);
+        return user.userId || user.id;
     }
-    return 1; // Mặc định là 1 nếu không có
+    return null; // Trả về null nếu không tìm thấy
 };
 
 export const userApi = {
@@ -21,16 +22,16 @@ export const userApi = {
     },
 
     // Cập nhật thông tin profile
-    updateProfile: (data) => {
-        const userId = getUserId();
+    updateProfile: (data, id) => {
+        const userId = id || getUserId();
         return axios.put(`${API_URL}/profile`, data, {
             params: { userId },
         });
     },
 
     // Thay đổi mật khẩu
-    changePassword: (data) => {
-        const userId = getUserId();
+    changePassword: (data, id) => {
+        const userId = id || getUserId();
         return axios.put(`${API_URL}/change-password`, data, {
             params: { userId },
         });

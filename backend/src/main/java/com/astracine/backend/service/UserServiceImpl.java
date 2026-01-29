@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
 
         // Kiểm tra mật khẩu hiện tại
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Current password is incorrect");
+            throw new RuntimeException("Mật Khẩu hiện tại không chính xác");
         }
 
         // Kiểm tra mật khẩu mới và xác nhận
@@ -76,6 +76,23 @@ public class UserServiceImpl implements UserService {
         // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
             throw new RuntimeException("New password must be different from current password");
+        }
+
+        String newPassword = request.getNewPassword();
+
+        // Kiểm tra độ dài mật khẩu (ít nhất 8 ký tự)
+        if (newPassword.length() < 8) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự");
+        }
+
+        // Kiểm tra có ít nhất một chữ hoa
+        if (!newPassword.matches(".*[A-Z].*")) {
+            throw new RuntimeException("Mật khẩu phải chứa ít nhất một chữ cái viết hoa");
+        }
+
+        // Kiểm tra có ít nhất một ký tự đặc biệt
+        if (!newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
+            throw new RuntimeException("Mật khẩu phải chứa ít nhất một ký tự đặc biệt");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
