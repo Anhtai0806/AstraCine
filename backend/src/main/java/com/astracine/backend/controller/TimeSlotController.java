@@ -8,12 +8,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/time-slots")
+@RequestMapping("/api/admin/time-slots")
 @RequiredArgsConstructor
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class TimeSlotController {
-
     private final TimeSlotService timeSlotService; // 👈 Inject trực tiếp Class
-
     @GetMapping
     public ResponseEntity<List<TimeSlotDTO>> getAll() {
         return ResponseEntity.ok(timeSlotService.getAllTimeSlots());
