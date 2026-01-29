@@ -38,6 +38,18 @@ public class MovieService {
                 .collect(Collectors.toList());
     }
 
+    public List<MovieResponse> getNowShowingMovies() {
+        return movieRepository.findTop4ByStatusOrderByEndDateAsc("NOW_SHOWING").stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<MovieResponse> getComingSoonMovies() {
+        return movieRepository.findTop4ByStatusOrderByReleaseDateAsc("COMING_SOON").stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
     public MovieResponse getMovieById(Long id) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));

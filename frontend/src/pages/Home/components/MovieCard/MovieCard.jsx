@@ -1,11 +1,12 @@
 import "./MovieCard.css";
 
-function MovieCard({ title, age = "P", onBuy }) {
+function MovieCard({ title, age = "P", posterUrl, onBuy }) {
   return (
     <div className="movie-card">
       <div className="poster">
-        <span className={`age age-${age.toLowerCase()}`}>
-          {age}
+        <img src={posterUrl} alt={title} />
+        <span className={`age age-${age ? age.toLowerCase() : 'p'}`}>
+          {age || 'P'}
         </span>
       </div>
 

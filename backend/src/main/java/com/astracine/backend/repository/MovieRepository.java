@@ -24,4 +24,8 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("SELECT m FROM Movie m WHERE m.status = :status ORDER BY m.createdAt DESC")
     List<Movie> findByStatusOrderByCreatedAtDesc(@Param("status") String status);
+
+    List<Movie> findTop4ByStatusOrderByEndDateAsc(String status);
+
+    List<Movie> findTop4ByStatusOrderByReleaseDateAsc(String status);
 }
