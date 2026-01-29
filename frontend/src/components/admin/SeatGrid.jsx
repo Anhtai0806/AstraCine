@@ -32,7 +32,13 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle })
             <div className="seat-grid" style={{ gridTemplateColumns: `repeat(${totalColumns}, 36px)` }}>
                 {seats.map((seat) => {
                     const config = SEAT_TYPES[seat.seatType] || SEAT_TYPES.NORMAL;
-                    const priceDisplay = seat.basePrice ? formatPrice(seat.basePrice) : "Chưa set giá";
+                    const rawPrice =
+                        seat.basePrice ?? seat.price ?? seat.finalPrice ?? seat.seatPrice ?? null;
+
+                    const priceDisplay =
+                        rawPrice === null || rawPrice === undefined
+                            ? "Chưa set giá"
+                            : formatPrice(rawPrice);
 
                     const extra = getExtraClass ? getExtraClass(seat) : "";
                     const title =
