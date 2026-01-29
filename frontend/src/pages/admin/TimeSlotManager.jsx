@@ -23,7 +23,7 @@ const TimeSlotManager = () => {
 
     const fetchTimeSlots = async () => {
         try {
-            const res = await axiosClient.get('/time-slots');
+            const res = await axiosClient.get('/admin/time-slots');
             // Sắp xếp theo giờ bắt đầu cho đẹp
             const sorted = res.data.sort((a, b) => a.startTime.localeCompare(b.startTime));
             setTimeSlots(sorted);
@@ -45,7 +45,7 @@ const TimeSlotManager = () => {
             // Gọi API POST
             // startTime/endTime từ input type="time" gửi lên dạng "09:30" 
             // Java LocalTime tự hiểu, không cần thêm ":00"
-            await axiosClient.post('/time-slots', formData);
+            await axiosClient.post('/admin/time-slots', formData);
             
             alert('Thêm khung giờ thành công!');
             fetchTimeSlots(); // Load lại list
@@ -69,9 +69,9 @@ const TimeSlotManager = () => {
         e.stopPropagation(); // Chặn sự kiện click vào card (để không bị chọn nhầm)
         if (window.confirm('Bạn có chắc muốn xóa khung giờ này không?')) {
             try {
-                await axiosClient.delete(`/time-slots/${id}`);
+                await axiosClient.delete(`/admin/time-slots/${id}`);
                 fetchTimeSlots();
-            } catch (error) {
+            } catch {
                 alert('Không thể xóa (Có thể đã có lịch chiếu sử dụng giờ này)');
             }
         }

@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 
-const ENDPOINT = '/rooms';
+const ENDPOINT = '/admin/rooms';
 
 export const roomService = {
     // Lấy tất cả phòng

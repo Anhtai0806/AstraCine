@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/api/rooms")
+@RequestMapping("/api/admin/rooms")
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class RoomController {
