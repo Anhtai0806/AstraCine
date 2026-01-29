@@ -1,5 +1,8 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
+// bật dev basic nếu muốn (mặc định false)
+const DEV_BASIC_ENABLED = (import.meta.env.VITE_DEV_BASIC || "false") === "true";
+
 function getGuestId() {
     const key = "guestUserId";
     let id = localStorage.getItem(key);
@@ -13,29 +16,66 @@ function getGuestId() {
     return id;
 }
 
+// ✅ bạn chỉnh key token đúng theo app của bạn
+function getBearerToken() {
+    return (
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("accessToken") ||
+        sessionStorage.getItem("token") ||
+        null
+    );
+}
+
+/**
+ * Quy tắc:
+ * - Nếu có Bearer token => dùng Bearer
+ * - Nếu không có token => không set Authorization (cho cookie session nếu có)
+ * - Nếu DEV_BASIC_ENABLED=true => fallback Basic admin:admin
+ */
 function getAuthHeader() {
-    // Dev-friendly default: admin:admin (khớp application.properties)
-    const stored = localStorage.getItem("basicAuth");
-    if (stored) return stored.startsWith("Basic ") ? stored : `Basic ${stored}`;
-    return `Basic ${btoa("admin:admin")}`;
+    const token = getBearerToken();
+    if (token) return `Bearer ${token}`;
+
+    if (DEV_BASIC_ENABLED) {
+        const stored = localStorage.getItem("basicAuth");
+        if (stored) return stored.startsWith("Basic ") ? stored : `Basic ${stored}`;
+        return `Basic ${btoa("admin:admin")}`;
+    }
+
+    return null;
 }
 
 async function request(path, options = {}) {
+    const auth = getAuthHeader();
+    const token = getBearerToken();
+
+    // ✅ chỉ gửi X-User-Id khi KHÔNG login (guest mode)
+    const guestHeader = token ? {} : { "X-User-Id": getGuestId() };
+
+    const headers = {
+        "Content-Type": "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+        ...guestHeader,
+        ...(options.headers || {}),
+    };
+
     const res = await fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": getAuthHeader(),
-            "X-User-Id": getGuestId(),
-            ...(options.headers || {}),
-        },
+        credentials: "include", // ✅ nếu backend dùng cookie session vẫn chạy
+        headers,
     });
 
     if (!res.ok) {
         let err;
-        try { err = await res.json(); } catch (_) { err = { message: await res.text() }; }
+        try {
+            err = await res.json();
+        } catch (_) {
+            err = { message: await res.text() };
+        }
         throw { status: res.status, ...err };
     }
+
     if (res.status === 204) return null;
     const text = await res.text();
     return text ? JSON.parse(text) : null;
@@ -60,7 +100,6 @@ export const seatHoldApi = {
             body: JSON.stringify({ holdId, paymentRef }),
         }),
 
-    // Mock payment (rào trước)
     createMockPayment: (holdId) =>
         request(`/api/payments/mock/create`, {
             method: "POST",
