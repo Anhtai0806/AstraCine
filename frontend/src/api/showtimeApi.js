@@ -41,5 +41,5 @@ async function request(path, options = {}) {
 }
 
 export const showtimeApi = {
-    listShowtimes: () => request("/api/showtimes", { method: "GET" }),
+    listShowtimes: () => request("/api/admin/showtimes", { method: "GET" }),
 };
