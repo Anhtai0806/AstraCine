@@ -54,4 +54,14 @@ export const movieAPI = {
     delete: (id) => adminApi.delete(`/movies/${id}`),
 };
 
+// Promotion APIs
+export const promotionAPI = {
+    getAll: () => adminApi.get('/promotions'),
+    getById: (id) => adminApi.get(`/promotions/${id}`),
+    create: (data) => adminApi.post('/promotions', data),
+    update: (id, data) => adminApi.put(`/promotions/${id}`, data),
+    delete: (id) => adminApi.delete(`/promotions/${id}`),
+    validate: (code) => adminApi.get(`/promotions/validate/${code}`),
+};
+
 export default adminApi;

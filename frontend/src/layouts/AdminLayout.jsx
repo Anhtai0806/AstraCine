@@ -56,6 +56,14 @@ const AdminLayout = () => {
                         🕒 Khung giờ
                     </NavLink>
 
+                    {/* Quản lý Mã Khuyến Mãi */}
+                    <NavLink
+                        to="/admin/promotions"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🎟️ Mã Khuyến Mãi
+                    </NavLink>
+
                     {/* 5. Lịch chiếu (Sắp làm) */}
                     <NavLink
                         to="/admin/showtimes"
