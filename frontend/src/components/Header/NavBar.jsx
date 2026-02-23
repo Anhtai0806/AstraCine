@@ -15,8 +15,8 @@ function NavBar() {
 
         {/* Menu */}
         <ul className="menu">
-          <li>Trang chủ</li>
-          <li>Phim</li>
+          <Link to="/"><li>Trang chủ</li></Link>
+          <Link to="/movies"><li>Phim</li></Link>
           <li>Lịch chiếu</li>
           <li>Giá vé</li>
           <li>Tin mới & ưu đãi</li>

@@ -1,22 +1,26 @@
--- Reset clean (no "already exists" warnings)
+-- =========================================
+-- RESET DATABASE
+-- =========================================
 SET FOREIGN_KEY_CHECKS = 0;
 DROP DATABASE IF EXISTS astracine;
-CREATE DATABASE astracine CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE astracine
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 SET FOREIGN_KEY_CHECKS = 1;
 
 USE astracine;
 
--- ======================
+-- =========================================
 -- 1. ROLES
--- ======================
+-- =========================================
 CREATE TABLE roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(30) NOT NULL UNIQUE -- ADMIN / STAFF
+    name VARCHAR(30) NOT NULL UNIQUE
 );
 
--- ======================
+-- =========================================
 -- 2. USERS
--- ======================
+-- =========================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -26,12 +30,13 @@ CREATE TABLE users (
     email VARCHAR(100),
     status VARCHAR(20) DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
 );
 
--- ======================
+-- =========================================
 -- 3. USER_ROLES
--- ======================
+-- =========================================
 CREATE TABLE user_roles (
     user_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
@@ -40,17 +45,17 @@ CREATE TABLE user_roles (
     FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
--- ======================
+-- =========================================
 -- 4. GENRES
--- ======================
+-- =========================================
 CREATE TABLE genres (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE
 );
 
--- ======================
+-- =========================================
 -- 5. MOVIES
--- ======================
+-- =========================================
 CREATE TABLE movies (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -65,9 +70,9 @@ CREATE TABLE movies (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ======================
+-- =========================================
 -- 6. ROOMS
--- ======================
+-- =========================================
 CREATE TABLE rooms (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
@@ -76,19 +81,19 @@ CREATE TABLE rooms (
     status VARCHAR(20) DEFAULT 'ACTIVE'
 );
 
--- ======================
+-- =========================================
 -- 7. MEMBERSHIPS
--- ======================
+-- =========================================
 CREATE TABLE memberships (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(20), -- NORMAL / SILVER / GOLD
+    name VARCHAR(20),
     discount_percent INT,
     min_total_spent DECIMAL(14,2)
 );
 
--- ======================
+-- =========================================
 -- 8. COMBOS
--- ======================
+-- =========================================
 CREATE TABLE combos (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -96,22 +101,22 @@ CREATE TABLE combos (
     status VARCHAR(20) DEFAULT 'ACTIVE'
 );
 
--- ======================
+-- =========================================
 -- 9. PROMOTIONS
--- ======================
+-- =========================================
 CREATE TABLE promotions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(50) UNIQUE,
-    discount_type VARCHAR(20), -- PERCENT / FIXED
+    discount_type VARCHAR(20),
     discount_value DECIMAL(12,2),
     start_date DATE,
     end_date DATE,
     status VARCHAR(20)
 );
 
--- ======================
+-- =========================================
 -- 10. CUSTOMERS
--- ======================
+-- =========================================
 CREATE TABLE customers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100),
@@ -123,36 +128,51 @@ CREATE TABLE customers (
     FOREIGN KEY (membership_id) REFERENCES memberships(id)
 );
 
--- ======================
--- 11. SEATS
--- ======================
+-- =========================================
+-- 11. TIME_SLOTS (NEW)
+-- =========================================
+CREATE TABLE time_slots (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    price_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+-- =========================================
+-- 12. SEATS (INCLUDES BASE_PRICE)
+-- =========================================
 CREATE TABLE seats (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     room_id BIGINT NOT NULL,
     row_label VARCHAR(5) NOT NULL,
     column_number INT NOT NULL,
     seat_type VARCHAR(20) DEFAULT 'NORMAL',
+    base_price DECIMAL(12,2) NOT NULL DEFAULT 50000,
     UNIQUE (room_id, row_label, column_number),
     FOREIGN KEY (room_id) REFERENCES rooms(id)
 );
 
--- ======================
--- 12. SHOWTIMES
--- ======================
+-- =========================================
+-- 13. SHOWTIMES (INCLUDES TIME_SLOT)
+-- =========================================
 CREATE TABLE showtimes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     movie_id BIGINT NOT NULL,
     room_id BIGINT NOT NULL,
+    time_slot_id BIGINT,
     start_time DATETIME NOT NULL,
     end_time DATETIME NOT NULL,
     status VARCHAR(20) DEFAULT 'OPEN',
     FOREIGN KEY (movie_id) REFERENCES movies(id),
-    FOREIGN KEY (room_id) REFERENCES rooms(id)
+    FOREIGN KEY (room_id) REFERENCES rooms(id),
+    FOREIGN KEY (time_slot_id) REFERENCES time_slots(id)
 );
 
--- ======================
--- 13. MOVIE_GENRES
--- ======================
+-- =========================================
+-- 14. MOVIE_GENRES
+-- =========================================
 CREATE TABLE movie_genres (
     movie_id BIGINT NOT NULL,
     genre_id BIGINT NOT NULL,
@@ -161,23 +181,23 @@ CREATE TABLE movie_genres (
     FOREIGN KEY (genre_id) REFERENCES genres(id)
 );
 
--- ======================
--- 14. BOOKINGS
--- ======================
+-- =========================================
+-- 15. BOOKINGS
+-- =========================================
 CREATE TABLE bookings (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     customer_id BIGINT,
     showtime_id BIGINT NOT NULL,
-    status VARCHAR(20) NOT NULL, -- HOLD / CONFIRMED / CANCELLED
+    status VARCHAR(20) NOT NULL,
     expired_at DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (showtime_id) REFERENCES showtimes(id)
 );
 
--- ======================
--- 15. SHOWTIME_SEATS
--- ======================
+-- =========================================
+-- 16. SHOWTIME_SEATS (INCLUDES FINAL_PRICE)
+-- =========================================
 CREATE TABLE showtime_seats (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     showtime_id BIGINT NOT NULL,
@@ -185,15 +205,16 @@ CREATE TABLE showtime_seats (
     booking_id BIGINT,
     status VARCHAR(20) DEFAULT 'AVAILABLE',
     hold_expired_at DATETIME,
+    final_price DECIMAL(12,2) NOT NULL DEFAULT 0,
     UNIQUE (showtime_id, seat_id),
     FOREIGN KEY (showtime_id) REFERENCES showtimes(id),
     FOREIGN KEY (seat_id) REFERENCES seats(id),
     FOREIGN KEY (booking_id) REFERENCES bookings(id)
 );
 
--- ======================
--- 16. INVOICES
--- ======================
+-- =========================================
+-- 17. INVOICES
+-- =========================================
 CREATE TABLE invoices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     customer_id BIGINT,
@@ -207,9 +228,9 @@ CREATE TABLE invoices (
     FOREIGN KEY (showtime_id) REFERENCES showtimes(id)
 );
 
--- ======================
--- 17. PAYMENTS
--- ======================
+-- =========================================
+-- 18. PAYMENTS
+-- =========================================
 CREATE TABLE payments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     invoice_id BIGINT NOT NULL,
@@ -221,9 +242,9 @@ CREATE TABLE payments (
     FOREIGN KEY (invoice_id) REFERENCES invoices(id)
 );
 
--- ======================
--- 18. TICKETS
--- ======================
+-- =========================================
+-- 19. TICKETS
+-- =========================================
 CREATE TABLE tickets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     invoice_id BIGINT NOT NULL,
@@ -236,9 +257,9 @@ CREATE TABLE tickets (
     FOREIGN KEY (showtime_seat_id) REFERENCES showtime_seats(id)
 );
 
--- ======================
--- 19. INVOICE_COMBOS
--- ======================
+-- =========================================
+-- 20. INVOICE_COMBOS
+-- =========================================
 CREATE TABLE invoice_combos (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     invoice_id BIGINT NOT NULL,
@@ -249,9 +270,9 @@ CREATE TABLE invoice_combos (
     FOREIGN KEY (combo_id) REFERENCES combos(id)
 );
 
--- ======================
--- 20. INVOICE_PROMOTIONS
--- ======================
+-- =========================================
+-- 21. INVOICE_PROMOTIONS
+-- =========================================
 CREATE TABLE invoice_promotions (
     invoice_id BIGINT NOT NULL,
     promotion_id BIGINT NOT NULL,
@@ -259,4 +280,3 @@ CREATE TABLE invoice_promotions (
     FOREIGN KEY (invoice_id) REFERENCES invoices(id),
     FOREIGN KEY (promotion_id) REFERENCES promotions(id)
 );
-

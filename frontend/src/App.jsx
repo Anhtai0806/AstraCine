@@ -1,15 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ClientRoutes from "./routes/ClientRoutes";
 import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./routes/ProtectedRoute"; // Nếu team có file này
-import Login from "./pages/Login/Login";
-import Register from "./pages/Register/Register";
-
-import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard";
-import ComboManager from "./pages/Admin/Combo";
-import MovieManager from "./pages/Admin/Movie";
-
+import ProtectedRoute from "./routes/ProtectedRoute";
+import RoleRoute from "./routes/RoleRoute";
+import AdminRoutes from "./routes/AdminRoutes";
 function App() {
     return (
         <AuthProvider>
@@ -22,13 +16,28 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 
-                    {/* ADMIN */}
-                    <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<Navigate to="dashboard" replace />} />
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="combos" element={<ComboManager />} />
-                        <Route path="movies" element={<MovieManager />} />
-                    </Route>
+          {/* ADMIN */}
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute>
+                <RoleRoute allowRoles={["ROLE_ADMIN"]}>
+                  <AdminRoutes />
+                </RoleRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* STAFF */}
+          <Route
+            path="/staff/*"
+            element={
+              <ProtectedRoute>
+                <RoleRoute allowRoles={["STAFF"]}>
+                </RoleRoute>
+              </ProtectedRoute>
+            }
+          />
 
                 </Routes>
             </BrowserRouter>

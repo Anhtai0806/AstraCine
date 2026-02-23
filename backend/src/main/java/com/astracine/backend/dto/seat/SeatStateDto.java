@@ -1,9 +1,12 @@
 package com.astracine.backend.dto.seat;
 
+import com.astracine.backend.enums.SeatBookingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.astracine.backend.enums.SeatType;
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -13,9 +16,11 @@ public class SeatStateDto {
     private Long seatId;
     private String rowLabel;
     private Integer columnNumber;
-    private String seatType;
+    private SeatType seatType;
 
-    private SeatDisplayStatus status;
+    private BigDecimal finalPrice;
+
+    private SeatBookingStatus status;
 
     /** epoch millis - chỉ có khi status=HELD */
     private Long heldExpiresAt;

@@ -1,0 +1,298 @@
+/* ===================================
+   ADMIN PROMOTIONS PAGE STYLING
+   =================================== */
+
+.admin-promotions-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem 0;
+}
+
+.admin-promotions-container {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* ===================================
+   HEADER SECTION
+   =================================== */
+
+.admin-promotions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.admin-promotions-header h2 {
+    color: #2c3e50;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.btn-add-promotion {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-add-promotion:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* ===================================
+   TABLE STYLING
+   =================================== */
+
+.promotions-table {
+    margin-top: 1.5rem;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.promotions-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.promotions-table thead th {
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.promotions-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.promotions-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.promotions-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.promotion-code {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.promotion-description {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.promotion-value {
+    font-weight: 600;
+    color: #28a745;
+    font-size: 1.05rem;
+}
+
+.promotion-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-edit-promotion,
+.btn-delete-promotion {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.btn-edit-promotion {
+    background-color: #ffc107;
+    border: none;
+}
+
+.btn-edit-promotion:hover {
+    background-color: #e0a800;
+    transform: scale(1.1);
+}
+
+.btn-delete-promotion {
+    background-color: #dc3545;
+    border: none;
+}
+
+.btn-delete-promotion:hover {
+    background-color: #c82333;
+    transform: scale(1.1);
+}
+
+.no-data-message {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 2rem !important;
+}
+
+/* ===================================
+   MODAL STYLING
+   =================================== */
+
+.promotion-modal .modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.promotion-modal .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    padding: 1.5rem;
+}
+
+.promotion-modal .modal-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.promotion-modal .modal-body {
+    padding: 2rem;
+}
+
+.promotion-modal .modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 2rem;
+}
+
+.promotion-modal .form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.promotion-modal .form-control,
+.promotion-modal .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.promotion-modal .form-control:focus,
+.promotion-modal .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.promotion-modal .btn-secondary {
+    background-color: #6c757d;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.promotion-modal .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.promotion-modal .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* ===================================
+   ALERT STYLING
+   =================================== */
+
+.alert-custom {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
+}
+
+/* ===================================
+   LOADING SPINNER
+   =================================== */
+
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: #667eea;
+}
+
+/* ===================================
+   BADGE STYLING
+   =================================== */
+
+.badge {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+/* ===================================
+   RESPONSIVE DESIGN
+   =================================== */
+
+@media (max-width: 768px) {
+    .admin-promotions-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .btn-add-promotion {
+        width: 100%;
+    }
+
+    .promotions-table {
+        font-size: 0.85rem;
+    }
+
+    .promotions-table thead th,
+    .promotions-table tbody td {
+        padding: 0.5rem;
+    }
+
+    .promotion-description {
+        max-width: 100px;
+    }
+
+    .promotion-actions {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}

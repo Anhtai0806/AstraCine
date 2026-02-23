@@ -1,28 +1,25 @@
 import "./MovieSection.css";
 import MovieCard from "../MovieCard/MovieCard";
+import { useNavigate } from "react-router-dom";
 
-function MovieSection({ title, type }) {
-  const mockMovies = [
-    { id: 1, title: "Movie 1", age: "P" },
-    { id: 2, title: "Movie 2", age: "C13" },
-    { id: 3, title: "Movie 3", age: "C16" },
-    { id: 4, title: "Movie 4", age: "P" },
-  ];
-
+function MovieSection({ title, type, movies = [] }) {
+  const navigate = useNavigate();
   return (
     <section className={`movie-section ${type}`}>
       <div className="container">
         <h2 className="section-title">{title}</h2>
 
         <div className="movie-grid">
-          {mockMovies.map((movie) => (
+          {movies.map((movie) => (
             <MovieCard
               key={movie.id}
               title={movie.title}
-              age={movie.age}
-              onBuy={() => {
-                console.log("Mua vé:", movie.title);
-              }}
+              age={movie.ageRating}
+              posterUrl={movie.posterUrl}
+              status={movie.status}
+              onBuy={() => console.log("Booking:", movie.id)}
+              // Make sure navigation works
+              onClick={() => navigate(`/movies/${movie.id}`)}
             />
           ))}
         </div>

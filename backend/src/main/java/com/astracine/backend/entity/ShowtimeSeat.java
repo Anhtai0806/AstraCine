@@ -1,9 +1,13 @@
 package com.astracine.backend.entity;
 
+import com.astracine.backend.enums.SeatBookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import com.astracine.backend.enums.SeatBookingStatus;
 
 @Entity
 @Table(
@@ -29,11 +33,23 @@ public class ShowtimeSeat {
     /** hiện chưa map entity Booking - để Long cho đơn giản */
     @Column(name = "booking_id")
     private Long bookingId;
+    
+    // thêm cột mới final_price
+
+    @Column(name = "final_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal finalPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private ShowtimeSeatStatus status = ShowtimeSeatStatus.AVAILABLE;
+    private SeatBookingStatus status = SeatBookingStatus.AVAILABLE;
 
     @Column(name = "hold_expired_at")
     private LocalDateTime holdExpiredAt;
+
+    public ShowtimeSeat(Showtime showtime, Seat seat, BigDecimal finalPrice) {
+        this.showtime = showtime;
+        this.seat = seat;
+        this.finalPrice = finalPrice;
+        this.status = SeatBookingStatus.AVAILABLE; // Mặc định là trống
+    }
 }

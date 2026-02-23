@@ -2,28 +2,49 @@ package com.astracine.backend.entity;
 
 
 
-import jakarta.persistence.*;
-import lombok.*;
+import com.astracine.backend.enums.RoomStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "rooms")
-@Data // Lombok getter/setter/tostring
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Room {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
+    
+    @Column(nullable = false, length = 50)
     private String name;
-
+    
     @Column(name = "total_rows", nullable = false)
     private Integer totalRows;
-
+    
     @Column(name = "total_columns", nullable = false)
     private Integer totalColumns;
-
-    @Column(columnDefinition = "varchar(20) default 'ACTIVE'")
-    private String status = "ACTIVE";
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private RoomStatus status;
+    
+    public Room(String name, Integer totalRows, Integer totalColumns) {
+        this.name = name;
+        this.totalRows = totalRows;
+        this.totalColumns = totalColumns;
+        this.status = RoomStatus.ACTIVE;
+    }
 }

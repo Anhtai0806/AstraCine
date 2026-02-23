@@ -1,0 +1,436 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary: #4f46e5;
+    --primary-light: #e0e7ff;
+    --text-main: #0f172a;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --bg-app: #f8fafc;
+    --header-height: 70px;
+    --sidebar-width: 220px;
+    --hour-col-width: 120px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.app-container {
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    background: var(--bg-app);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- 1. HEADER & TOOLBAR --- */
+.app-header {
+    height: var(--header-height);
+    background: white;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 50;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.app-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+}
+
+.view-toggles {
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+}
+
+.toggle-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-light);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.toggle-btn.active {
+    background: white;
+    color: var(--primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.date-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    transition: 0.2s;
+}
+
+.nav-btn:hover {
+    background: #f1f5f9;
+}
+
+.current-date {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    min-width: 160px;
+    text-align: center;
+}
+
+.btn-create {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+}
+
+.btn-create:hover {
+    background: #4338ca;
+    transform: translateY(-1px);
+}
+
+/* --- 2. TIMELINE VIEW --- */
+.timeline-wrapper {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: white;
+}
+
+.timeline-body {
+    position: relative;
+    min-width: calc(var(--sidebar-width) + (var(--hour-col-width) * 24));
+}
+
+/* Sticky Headers */
+.tl-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    height: 48px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+}
+
+.tl-corner {
+    position: sticky;
+    left: 0;
+    z-index: 41;
+    width: var(--sidebar-width);
+    background: #f8fafc;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding-left: 24px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+}
+
+.tl-hours {
+    flex: 1;
+    display: flex;
+}
+
+.tl-hour-cell {
+    width: var(--hour-col-width);
+    flex-shrink: 0;
+    border-right: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+/* Rows */
+.tl-room-row {
+    display: flex;
+    height: 80px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+
+.tl-room-info {
+    position: sticky;
+    left: 0;
+    z-index: 30;
+    width: var(--sidebar-width);
+    background: white;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 24px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+}
+
+.tl-room-name {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+
+.tl-room-cap {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.tl-track {
+    flex: 1;
+    position: relative;
+    background-image: linear-gradient(to right, #f8fafc 1px, transparent 1px);
+    background-size: var(--hour-col-width) 100%;
+    cursor: crosshair;
+}
+
+.tl-track:hover {
+    background-color: #fafafa;
+}
+
+/* Event Card */
+.show-card {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, z-index 0.2s;
+}
+
+.show-card:hover {
+    z-index: 50;
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* --- 3. CALENDAR MONTH VIEW (GRID 7x6) --- */
+.calendar-wrapper {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.cal-container {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.cal-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+}
+
+.cal-weekday {
+    padding: 12px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.cal-day {
+    min-height: 120px;
+    border-right: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    position: relative;
+}
+
+.cal-day:hover {
+    background: #f8fafc;
+}
+
+.cal-day.other-month {
+    background: #fcfcfc;
+    color: #cbd5e1;
+}
+
+.cal-day.today {
+    background: #eff6ff;
+}
+
+.cal-day.today .day-num {
+    background: var(--primary);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-num {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+}
+
+.day-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.more-tag {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* --- 4. MODALS --- */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-panel {
+    background: white;
+    border-radius: 12px;
+    width: 500px;
+    max-width: 95%;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.modal-head {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-head h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.modal-content {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* Colors */
+.c-0 {
+    background: #4f46e5;
+    border-left: 4px solid #312e81;
+}
+
+.c-1 {
+    background: #db2777;
+    border-left: 4px solid #831843;
+}
+
+.c-2 {
+    background: #059669;
+    border-left: 4px solid #064e3b;
+}
+
+.c-3 {
+    background: #d97706;
+    border-left: 4px solid #78350f;
+}
+
+.c-4 {
+    background: #0284c7;
+    border-left: 4px solid #0c4a6e;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

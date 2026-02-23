@@ -6,7 +6,7 @@ import { loginApi } from "../../api/authApi";
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ⭐ BẮT BUỘC
+  const { login } = useAuth(); // giữ nguyên
 
   const [form, setForm] = useState({
     identifier: "",
@@ -39,17 +39,18 @@ function Login() {
 
       login(res.data);
 
-      switch (res.data.role) {
-        case "ADMIN":
-          navigate("/admin");
-          break;
+      const roles = res.data.roles || [];
 
-        case "STAFF":
-          navigate("/staff");
-          break;
-
-        default: // CUSTOMER
-          navigate("/");
+      if (roles.includes("ROLE_ADMIN")) {
+        navigate("/admin");
+      } else if (roles.includes("ROLE_MANAGER")) {
+        navigate("/manager");
+      } else if (roles.includes("ROLE_STAFF")) {
+        navigate("/staff");
+      } else if (roles.includes("ROLE_CUSTOMER")) {
+        navigate("/");
+      } else {
+        navigate("/");
       }
     } catch (err) {
       setError("Sai tài khoản hoặc mật khẩu");
@@ -80,6 +81,11 @@ function Login() {
             value={form.password}
             onChange={handleChange}
           />
+
+          {/* ✅ CHỈ THÊM DÒNG NÀY */}
+          <div className="forgot-password">
+            <Link to="/forgot-password">Quên mật khẩu?</Link>
+          </div>
 
           <button type="submit" disabled={loading}>
             {loading ? "Signing in..." : "Đăng nhập"}

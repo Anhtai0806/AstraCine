@@ -18,8 +18,9 @@ public class ShowtimeSeatController {
         this.seatHoldService = seatHoldService;
     }
 
-    @GetMapping("/{showtimeId}/seats")
+    @GetMapping("/{showtimeId}/seat-states")
     public ResponseEntity<List<SeatStateDto>> getSeatStates(@PathVariable Long showtimeId) {
         return ResponseEntity.ok(seatHoldService.getSeatStates(showtimeId));
     }
+
 }

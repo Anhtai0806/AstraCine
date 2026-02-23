@@ -1,14 +1,13 @@
 package com.astracine.backend.service;
 
 import com.astracine.backend.dto.hold.HoldResponse;
-import com.astracine.backend.dto.seat.SeatDisplayStatus;
 import com.astracine.backend.dto.seat.SeatStateDto;
 import com.astracine.backend.dto.ws.SeatEventDto;
-import com.astracine.backend.dto.ws.SeatEventType;
+import com.astracine.backend.enums.SeatEventType;
 import com.astracine.backend.entity.Seat;
 import com.astracine.backend.entity.Showtime;
 import com.astracine.backend.entity.ShowtimeSeat;
-import com.astracine.backend.entity.ShowtimeSeatStatus;
+import com.astracine.backend.enums.SeatBookingStatus;
 import com.astracine.backend.exception.HoldConflictException;
 import com.astracine.backend.exception.HoldNotFoundException;
 import com.astracine.backend.exception.HoldUnauthorizedException;
@@ -82,22 +81,30 @@ public class SeatHoldService {
     // Public APIs
     // ===============================
 
+
     public List<SeatStateDto> getSeatStates(Long showtimeId) {
-        Showtime showtime = showtimeRepository.findById(showtimeId)
-                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtimeId));
+        // Lấy toàn bộ ghế của showtime (đã có finalPrice) từ bảng showtime_seats
+        List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtimeId);
+        if (showtimeSeats.isEmpty()) {
+            // Nếu showtime chưa generate showtime_seats (hoặc showtimeId sai) thì báo rõ
+            showtimeRepository.findById(showtimeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtimeId));
+            return Collections.emptyList();
+        }
 
-        List<Seat> seats = seatRepository.findByRoomId(showtime.getRoom().getId());
-        seats.sort(Comparator
-                .comparing(Seat::getRowLabel)
-                .thenComparing(Seat::getColumnNumber));
+        // sort theo row/col để FE render đẹp
+        showtimeSeats.sort(Comparator
+                .comparing((ShowtimeSeat ss) -> ss.getSeat().getRowLabel())
+                .thenComparing(ss -> ss.getSeat().getColumnNumber()));
 
-        Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, ShowtimeSeatStatus.SOLD)
-        );
+        Set<Long> soldSeatIds = showtimeSeats.stream()
+                .filter(ss -> ss.getStatus() == SeatBookingStatus.SOLD)
+                .map(ss -> ss.getSeat().getId())
+                .collect(Collectors.toSet());
 
         // Multi-get holds for all seats (không scan pattern, tránh nặng)
-        List<String> holdKeys = seats.stream()
-                .map(s -> seatHoldKey(showtimeId, s.getId()))
+        List<String> holdKeys = showtimeSeats.stream()
+                .map(ss -> seatHoldKey(showtimeId, ss.getSeat().getId()))
                 .collect(Collectors.toList());
 
         List<String> values = redis.opsForValue().multiGet(holdKeys);
@@ -106,24 +113,26 @@ public class SeatHoldService {
             for (int i = 0; i < values.size(); i++) {
                 String v = values.get(i);
                 if (v == null) continue;
-                Long seatId = seats.get(i).getId();
+                Long seatId = showtimeSeats.get(i).getSeat().getId();
                 Long exp = parseExpiresAt(v);
                 heldExpiresBySeatId.put(seatId, exp);
             }
         }
 
-        List<SeatStateDto> out = new ArrayList<>(seats.size());
-        for (Seat s : seats) {
-            SeatDisplayStatus status;
+        List<SeatStateDto> out = new ArrayList<>(showtimeSeats.size());
+        for (ShowtimeSeat ss : showtimeSeats) {
+            Seat s = ss.getSeat();
+
+            SeatBookingStatus status;
             Long heldExpiresAt = null;
 
             if (soldSeatIds.contains(s.getId())) {
-                status = SeatDisplayStatus.SOLD;
+                status = SeatBookingStatus.SOLD;
             } else if (heldExpiresBySeatId.containsKey(s.getId())) {
-                status = SeatDisplayStatus.HELD;
+                status = SeatBookingStatus.HELD;
                 heldExpiresAt = heldExpiresBySeatId.get(s.getId());
             } else {
-                status = SeatDisplayStatus.AVAILABLE;
+                status = SeatBookingStatus.AVAILABLE;
             }
 
             out.add(SeatStateDto.builder()
@@ -131,6 +140,7 @@ public class SeatHoldService {
                     .rowLabel(s.getRowLabel())
                     .columnNumber(s.getColumnNumber())
                     .seatType(s.getSeatType())
+                    .finalPrice(ss.getFinalPrice())
                     .status(status)
                     .heldExpiresAt(heldExpiresAt)
                     .build());
@@ -138,6 +148,7 @@ public class SeatHoldService {
 
         return out;
     }
+
 
     public HoldResponse holdSeats(Long showtimeId, List<Long> seatIds, String userId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)
@@ -154,7 +165,7 @@ public class SeatHoldService {
 
         // sold check (DB)
         Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, ShowtimeSeatStatus.SOLD)
+                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, SeatBookingStatus.SOLD)
         );
         List<Long> soldConflicts = seatIds.stream().filter(soldSeatIds::contains).toList();
         if (!soldConflicts.isEmpty()) {
@@ -273,7 +284,7 @@ public class SeatHoldService {
 
         // Double-check sold in DB inside transaction
         Set<Long> soldSeatIds = new HashSet<>(
-                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(summary.showtimeId, ShowtimeSeatStatus.SOLD)
+                showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(summary.showtimeId, SeatBookingStatus.SOLD)
         );
         List<Long> soldConflicts = summary.seatIds.stream().filter(soldSeatIds::contains).toList();
         if (!soldConflicts.isEmpty()) {
@@ -291,7 +302,7 @@ public class SeatHoldService {
                         return created;
                     });
 
-            ss.setStatus(ShowtimeSeatStatus.SOLD);
+            ss.setStatus(SeatBookingStatus.SOLD);
             showtimeSeatRepository.save(ss);
         }
 
