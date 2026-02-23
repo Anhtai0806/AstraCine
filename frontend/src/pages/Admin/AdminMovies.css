@@ -168,15 +168,6 @@
 }
 
 /* ===== MODAL STYLING ===== */
-/* Scope to admin-movies-page to avoid conflicts with other pages */
-.admin-movies-page .modal-backdrop {
-    display: none !important;
-}
-
-.admin-movies-page .modal-backdrop.show {
-    display: none !important;
-}
-
 .movie-modal {
     z-index: 1050;
 }

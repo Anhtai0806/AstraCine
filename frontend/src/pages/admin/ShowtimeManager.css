@@ -355,7 +355,7 @@
 }
 
 /* --- 4. MODALS --- */
-.modal-backdrop {
+.showtime-modal-backdrop {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);

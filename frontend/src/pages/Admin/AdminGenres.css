@@ -131,15 +131,6 @@
 }
 
 /* ===== MODAL STYLING ===== */
-/* Scope to admin-genres-page to avoid conflicts with other pages */
-.admin-genres-page .modal-backdrop {
-    display: none !important;
-}
-
-.admin-genres-page .modal-backdrop.show {
-    display: none !important;
-}
-
 .genre-modal {
     display: flex !important;
     align-items: center;
