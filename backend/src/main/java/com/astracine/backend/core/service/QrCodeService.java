@@ -1,4 +1,4 @@
-package com.astracine.backend.service;
+package com.astracine.backend.core.service;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
