@@ -1,0 +1,223 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.ticket-result-page {
+    min-height: 100vh;
+    background-color: #f1f5f9; /* Màu nền nhạt để làm nổi bật vé trắng */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.success-message {
+    text-align: center;
+    margin-bottom: 30px;
+    animation: slideDown 0.5s ease-out;
+}
+
+.success-message h2 {
+    color: #10b981; /* Xanh lá success */
+    margin: 0 0 8px 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+
+.success-message p {
+    color: #64748b;
+    margin: 0;
+}
+
+/* --- TICKET CARD DESIGN --- */
+.e-ticket {
+    background: #ffffff;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+    animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Phần trên: Thông tin phim & Rạp */
+.ticket-header {
+    padding: 30px 24px 20px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: rgb(236, 236, 236);
+    text-align: center;
+}
+
+.movie-title {
+background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #c9a441);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+
+  background: linear-gradient(
+        90deg, 
+        #fbbf24 0%, /* Vàng */
+        #fff 50%,    /* Vệt sáng TRẮNG ở giữa */
+        #fbbf24 100% /* Vàng */
+    );
+    background-size: 200% auto;
+    
+    /* 2. Cắt nền theo chữ */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    
+    /* 3. Chạy Animation lướt vệt sáng */
+    animation: shine 3s linear infinite;
+}
+
+/* Định nghĩa chuyển động cho Animation */
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
+}
+
+.movie-tags {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tag {
+    background: rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+}
+.tag.age-rating { background: #ef4444; color: white; } /* C18, P, K... */
+
+/* Grid thông tin suất chiếu */
+.ticket-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    text-align: left;
+    background: rgba(64, 23, 114, 0.948);
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.info-box span {
+    display: block;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.info-box strong {
+    display: block;
+    font-size: 1rem;
+    color: white;
+}
+
+/* Phần giữa: Ghế ngồi */
+.ticket-body {
+    padding: 24px;
+    background: white;
+    text-align: center;
+}
+
+.seats-highlight {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #4f46e5; /* Màu chìm chính */
+    margin: 10px 0;
+    letter-spacing: 2px;
+}
+
+/* --- ĐƯỜNG XÉ VÉ (PERFORATION LINE) --- */
+.ticket-divider {
+    position: relative;
+    border-top: 2px dashed #cbd5e1;
+    margin: 0 20px;
+}
+
+/* Lỗ khoét bên trái và phải */
+.ticket-divider::before,
+.ticket-divider::after {
+    content: '';
+    position: absolute;
+    top: -12px; /* Phân nửa chiều cao */
+    width: 24px;
+    height: 24px;
+    background-color: #f1f5f9; /* Phải trùng với màu nền body trang web */
+    border-radius: 50%;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); /* Tạo độ sâu cho lỗ */
+}
+
+.ticket-divider::before { left: -32px; }
+.ticket-divider::after { right: -32px; }
+
+/* Phần dưới: QR Code */
+.ticket-footer {
+    padding: 24px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.qr-container {
+    padding: 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.qr-container img {
+    width: 160px;
+    height: 160px;
+    display: block;
+}
+
+.ticket-code {
+    font-family: monospace;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #334155;
+    letter-spacing: 2px;
+}
+
+.scan-instruction {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 8px;
+}
+
+/* Nút Tải vé */
+.action-area {
+    margin-top: 30px;
+    display: flex;
+    gap: 16px;
+}
+
+.btn-download {
+    padding: 12px 24px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+    transition: 0.2s;
+}
+.btn-download:hover { background: #4338ca; transform: translateY(-2px); }
+
+/* Animations */
+@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }

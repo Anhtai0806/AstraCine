@@ -9,6 +9,9 @@ import ProtectedRoute from "./ProtectedRoute";
 import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
 import SeatSelection from "../pages/Booking/SeatSelection";
 
+import DemoTicket from "../pages/Booking/DemoTicket";
+import TicketResult from "../pages/Booking/TicketResult";
+
 import MoviesPage from "../pages/Movies/MoviesPage";
 import MovieDetailPage from "../pages/MovieDetail/MovieDetailPage";
 
@@ -33,6 +36,9 @@ export default function ClientRoutes() {
       {/* Movies Page */}
       <Route path="movies" element={<MoviesPage />} />
       <Route path="movies/:movieId" element={<MovieDetailPage />} />
+      
+      <Route path="ticket" element={<TicketResult />} />
+
     </Route>
   );
 }
