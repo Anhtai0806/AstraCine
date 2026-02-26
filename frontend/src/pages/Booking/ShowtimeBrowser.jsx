@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { showtimeApi } from "../../api/showtimeApi.js";
 import { timeSlotApi } from "../../api/timeSlotApi.js";
 import "./ShowtimeBrowser.css";
@@ -23,8 +23,32 @@ function getTimePart(iso) {
     return s.slice(tIndex + 1, tIndex + 6); // HH:mm
 }
 
+// Parse date safely
+function parseDate(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d;
+}
+
+// Extract movie id candidates from showtime DTO (supports multiple shapes)
+function getShowtimeMovieIdCandidates(s) {
+    return [
+        s?.movieId,
+        s?.movieID,
+        s?.movie_id,
+        s?.movie?.id,
+        s?.movie?.movieId,
+        s?.movie?.movieID,
+        s?.movie?.movie_id,
+    ]
+        .filter(Boolean)
+        .map(String);
+}
+
 export default function ShowtimeBrowser() {
     const nav = useNavigate();
+    const { movieId } = useParams(); // for /booking/movies/:movieId
+
     const [items, setItems] = useState([]);
     const [slots, setSlots] = useState([]); // TimeSlotDTO[]
     const [q, setQ] = useState("");
@@ -56,12 +80,26 @@ export default function ShowtimeBrowser() {
 
     const filtered = useMemo(() => {
         const query = q.trim().toLowerCase();
+        const now = new Date();
 
         // active slot object
         const activeSlot =
-            activeSlotId === "ALL" ? null : slots.find((s) => String(s.id) === String(activeSlotId));
+            activeSlotId === "ALL"
+                ? null
+                : slots.find((s) => String(s.id) === String(activeSlotId));
 
         return (items || []).filter((s) => {
+            // ✅ validate startTime must be after now
+            const start = parseDate(s.startTime);
+            if (!start) return false;
+            if (start <= now) return false;
+
+            // ✅ filter by movieId if present in route
+            if (movieId) {
+                const candidates = getShowtimeMovieIdCandidates(s);
+                if (!candidates.includes(String(movieId))) return false;
+            }
+
             // search
             if (query) {
                 const movie = (s.movieTitle || "").toLowerCase();
@@ -79,7 +117,7 @@ export default function ShowtimeBrowser() {
 
             // tab slot range (admin tạo)
             if (activeSlot && hhmm) {
-                // TimeSlotDTO thường có startTime/endTime hoặc from/to → bạn chỉnh đúng field
+                // TimeSlotDTO thường có startTime/endTime hoặc from/to → bạn chỉnh đúng field nếu khác
                 const from = activeSlot.startTime || activeSlot.from || activeSlot.start || "";
                 const to = activeSlot.endTime || activeSlot.to || activeSlot.end || "";
 
@@ -93,7 +131,7 @@ export default function ShowtimeBrowser() {
 
             return true;
         });
-    }, [items, slots, q, date, activeSlotId, customFrom, customTo]);
+    }, [items, slots, q, date, activeSlotId, customFrom, customTo, movieId]);
 
     const grouped = useMemo(() => {
         const map = new Map();
@@ -107,6 +145,16 @@ export default function ShowtimeBrowser() {
         }
         return Array.from(map.entries());
     }, [filtered]);
+
+    const handlePickShowtime = (s) => {
+        // ✅ re-validate on click (avoid stale tab)
+        const start = parseDate(s.startTime);
+        if (!start || start <= new Date()) {
+            alert("Suất chiếu đã qua hoặc không hợp lệ. Vui lòng chọn suất khác.");
+            return;
+        }
+        nav(`/booking/showtimes/${s.id}`);
+    };
 
     return (
         <div className="showtime-browser">
@@ -174,6 +222,15 @@ export default function ShowtimeBrowser() {
 
             {error ? <pre className="error">{JSON.stringify(error, null, 2)}</pre> : null}
 
+            {/* ✅ Empty state */}
+            {grouped.length === 0 ? (
+                <div style={{ padding: 12, opacity: 0.85 }}>
+                    {movieId
+                        ? "Không có suất chiếu sắp tới cho phim này (hoặc tất cả suất đã qua)."
+                        : "Không có suất chiếu sắp tới (hoặc tất cả suất đã qua)."}
+                </div>
+            ) : null}
+
             {grouped.map(([roomName, list]) => (
                 <div key={roomName} className="room-block">
                     <h3>{roomName}</h3>
@@ -182,7 +239,7 @@ export default function ShowtimeBrowser() {
                             <button
                                 key={s.id}
                                 className="showtime-item"
-                                onClick={() => nav(`/booking/showtimes/${s.id}`)}
+                                onClick={() => handlePickShowtime(s)}
                                 title="Chọn suất chiếu để đặt ghế"
                             >
                                 <div className="movie">{s.movieTitle}</div>

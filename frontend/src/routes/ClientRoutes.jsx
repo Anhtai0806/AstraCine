@@ -30,8 +30,10 @@ export default function ClientRoutes() {
         }
       />
 
-      <Route path="booking" element={<ShowtimeBrowser />} />
-      <Route path="booking/showtimes/:showtimeId" element={<SeatSelection />} />
+        {/* Booking */}
+        <Route path="booking" element={<ShowtimeBrowser />} />
+        <Route path="booking/movies/:movieId" element={<ShowtimeBrowser />} />
+        <Route path="booking/showtimes/:showtimeId" element={<SeatSelection />} />
 
       {/* Movies Page */}
       <Route path="movies" element={<MoviesPage />} />
