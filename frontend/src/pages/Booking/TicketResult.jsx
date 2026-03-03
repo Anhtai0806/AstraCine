@@ -31,7 +31,7 @@ const TicketResult = () => {
                 
                 {/* 1. Phần Nền Đậm (Phim & Lịch) */}
                 <div className="ticket-header">
-                    <h1 className="movie-title">{ticketData.movieTitle}</h1>
+                    <h1 className="ticket-movie-title">{ticketData.movieTitle}</h1>
                     <div className="movie-tags">
                         <span className="tag age-rating">{ticketData.ageRating}</span>
                         <span className="tag">{ticketData.duration}</span>

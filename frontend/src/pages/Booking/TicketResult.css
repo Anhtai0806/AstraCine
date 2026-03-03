@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+
+    
+
+
 .ticket-result-page {
     min-height: 100vh;
     background-color: #f1f5f9; /* Màu nền nhạt để làm nổi bật vé trắng */
@@ -48,7 +52,7 @@
     text-align: center;
 }
 
-.movie-title {
+.ticket-movie-title {
 background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #c9a441);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -58,20 +62,15 @@ background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #c9a44
     text-transform: uppercase;
     letter-spacing: 1px;
 
-  background: linear-gradient(
-        90deg, 
-        #fbbf24 0%, /* Vàng */
-        #fff 50%,    /* Vệt sáng TRẮNG ở giữa */
-        #fbbf24 100% /* Vàng */
-    );
+
+    
     background-size: 200% auto;
     
     /* 2. Cắt nền theo chữ */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     
-    /* 3. Chạy Animation lướt vệt sáng */
-    animation: shine 3s linear infinite;
+    
 }
 
 /* Định nghĩa chuyển động cho Animation */

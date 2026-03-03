@@ -10,6 +10,7 @@ import com.astracine.backend.core.entity.Role;
 import com.astracine.backend.core.entity.User;
 import com.astracine.backend.core.repository.RoleRepository;
 import com.astracine.backend.core.repository.UserRepository;
+import com.astracine.backend.core.service.PasswordResetService;
 import com.astracine.backend.presentation.dto.auth.AuthResponse;
 import com.astracine.backend.presentation.dto.auth.LoginRequest;
 import com.astracine.backend.presentation.dto.auth.RegisterRequest;
@@ -20,14 +21,17 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetService passwordResetService;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordResetService = passwordResetService;
     }
 
     // ================= LOGIN =================
@@ -86,6 +90,17 @@ public class AuthServiceImpl implements AuthService {
 
         // Auto login sau register
         return buildAuthResponse(user);
+    }
+
+    // ================= PASSWORD RESET =================
+    @Override
+    public void initiatePasswordReset(String email) {
+        passwordResetService.initiatePasswordReset(email);
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        passwordResetService.resetPassword(token, newPassword);
     }
 
     // ================= BUILD RESPONSE =================
