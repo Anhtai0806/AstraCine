@@ -65,18 +65,34 @@ public class PayOSController {
     }
 
     /**
-     * (Optional) Kiểm tra trạng thái payment theo orderCode — để FE polling.
+     * Confirm payment sau khi PayOS redirect về returnUrl.
+     * Frontend gọi endpoint này ngay khi load trang /payment/success.
+     * Đây là fallback bắt buộc vì PayOS webhook không thể gọi đến localhost.
+     * Idempotent: nếu invoice đã tồn tại thì bỏ qua.
+     *
+     * @param orderCode Mã đơn từ PayOS
+     * @param status    Trạng thái PayOS trả về trong returnUrl (?status=PAID)
+     */
+    @PostMapping("/confirm/{orderCode}")
+    public ResponseEntity<Map<String, Object>> confirm(
+            @PathVariable long orderCode,
+            @RequestParam(defaultValue = "PAID") String status) {
+        log.info("[PayOS] Confirm request for orderCode={} status={}", orderCode, status);
+        boolean ok = payOSService.confirmPayment(orderCode, status);
+        if (ok) {
+            return ResponseEntity.ok(Map.of("code", "00", "message", "Invoice created or already exists"));
+        } else {
+            return ResponseEntity.ok(Map.of("code", "01", "message", "Payment not confirmed or session expired"));
+        }
+    }
+
+    /**
+     * Kiểm tra trạng thái payment theo orderCode — để FE polling.
      */
     @GetMapping("/status/{orderCode}")
-    public ResponseEntity<Map<String, Object>> status(
-            @PathVariable long orderCode,
-            @AuthenticationPrincipal UserDetails user,
-            @RequestHeader(value = "X-User-Id", required = false) String guestUserId) {
-
-        // Trả về status thô (FE tự xử lý)
-        // PayOSService có thể mở rộng thêm method này nếu cần
+    public ResponseEntity<Map<String, Object>> status(@PathVariable long orderCode) {
         return ResponseEntity.ok(
-                Map.of("orderCode", orderCode, "message", "Dùng /api/orders/confirm để xác nhận sau khi thanh toán"));
+                Map.of("orderCode", orderCode, "message", "Dùng /confirm để xác nhận sau khi thanh toán"));
     }
 
     // ---------------------

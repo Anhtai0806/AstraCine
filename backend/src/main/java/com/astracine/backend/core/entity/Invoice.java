@@ -22,8 +22,11 @@ public class Invoice {
     @Column(name = "customer_id")
     private Long customerId;
 
-    /** staff_id NOT NULL — dùng system user id=1 nếu guest */
-    @Column(name = "staff_id", nullable = false)
+    /**
+     * staff_id nullable — null khi customer tự đặt online, có giá trị khi staff hỗ
+     * trợ
+     */
+    @Column(name = "staff_id", nullable = true)
     private Long staffId;
 
     @ManyToOne(fetch = FetchType.LAZY)

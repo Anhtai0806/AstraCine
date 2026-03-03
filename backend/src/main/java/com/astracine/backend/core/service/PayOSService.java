@@ -30,16 +30,36 @@ import java.util.Objects;
  * Dịch vụ thanh toán PayOS (SDK v2).
  *
  * Redis keys:
- *  payos:order:{orderCode} → JSON { holdId, userId, status, amount, promotionCode, comboItems }
- *  payos:hold:{holdId}     → orderCode (String)
+ * payos:order:{orderCode} → JSON { holdId, userId, status, amount,
+ * promotionCode, comboItems }
+ * payos:hold:{holdId} → orderCode (String)
  */
 @Slf4j
 @Service
 public class PayOSService {
 
     private static final String HOLD_SUMMARY_KEY_PREFIX = "hold:summary:";
-    private static final String PAYOS_ORDER_KEY_PREFIX  = "payos:order:";
-    private static final String PAYOS_HOLD_KEY_PREFIX   = "payos:hold:";
+    private static final String PAYOS_ORDER_KEY_PREFIX = "payos:order:";
+    private static final String PAYOS_HOLD_KEY_PREFIX = "payos:hold:";
+
+    /**
+     * Parse showtimeId and seatIds from hold summary format:
+     * showtimeId|userId|expiresAt|seatId1,seatId2,...
+     */
+    private static long parseShowtimeId(String raw) {
+        String[] parts = raw.split("\\|", 4);
+        return Long.parseLong(parts[0]);
+    }
+
+    private static List<Long> parseSeatIds(String raw) {
+        String[] parts = raw.split("\\|", 4);
+        if (parts.length < 4 || parts[3].isBlank())
+            return Collections.emptyList();
+        return java.util.Arrays.stream(parts[3].split(","))
+                .filter(s -> !s.isBlank())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+    }
 
     /** Giá dự phòng (fallback) khi FE không gửi amount */
     private static final long FALLBACK_PRICE_PER_SEAT = 90_000L;
@@ -50,7 +70,7 @@ public class PayOSService {
     private final ObjectMapper objectMapper;
 
     public PayOSService(PayOS payOS, StringRedisTemplate redis,
-                        InvoiceService invoiceService, ObjectMapper objectMapper) {
+            InvoiceService invoiceService, ObjectMapper objectMapper) {
         this.payOS = payOS;
         this.redis = redis;
         this.invoiceService = invoiceService;
@@ -73,7 +93,8 @@ public class PayOSService {
             String sessionRaw = redis.opsForValue().get(PAYOS_ORDER_KEY_PREFIX + existingOrderCode);
             if (sessionRaw != null) {
                 try {
-                    Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+                    Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+                    });
                     String status = (String) prev.getOrDefault("status", "PENDING");
                     return PayOSCreateResponse.builder()
                             .orderCode(Long.parseLong(existingOrderCode))
@@ -81,7 +102,8 @@ public class PayOSService {
                             .qrCode("")
                             .status(status)
                             .build();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
 
@@ -121,6 +143,12 @@ public class PayOSService {
         try {
             CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
 
+            // Đọc lại raw hold summary để cache showtimeId + seatIds vào session
+            // (tránh phụ thuộc hold:summary key có thể expire trước khi webhook đến)
+            String holdRaw = redis.opsForValue().get(HOLD_SUMMARY_KEY_PREFIX + holdId);
+            long showtimeId = (holdRaw != null) ? parseShowtimeId(holdRaw) : 0L;
+            List<Long> seatIds = (holdRaw != null) ? parseSeatIds(holdRaw) : Collections.emptyList();
+
             // Lưu toàn bộ context vào Redis để webhook dùng tạo invoice
             Map<String, Object> sessionData = new HashMap<>();
             sessionData.put("holdId", holdId);
@@ -129,6 +157,8 @@ public class PayOSService {
             sessionData.put("amount", amount);
             sessionData.put("promotionCode", promotionCode);
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
+            sessionData.put("showtimeId", showtimeId);
+            sessionData.put("seatIds", seatIds);
 
             Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
             redis.opsForValue().set(PAYOS_ORDER_KEY_PREFIX + orderCode,
@@ -166,9 +196,10 @@ public class PayOSService {
                 return false;
             }
 
-            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
-            String holdId       = (String) session.get("holdId");
-            String userId       = (String) session.get("userId");
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
+            String holdId = (String) session.get("holdId");
+            String userId = (String) session.get("userId");
             String currentStatus = (String) session.getOrDefault("status", "PENDING");
 
             boolean isPaid = "00".equals(verified.getCode());
@@ -194,10 +225,21 @@ public class PayOSService {
                     @SuppressWarnings("unchecked")
                     List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
                             session.getOrDefault("comboItems", Collections.emptyList()),
-                            new TypeReference<List<ComboCartItemDTO>>() {});
+                            new TypeReference<List<ComboCartItemDTO>>() {
+                            });
+
+                    // Lấy showtimeId và seatIds đã baked vào session lúc tạo link
+                    long showtimeId = ((Number) session.getOrDefault("showtimeId", 0L)).longValue();
+
+                    @SuppressWarnings("unchecked")
+                    List<Long> seatIds = objectMapper.convertValue(
+                            session.getOrDefault("seatIds", Collections.emptyList()),
+                            new TypeReference<List<Long>>() {
+                            });
 
                     invoiceService.createInvoice(
-                            holdId, userId, orderCode, amount, promotionCode, comboItems);
+                            holdId, userId, orderCode, amount, promotionCode,
+                            comboItems, showtimeId, seatIds);
                 } catch (Exception ex) {
                     log.error("[PayOS] Invoice creation failed orderCode={}: {}", orderCode, ex.getMessage(), ex);
                     // Không throw — vẫn trả 200 cho PayOS để tránh retry
@@ -213,7 +255,78 @@ public class PayOSService {
     }
 
     // =========================================================
-    // 3. Verify payment đã PAID
+    // 3. Confirm payment từ returnUrl (fallback khi webhook không tới)
+    // Frontend gọi sau khi PayOS redirect về success page.
+    // =========================================================
+    public boolean confirmPayment(long orderCode, String payosStatus) {
+        String orderKey = PAYOS_ORDER_KEY_PREFIX + orderCode;
+        String sessionRaw = redis.opsForValue().get(orderKey);
+
+        if (sessionRaw == null) {
+            log.warn("[PayOS] confirmPayment: session not found orderCode={}", orderCode);
+            return false;
+        }
+
+        try {
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
+            String currentStatus = (String) session.getOrDefault("status", "PENDING");
+
+            // Invoice đã được tạo rồi (bởi webhook) — bỏ qua (idempotent)
+            if ("PAID".equals(currentStatus)) {
+                log.info("[PayOS] confirmPayment: orderCode={} already PAID, skipping", orderCode);
+                return true;
+            }
+
+            // PayOS gửi status=PAID trong query string của returnUrl khi thanh toán thành
+            // công
+            if (!"PAID".equals(payosStatus)) {
+                log.info("[PayOS] confirmPayment: orderCode={} payosStatus={}, not PAID", orderCode, payosStatus);
+                return false;
+            }
+
+            // Cập nhật Redis session
+            session.put("status", "PAID");
+            Long remainTtl = redis.getExpire(orderKey);
+            Duration ttl = (remainTtl != null && remainTtl > 0)
+                    ? Duration.ofSeconds(remainTtl)
+                    : Duration.ofMinutes(30);
+            redis.opsForValue().set(orderKey, objectMapper.writeValueAsString(session), ttl);
+
+            // Tạo invoice
+            String holdId = (String) session.get("holdId");
+            String userId = (String) session.get("userId");
+            BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
+            String promotionCode = (String) session.get("promotionCode");
+
+            @SuppressWarnings("unchecked")
+            List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
+                    session.getOrDefault("comboItems", Collections.emptyList()),
+                    new TypeReference<List<ComboCartItemDTO>>() {
+                    });
+
+            long showtimeId = ((Number) session.getOrDefault("showtimeId", 0L)).longValue();
+
+            List<Long> seatIds = objectMapper.convertValue(
+                    session.getOrDefault("seatIds", Collections.emptyList()),
+                    new TypeReference<List<Long>>() {
+                    });
+
+            invoiceService.createInvoice(
+                    holdId, userId, orderCode, amount, promotionCode,
+                    comboItems, showtimeId, seatIds);
+
+            log.info("[PayOS] confirmPayment: Invoice created for orderCode={}", orderCode);
+            return true;
+
+        } catch (Exception e) {
+            log.error("[PayOS] confirmPayment failed orderCode={}: {}", orderCode, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    // =========================================================
+    // 4. Verify payment đã PAID
     // =========================================================
     public void verifyPaid(String holdId, long orderCode, String userId) {
         String orderKey = PAYOS_ORDER_KEY_PREFIX + orderCode;
@@ -225,10 +338,11 @@ public class PayOSService {
         }
 
         try {
-            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
             String storedHoldId = (String) session.get("holdId");
             String storedUserId = (String) session.get("userId");
-            String status       = (String) session.getOrDefault("status", "PENDING");
+            String status = (String) session.getOrDefault("status", "PENDING");
 
             if (!Objects.equals(storedHoldId, holdId)) {
                 throw new PaymentRequiredException("PayOS orderCode không khớp với holdId");
@@ -251,13 +365,16 @@ public class PayOSService {
     // =========================================================
     private HoldMeta readHoldMeta(String holdId, String userId) {
         String raw = redis.opsForValue().get(HOLD_SUMMARY_KEY_PREFIX + holdId);
-        if (raw == null) throw new HoldNotFoundException(holdId);
+        if (raw == null)
+            throw new HoldNotFoundException(holdId);
 
         String[] parts = raw.split("\\|", 4);
-        if (parts.length < 4) throw new HoldNotFoundException(holdId);
+        if (parts.length < 4)
+            throw new HoldNotFoundException(holdId);
 
         String holdOwner = parts[1];
-        if (!Objects.equals(holdOwner, userId)) throw new PaymentUnauthorizedException();
+        if (!Objects.equals(holdOwner, userId))
+            throw new PaymentUnauthorizedException();
 
         long expiresAt = Long.parseLong(parts[2]);
         int seatCount = parts[3].isBlank() ? 0 : parts[3].split(",").length;
@@ -269,5 +386,6 @@ public class PayOSService {
         return (hash % 9_000_000_000L) + 1_000_000_000L;
     }
 
-    private record HoldMeta(long expiresAt, int seatCount) {}
+    private record HoldMeta(long expiresAt, int seatCount) {
+    }
 }

@@ -214,12 +214,12 @@ button {
 }
 
 .legend-dot.sold {
-    background: #ef4444;
+    background: #555;
 }
 
 /* ===== SEAT STATES ===== */
 .booking-seat-map .seat-item[data-status="SOLD"] {
-    background: #ef4444 !important;
+    background: #555 !important;
     opacity: 0.8;
     cursor: not-allowed;
     pointer-events: none;

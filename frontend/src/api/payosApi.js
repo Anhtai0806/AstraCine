@@ -85,3 +85,15 @@ export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, pr
         }),
     });
 }
+
+/**
+ * Xác nhận thanh toán sau khi PayOS redirect về trang success.
+ * Gọi endpoint này ngay khi load PaymentSuccess page để tạo invoice.
+ * @param {number|string} orderCode  - Mã đơn từ URL param ?orderCode=...
+ * @param {string} status            - Trạng thái từ URL param ?status=PAID
+ */
+export async function confirmPayment(orderCode, status = "PAID") {
+    return request(`/api/payments/payos/confirm/${orderCode}?status=${encodeURIComponent(status)}`, {
+        method: "POST",
+    });
+}

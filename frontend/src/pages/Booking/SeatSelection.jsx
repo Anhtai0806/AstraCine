@@ -334,7 +334,7 @@ export default function SeatSelection() {
                     />
                     {/* Legend */}
                     <div className="seat-legend">
-                        <span className="legend-item"><span className="legend-dot available"></span>Trống</span>
+
                         <span className="legend-item"><span className="legend-dot selected"></span>Đang chọn</span>
                         <span className="legend-item"><span className="legend-dot held"></span>Đang giữ</span>
                         <span className="legend-item"><span className="legend-dot sold"></span>Đã bán</span>
