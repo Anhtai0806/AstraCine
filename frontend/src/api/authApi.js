@@ -9,3 +9,11 @@ export const loginApi = (data) => {
 export const registerApi = (data) => {
   return axios.post(`${API_URL}/register`, data);
 };
+
+export const forgotPasswordApi = (email) => {
+  return axios.post(`${API_URL}/forgot-password`, { email });
+};
+
+export const resetPasswordApi = (token, newPassword) => {
+  return axios.post(`${API_URL}/reset-password`, { token, newPassword });
+};

@@ -31,5 +31,18 @@ public class SeatService {
 
         // 4. Lưu xuống DB
         seatRepository.save(seat);
+
+    }
+
+    public void updateSeatPrice(Long seatId, BigDecimal newPrice) {
+        // 1. Tìm ghế trong DB
+        Seat seat = seatRepository.findById(seatId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ghế ID: " + seatId));
+
+        // 2. Cập nhật giá mới
+        seat.setBasePrice(newPrice);
+
+        // 3. Lưu xuống DB
+        seatRepository.save(seat);
     }
 }
