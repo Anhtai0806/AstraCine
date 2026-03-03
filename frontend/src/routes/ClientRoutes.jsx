@@ -9,15 +9,12 @@ import ProfilePage from "../pages/Profile/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
 import SeatSelection from "../pages/Booking/SeatSelection";
-<<<<<<< HEAD
 import TicketResult from "../pages/Booking/TicketResult";
-=======
 import InvoiceSummary from "../pages/InvoiceSummary/InvoiceSummary";
 import PaymentSuccess from "../pages/Payment/PaymentSuccess";
 import PaymentCancel from "../pages/Payment/PaymentCancel";
 
 
->>>>>>> 7e3f32bfa842b792df7b3dad9a66b5d57c43b65e
 import MoviesPage from "../pages/Movies/MoviesPage";
 import MovieDetailPage from "../pages/MovieDetail/MovieDetailPage";
 import ForgotPassword from "../pages/ForgotPassword/ForgotPassword";
@@ -47,7 +44,6 @@ export default function ClientRoutes() {
         <Route path="booking/showtimes/:showtimeId/combo" element={<ComboMenu />} />
         <Route path="booking/showtimes/:showtimeId/invoice" element={<InvoiceSummary />} />
 
-<<<<<<< HEAD
         {/* Movies Page */}
         <Route path="movies" element={<MoviesPage />} />
         <Route path="movies/:movieId" element={<MovieDetailPage />} />
@@ -58,7 +54,6 @@ export default function ClientRoutes() {
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<ResetPassword />} />
 
-=======
         {/* PayOS Callbacks */}
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="payment/cancel" element={<PaymentCancel />} />
@@ -66,7 +61,6 @@ export default function ClientRoutes() {
         {/* Movies Page */}
         <Route path="movies" element={<MoviesPage />} />
         <Route path="movies/:movieId" element={<MovieDetailPage />} />
->>>>>>> 7e3f32bfa842b792df7b3dad9a66b5d57c43b65e
       </Route>
     </Routes>
   );
