@@ -1,7 +1,7 @@
 package com.astracine.backend.presentation.controller.client;
 
 import com.astracine.backend.core.service.MovieService;
-import com.astracine.backend.presentation.dto.MovieResponse;
+import com.astracine.backend.presentation.dto.movie.MovieResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +42,7 @@ public class ClientMovieController {
     }
 
     @GetMapping("/genres")
-    public ResponseEntity<List<com.astracine.backend.presentation.dto.GenreDTO>> getAllGenres() {
+    public ResponseEntity<List<com.astracine.backend.presentation.dto.movie.GenreDTO>> getAllGenres() {
         return ResponseEntity.ok(movieService.getAllGenres());
     }
 }

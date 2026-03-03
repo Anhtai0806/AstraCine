@@ -2,7 +2,7 @@ package com.astracine.backend.core.service;
 
 import com.astracine.backend.core.entity.Genre;
 import com.astracine.backend.core.repository.GenreRepository;
-import com.astracine.backend.presentation.dto.GenreDTO;
+import com.astracine.backend.presentation.dto.movie.GenreDTO;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

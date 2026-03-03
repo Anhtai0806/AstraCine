@@ -1,7 +1,7 @@
 package com.astracine.backend.presentation.controller.admin;
 
 import com.astracine.backend.core.service.GenreService;
-import com.astracine.backend.presentation.dto.GenreDTO;
+import com.astracine.backend.presentation.dto.movie.GenreDTO;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

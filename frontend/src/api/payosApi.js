@@ -65,14 +65,23 @@ async function request(path, options = {}) {
 
 /**
  * Tạo PayOS payment link.
- * @param {string} holdId - Hold ID từ SeatHoldService
- * @param {string} returnUrl - URL redirect khi thanh toán thành công
- * @param {string} cancelUrl - URL redirect khi huỷ thanh toán
- * @returns {Promise<{orderCode: number, checkoutUrl: string, qrCode: string, status: string}>}
+ * @param {string} holdId
+ * @param {string} returnUrl
+ * @param {string} cancelUrl
+ * @param {number} amount - Số tiền thực tế (VND, sau giảm giá)
+ * @param {string|null} promotionCode - Mã khuyến mãi đã áp dụng
+ * @param {Array} comboItems - Danh sách combo [{comboId, name, quantity, price, subtotal}]
  */
-export async function createPaymentLink(holdId, returnUrl, cancelUrl) {
+export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, promotionCode, comboItems) {
     return request("/api/payments/payos/create", {
         method: "POST",
-        body: JSON.stringify({ holdId, returnUrl, cancelUrl }),
+        body: JSON.stringify({
+            holdId,
+            returnUrl,
+            cancelUrl,
+            amount: Math.round(amount),
+            promotionCode: promotionCode || null,
+            comboItems: comboItems || [],
+        }),
     });
 }

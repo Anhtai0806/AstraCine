@@ -1,8 +1,8 @@
 package com.astracine.backend.presentation.controller.admin;
 
 import com.astracine.backend.core.service.MovieService;
-import com.astracine.backend.presentation.dto.MovieRequest;
-import com.astracine.backend.presentation.dto.MovieResponse;
+import com.astracine.backend.presentation.dto.movie.MovieRequest;
+import com.astracine.backend.presentation.dto.movie.MovieResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

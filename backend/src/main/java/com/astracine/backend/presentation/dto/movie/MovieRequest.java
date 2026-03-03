@@ -1,4 +1,4 @@
-package com.astracine.backend.presentation.dto;
+package com.astracine.backend.presentation.dto.movie;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

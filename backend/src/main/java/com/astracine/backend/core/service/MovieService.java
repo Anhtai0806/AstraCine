@@ -5,9 +5,9 @@ import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.enums.MovieStatus;
 import com.astracine.backend.core.repository.GenreRepository;
 import com.astracine.backend.core.repository.MovieRepository;
-import com.astracine.backend.presentation.dto.GenreDTO;
-import com.astracine.backend.presentation.dto.MovieRequest;
-import com.astracine.backend.presentation.dto.MovieResponse;
+import com.astracine.backend.presentation.dto.movie.GenreDTO;
+import com.astracine.backend.presentation.dto.movie.MovieRequest;
+import com.astracine.backend.presentation.dto.movie.MovieResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { createPaymentLink } from '../../api/payosApi';
+import { getAllPromotions, validatePromotion } from '../../api/promotionApi';
 import './InvoiceSummary.css';
 
 const formatCurrency = (amount) =>
@@ -24,19 +25,25 @@ const formatTimeOnly = (iso) => {
     return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 };
 
-// Mock discount codes — replace with real API when available
-const DISCOUNT_CODES = [
-    { code: 'STAR10', label: 'Giảm 10%', type: 'percent', value: 10 },
-    { code: 'SAVE20K', label: 'Giảm 20.000đ', type: 'fixed', value: 20000 },
-    { code: 'COMBO15', label: 'Giảm 15% khi có combo', type: 'percent', value: 15, requireCombo: true },
-    { code: 'NEWUSER', label: 'Khách hàng mới – giảm 5%', type: 'percent', value: 5 },
-];
-
-function calcDiscount(code, baseTotal) {
-    if (!code) return 0;
-    if (code.type === 'percent') return Math.round(baseTotal * code.value / 100);
-    if (code.type === 'fixed') return Math.min(code.value, baseTotal);
+/** Tính số tiền giảm từ promotion object (backend format) */
+function calcDiscountFromPromo(promo, baseTotal) {
+    if (!promo) return 0;
+    const value = parseFloat(promo.discountValue) || 0;
+    const minOrder = parseFloat(promo.minOrderAmount) || 0;
+    if (baseTotal < minOrder) return 0;
+    if (promo.discountType === 'PERCENTAGE') return Math.round(baseTotal * value / 100);
+    if (promo.discountType === 'FIXED') return Math.min(value, baseTotal);
     return 0;
+}
+
+/** Lọc promo còn hiệu lực phía client */
+function isPromoValid(p) {
+    if (p.status !== 'ACTIVE') return false;
+    const today = new Date().toISOString().slice(0, 10);
+    if (p.startDate && p.startDate > today) return false;
+    if (p.endDate && p.endDate < today) return false;
+    if (p.maxUsage != null && p.currentUsage >= p.maxUsage) return false;
+    return true;
 }
 
 const InvoiceSummary = () => {
@@ -58,26 +65,65 @@ const InvoiceSummary = () => {
         roomName,
     } = location.state || {};
 
-    const [selectedCode, setSelectedCode] = useState(null);
+    // ── Promotion state ──────────────────────────────────────────
+    const [promotions, setPromotions] = useState([]);      // all valid promos from DB
+    const [promoLoading, setPromoLoading] = useState(true);
+    const [selectedPromo, setSelectedPromo] = useState(null); // chosen promo object
+    const [codeInput, setCodeInput] = useState('');         // manual code input
+    const [codeError, setCodeError] = useState(null);
+    const [codeValidating, setCodeValidating] = useState(false);
+
+    // ── Payment state ─────────────────────────────────────────────
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState(null);
 
-    const hasCombo = cartItems.length > 0;
+    // ── Load promotions from DB on mount ─────────────────────────
+    useEffect(() => {
+        getAllPromotions()
+            .then(data => {
+                const valid = (data || []).filter(isPromoValid);
+                setPromotions(valid);
+            })
+            .catch(err => console.warn('[Promo] load failed:', err))
+            .finally(() => setPromoLoading(false));
+    }, []);
 
-    const availableCodes = useMemo(() =>
-        DISCOUNT_CODES.filter(c => !c.requireCombo || hasCombo),
-        [hasCombo]
-    );
-
+    // ── Discount calculation ──────────────────────────────────────
     const discountAmount = useMemo(() =>
-        calcDiscount(selectedCode, grandTotal),
-        [selectedCode, grandTotal]
+        calcDiscountFromPromo(selectedPromo, grandTotal),
+        [selectedPromo, grandTotal]
     );
 
     const finalTotal = Math.max(0, grandTotal - discountAmount);
 
-    const handleSelectCode = (code) => {
-        setSelectedCode(prev => prev?.code === code.code ? null : code);
+    // ── Handlers ──────────────────────────────────────────────────
+    const handleSelectChip = (promo) => {
+        setCodeError(null);
+        setCodeInput('');
+        setSelectedPromo(prev => prev?.id === promo.id ? null : promo);
+    };
+
+    const handleValidateCode = async () => {
+        const code = codeInput.trim().toUpperCase();
+        if (!code) return;
+        setCodeError(null);
+        setCodeValidating(true);
+        try {
+            const promo = await validatePromotion(code);
+            if (!isPromoValid(promo)) throw new Error('Mã không còn hiệu lực.');
+            const minOrder = parseFloat(promo.minOrderAmount) || 0;
+            if (grandTotal < minOrder) {
+                setCodeError(`Đơn tối thiểu ${formatCurrency(minOrder)} mới áp dụng được mã này.`);
+                setCodeValidating(false);
+                return;
+            }
+            setSelectedPromo(promo);
+            setCodeInput('');
+        } catch (err) {
+            setCodeError(err?.message || 'Mã không hợp lệ hoặc đã hết hạn.');
+        } finally {
+            setCodeValidating(false);
+        }
     };
 
     const handlePayment = async () => {
@@ -92,7 +138,20 @@ const InvoiceSummary = () => {
             const returnUrl = `${origin}/payment/success`;
             const cancelUrl = `${origin}/payment/cancel`;
 
-            const result = await createPaymentLink(holdId, returnUrl, cancelUrl);
+            const comboPayload = cartItems.map(item => ({
+                comboId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.subtotal,
+            }));
+
+            const result = await createPaymentLink(
+                holdId, returnUrl, cancelUrl,
+                finalTotal,
+                selectedPromo?.code ?? null,
+                comboPayload,
+            );
 
             if (result?.checkoutUrl) {
                 window.location.href = result.checkoutUrl;
@@ -211,28 +270,67 @@ const InvoiceSummary = () => {
                             <span className="card-icon">🏷️</span>
                             <h2 className="card-title">Mã giảm giá</h2>
                         </div>
-                        <p className="discount-hint">Chọn một mã giảm giá để áp dụng:</p>
-                        <div className="discount-list">
-                            {availableCodes.map(code => {
-                                const isSelected = selectedCode?.code === code.code;
-                                return (
-                                    <button
-                                        key={code.code}
-                                        className={`discount-chip ${isSelected ? 'selected' : ''}`}
-                                        onClick={() => handleSelectCode(code)}
-                                        title={code.label}
-                                    >
-                                        <span className="chip-code">{code.code}</span>
-                                        <span className="chip-label">{code.label}</span>
-                                        {isSelected && <span className="chip-check">✓</span>}
-                                    </button>
-                                );
-                            })}
+                        {/* Chips từ DB */}
+                        {promoLoading ? (
+                            <p className="discount-hint">Đang tải mã giảm giá...</p>
+                        ) : promotions.length === 0 ? (
+                            <p className="discount-hint">Hiện không có mã khuyến mãi nào.</p>
+                        ) : (
+                            <>
+                                <p className="discount-hint">Chọn một mã hoặc nhập thủ công:</p>
+                                <div className="discount-list">
+                                    {promotions.map(promo => {
+                                        const isSelected = selectedPromo?.id === promo.id;
+                                        const saving = calcDiscountFromPromo(promo, grandTotal);
+                                        const label = promo.discountType === 'PERCENTAGE'
+                                            ? `Giảm ${promo.discountValue}%`
+                                            : `Giảm ${formatCurrency(promo.discountValue)}`;
+                                        return (
+                                            <button
+                                                key={promo.id}
+                                                className={`discount-chip ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => handleSelectChip(promo)}
+                                                title={promo.description || label}
+                                            >
+                                                <span className="chip-code">{promo.code}</span>
+                                                <span className="chip-label">{label}</span>
+                                                {saving > 0 && !isSelected && (
+                                                    <span className="chip-saving">– {formatCurrency(saving)}</span>
+                                                )}
+                                                {isSelected && <span className="chip-check">✓</span>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Nhập mã thủ công */}
+                        <div className="promo-input-row">
+                            <input
+                                type="text"
+                                className="promo-input"
+                                placeholder="Nhập mã giảm giá..."
+                                value={codeInput}
+                                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(null); }}
+                                onKeyDown={e => e.key === 'Enter' && handleValidateCode()}
+                            />
+                            <button
+                                className="btn-apply-code"
+                                onClick={handleValidateCode}
+                                disabled={codeValidating || !codeInput.trim()}
+                            >
+                                {codeValidating ? '...' : 'Áp dụng'}
+                            </button>
                         </div>
-                        {selectedCode && (
+                        {codeError && <p className="code-error">{codeError}</p>}
+
+                        {/* Đã áp dụng */}
+                        {selectedPromo && (
                             <div className="discount-applied">
-                                <span>✅ Đã áp dụng: <strong>{selectedCode.code}</strong></span>
+                                <span>✅ Đã áp dụng: <strong>{selectedPromo.code}</strong></span>
                                 <span className="discount-saving">– {formatCurrency(discountAmount)}</span>
+                                <button className="btn-remove-promo" onClick={() => setSelectedPromo(null)}>✕</button>
                             </div>
                         )}
                     </section>
@@ -282,9 +380,9 @@ const InvoiceSummary = () => {
                                 <span>{formatCurrency(grandTotal)}</span>
                             </div>
 
-                            {selectedCode && (
+                            {selectedPromo && discountAmount > 0 && (
                                 <div className="payment-row discount-row">
-                                    <span>Giảm giá <em>({selectedCode.code})</em></span>
+                                    <span>Giảm giá <em>({selectedPromo.code})</em></span>
                                     <span className="discount-value">– {formatCurrency(discountAmount)}</span>
                                 </div>
                             )}

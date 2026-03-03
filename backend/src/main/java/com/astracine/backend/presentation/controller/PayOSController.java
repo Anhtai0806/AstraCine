@@ -37,7 +37,8 @@ public class PayOSController {
 
         String userId = resolveUserId(user, guestUserId);
         PayOSCreateResponse response = payOSService.createPaymentLink(
-                req.getHoldId(), userId, req.getReturnUrl(), req.getCancelUrl());
+                req.getHoldId(), userId, req.getReturnUrl(), req.getCancelUrl(),
+                req.getAmount(), req.getPromotionCode(), req.getComboItems());
         return ResponseEntity.ok(response);
     }
 
