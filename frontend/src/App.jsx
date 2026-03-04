@@ -10,14 +10,14 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
-                    {/* CLIENT & AUTH */}
+                    {/* CLIENT & AUTH - Đã bao gồm /login, /register và /menu */}
+                    <Route path="/*" element={<ClientRoutes />} />
+
+
+                    <Route
+                        path="/admin/*"
                         element={
                             <ProtectedRoute>
-                                <Route path="/*" element={<ClientRoutes />} />
-
-                                {/* ADMIN */}
-                                <Route
-                                    path="/admin/*"
                                 <RoleRoute allowRoles={["ROLE_ADMIN"]}>
                                     <AdminRoutes />
                                 </RoleRoute>
@@ -31,6 +31,7 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <RoleRoute allowRoles={["STAFF"]}>
+                                    {/* Component cho Staff sẽ thêm sau */}
                                 </RoleRoute>
                             </ProtectedRoute>
                         }
