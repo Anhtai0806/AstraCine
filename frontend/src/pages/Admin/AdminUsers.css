@@ -1,0 +1,127 @@
+/* ===== PAGE WRAPPER ===== */
+.admin-users {
+  padding: 24px;
+  background: #f4f6f9;
+  min-height: 100vh;
+}
+
+.admin-users h2 {
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+/* ===== TABLE WRAPPER ===== */
+.table-wrapper {
+  background: #ffffff;
+  border: 1px solid #dcdfe4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ===== TABLE ===== */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+/* ===== HEADER ===== */
+.admin-table thead {
+  background: #f8f9fb;
+}
+
+.admin-table th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #dcdfe4;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Bỏ border phải ở cột cuối */
+.admin-table th:last-child {
+  border-right: none;
+}
+
+/* ===== BODY ===== */
+.admin-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f0f0f0;
+  color: #444;
+  vertical-align: middle;
+}
+
+.admin-table td:last-child {
+  border-right: none;
+}
+
+/* Hover row */
+.admin-table tbody tr:hover {
+  background-color: #f1f5f9;
+  transition: background 0.15s ease-in-out;
+}
+
+/* ===== STATUS ===== */
+.status-active {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.status-locked {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* ===== BUTTONS ===== */
+.btn-lock,
+.btn-unlock,
+.btn-confirm {
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  background: #f8f9fa;
+  cursor: pointer;
+}
+
+.btn-lock:hover,
+.btn-unlock:hover,
+.btn-confirm:hover {
+  background: #e2e6ea;
+}
+
+/* ===== INPUT ===== */
+.lock-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+/* ===== PAGINATION ===== */
+.pagination-wrapper {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

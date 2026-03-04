@@ -2,7 +2,7 @@ package com.astracine.backend.core.service;
 
 import java.util.List;
 
-import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,28 +18,33 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-        private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
-        @Override
-        public UserDetails loadUserByUsername(String input)
-                        throws UsernameNotFoundException {
+    @Override
+    public UserDetails loadUserByUsername(String input)
+            throws UsernameNotFoundException {
 
-                User user = userRepository
-                                .findByUsernameOrEmailOrPhone(input, input, input)
-                                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user = userRepository
+                .findByUsernameOrEmailOrPhone(input, input, input)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-                // Check trạng thái tài khoản
-                if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
-                        throw new DisabledException("User is not active");
-                }
-
-                List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
-                                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                                .toList();
-
-                return new org.springframework.security.core.userdetails.User(
-                                user.getUsername(),
-                                user.getPassword(),
-                                authorities);
+        // 🔴 CHẶN TÀI KHOẢN LOCK TẠI ĐÂY
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new LockedException(
+                    user.getLockReason() != null
+                    ? "Tài khoản của bạn đã bị khóa, lý do: " + user.getLockReason()
+                    : "Tài khoản của bạn đã bị khóa"
+            );
         }
+
+        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .toList();
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUsername())
+                .password(user.getPassword())
+                .authorities(authorities)
+                .build();
+    }
 }

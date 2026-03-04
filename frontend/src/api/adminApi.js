@@ -1,10 +1,14 @@
 import axios from "axios";
 
 const adminApi = axios.create({
-    baseURL: "http://localhost:8080/api/admin",
-    headers: {
-        "Content-Type": "application/json",
-    },
+  baseURL: "http://localhost:8080/api/admin",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  auth: {
+    username: "admin",
+    password: "Abc@12345"
+  }
 });
 
 // Add request interceptor to include JWT token
@@ -62,6 +66,18 @@ export const promotionAPI = {
     update: (id, data) => adminApi.put(`/promotions/${id}`, data),
     delete: (id) => adminApi.delete(`/promotions/${id}`),
     validate: (code) => adminApi.get(`/promotions/validate/${code}`),
+};
+
+// User APIs
+export const userAPI = {
+  getAll: (page = 0) =>
+    adminApi.get("/users", {
+      params: { page },
+    }),
+
+  lock: (id, data) => adminApi.put(`/users/${id}/lock`, data),
+
+  unlock: (id) => adminApi.put(`/users/${id}/unlock`),
 };
 
 export default adminApi;
