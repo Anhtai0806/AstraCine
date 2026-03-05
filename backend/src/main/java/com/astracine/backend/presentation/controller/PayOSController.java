@@ -38,7 +38,8 @@ public class PayOSController {
         String userId = resolveUserId(user, guestUserId);
         PayOSCreateResponse response = payOSService.createPaymentLink(
                 req.getHoldId(), userId, req.getReturnUrl(), req.getCancelUrl(),
-                req.getAmount(), req.getPromotionCode(), req.getComboItems());
+                req.getAmount(), req.getPromotionCode(), req.getComboItems(),
+                req.getDiscountAmount());
         return ResponseEntity.ok(response);
     }
 
@@ -97,10 +98,14 @@ public class PayOSController {
 
     // ---------------------
     private static String resolveUserId(UserDetails user, String guestUserId) {
-        if (user != null)
+        if (user != null) {
             return user.getUsername();
-        if (guestUserId != null && !guestUserId.isBlank())
+        } else if (guestUserId != null && !guestUserId.isBlank() && !guestUserId.startsWith("guest-")) {
+            // Frontend đang không dùng JWT, truyền trực tiếp username qua X-User-Id
             return guestUserId;
+        } else if (guestUserId != null && !guestUserId.isBlank()) {
+            return guestUserId; // Guest bình thường
+        }
         return "anonymous";
     }
 }

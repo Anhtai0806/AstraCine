@@ -27,30 +27,53 @@ function getBearerToken() {
     );
 }
 
+// bật dev basic nếu muốn (mặc định false)
+const DEV_BASIC_ENABLED = (import.meta.env.VITE_DEV_BASIC || "false") === "true";
+
+function getAuthHeader() {
+    const token = getBearerToken();
+    if (token) return `Bearer ${token}`;
+
+    if (DEV_BASIC_ENABLED) {
+        const stored = localStorage.getItem("basicAuth");
+        if (stored) return stored.startsWith("Basic ") ? stored : `Basic ${stored}`;
+        return `Basic ${btoa("admin:admin")}`;
+    }
+
+    return null;
+}
+
 /**
  * Quy tắc auth (giống seatHoldApi.js):
  * - Có Bearer token → dùng Bearer, KHÔNG gửi X-User-Id
- * - Không có token  → không gửi Authorization, gửi X-User-Id (guestId)
- *
- * ⚠️ KHÔNG fallback Basic auth:
- *    Basic admin:admin khiến backend resolve userId="admin"
- *    nhưng hold được lưu dưới guestId → HOLD_NOT_FOUND
+ * - Không có token  → đọc localStorage "user", nếu có gắn vào X-User-Id. Nếu không có dùng random guestId
+ * - Có DEV_BASIC_ENABLED → fallback Basic
  */
 async function request(path, options = {}) {
+    const auth = getAuthHeader();
     const token = getBearerToken();
 
-    const authHeaders = token
-        ? { Authorization: `Bearer ${token}` }
-        : { "X-User-Id": getGuestId() };
+    let username = null;
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user && user.username) {
+            username = user.username;
+        }
+    } catch (_) { }
+
+    const guestHeader = token ? {} : { "X-User-Id": username || getGuestId() };
+
+    const headers = {
+        "Content-Type": "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+        ...guestHeader,
+        ...(options.headers || {}),
+    };
 
     const res = await fetch(`${API_BASE}${path}`, {
         ...options,
         credentials: "include",
-        headers: {
-            "Content-Type": "application/json",
-            ...authHeaders,
-            ...(options.headers || {}),
-        },
+        headers,
     });
 
     if (!res.ok) {
@@ -71,8 +94,9 @@ async function request(path, options = {}) {
  * @param {number} amount - Số tiền thực tế (VND, sau giảm giá)
  * @param {string|null} promotionCode - Mã khuyến mãi đã áp dụng
  * @param {Array} comboItems - Danh sách combo [{comboId, name, quantity, price, subtotal}]
+ * @param {number} discountAmount - Số tiền được giảm (để hiển thị trong PayOS)
  */
-export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, promotionCode, comboItems) {
+export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, promotionCode, comboItems, discountAmount) {
     return request("/api/payments/payos/create", {
         method: "POST",
         body: JSON.stringify({
@@ -82,6 +106,7 @@ export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, pr
             amount: Math.round(amount),
             promotionCode: promotionCode || null,
             comboItems: comboItems || [],
+            discountAmount: discountAmount ? Math.round(discountAmount) : null,
         }),
     });
 }

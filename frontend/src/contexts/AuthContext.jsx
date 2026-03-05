@@ -22,11 +22,17 @@ export function AuthProvider({ children }) {
 
     setUser(normalizedUser);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
+
+    // Lưu JWT token để các API có thể dùng Bearer auth
+    if (userData.token) {
+      localStorage.setItem("accessToken", userData.token);
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
   };
 
   const hasRole = (role) => {

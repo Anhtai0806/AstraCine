@@ -23,6 +23,10 @@ function TopBar() {
                   Tài khoản của tôi
                 </Link>
 
+                <Link to="/order-history" className="logout-btn">
+                  Lịch sử mua hàng
+                </Link>
+
                 <button className="logout-btn" onClick={logout}>
                   Đăng xuất <IoIosLogOut className="logout-icon" />
                 </button>

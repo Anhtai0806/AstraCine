@@ -67,13 +67,16 @@ public class PayOSService {
     private final PayOS payOS;
     private final StringRedisTemplate redis;
     private final InvoiceService invoiceService;
+    private final SeatHoldService seatHoldService;
     private final ObjectMapper objectMapper;
 
     public PayOSService(PayOS payOS, StringRedisTemplate redis,
-            InvoiceService invoiceService, ObjectMapper objectMapper) {
+            InvoiceService invoiceService, SeatHoldService seatHoldService,
+            ObjectMapper objectMapper) {
         this.payOS = payOS;
         this.redis = redis;
         this.invoiceService = invoiceService;
+        this.seatHoldService = seatHoldService;
         this.objectMapper = objectMapper;
     }
 
@@ -83,7 +86,8 @@ public class PayOSService {
     public PayOSCreateResponse createPaymentLink(String holdId, String userId,
             String returnUrl, String cancelUrl,
             Long frontendAmount, String promotionCode,
-            List<ComboCartItemDTO> comboItems) {
+            List<ComboCartItemDTO> comboItems,
+            Long discountAmount) {
 
         HoldMeta hold = readHoldMeta(holdId, userId);
 
@@ -123,18 +127,70 @@ public class PayOSService {
         long ttlMillis = Math.max(60_000, hold.expiresAt - Instant.now().toEpochMilli());
         long expiredAtEpoch = Instant.now().plusMillis(ttlMillis).getEpochSecond();
 
-        long pricePerSeat = hold.seatCount > 0 ? amount / hold.seatCount : amount;
-        PaymentLinkItem ticket = PaymentLinkItem.builder()
+        // Tính tổng tiền combo để suy ra tiền vé
+        long totalComboAmount = 0L;
+        if (comboItems != null) {
+            for (ComboCartItemDTO combo : comboItems) {
+                if (combo.getSubtotal() != null) {
+                    totalComboAmount += combo.getSubtotal().longValue();
+                } else if (combo.getPrice() != null && combo.getQuantity() != null) {
+                    totalComboAmount += combo.getPrice().longValue() * combo.getQuantity();
+                }
+            }
+        }
+        // Số tiền giảm giá (nếu FE truyền lên)
+        long discount = (discountAmount != null && discountAmount > 0) ? discountAmount : 0L;
+        // Tiền vé = tổng - combo (trước giảm giá), vì amount đã trừ giảm giá rồi
+        // Để tổng items = amount: ticketAmount = amount - combo + discount
+        long ticketAmount = Math.max(amount - totalComboAmount + discount, 0L);
+        long pricePerSeat = hold.seatCount > 0 ? ticketAmount / hold.seatCount : ticketAmount;
+
+        List<PaymentLinkItem> paymentItems = new java.util.ArrayList<>();
+        paymentItems.add(PaymentLinkItem.builder()
                 .name("Ve xem phim")
                 .quantity(hold.seatCount > 0 ? hold.seatCount : 1)
                 .price(pricePerSeat)
-                .build();
+                .build());
+
+        // Thêm từng combo vào danh sách items
+        if (comboItems != null) {
+            for (ComboCartItemDTO combo : comboItems) {
+                if (combo.getQuantity() == null || combo.getQuantity() <= 0)
+                    continue;
+                long unitPrice = combo.getPrice() != null ? combo.getPrice().longValue() : 0L;
+                String comboName = combo.getName() != null ? combo.getName() : "Bap nuoc";
+                // PayOS giới hạn tên tối đa 50 ký tự
+                if (comboName.length() > 50)
+                    comboName = comboName.substring(0, 50);
+                paymentItems.add(PaymentLinkItem.builder()
+                        .name(comboName)
+                        .quantity(combo.getQuantity())
+                        .price(unitPrice)
+                        .build());
+            }
+        }
+
+        // Thêm item giảm giá (giá âm) nếu có
+        if (discount > 0) {
+            String discountLabel = "Giam gia";
+            if (promotionCode != null && !promotionCode.isBlank()) {
+                String suffix = " (" + promotionCode + ")";
+                discountLabel = ("Giam gia" + suffix).length() <= 50
+                        ? "Giam gia" + suffix
+                        : "Giam gia";
+            }
+            paymentItems.add(PaymentLinkItem.builder()
+                    .name(discountLabel)
+                    .quantity(1)
+                    .price(-discount)
+                    .build());
+        }
 
         CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
                 .amount(amount)
                 .description(description)
-                .items(List.of(ticket))
+                .items(paymentItems)
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
                 .expiredAt(expiredAtEpoch)
@@ -243,6 +299,18 @@ public class PayOSService {
                 } catch (Exception ex) {
                     log.error("[PayOS] Invoice creation failed orderCode={}: {}", orderCode, ex.getMessage(), ex);
                     // Không throw — vẫn trả 200 cho PayOS để tránh retry
+                }
+            }
+
+            // Giải phóng hold khi thanh toán bị huỷ (lớp bảo vệ phía server)
+            if (!isPaid && !"CANCELLED".equals(currentStatus)) {
+                try {
+                    seatHoldService.releaseHold(holdId, userId);
+                    log.info("[PayOS] Hold released on cancel orderCode={} holdId={}", orderCode, holdId);
+                } catch (Exception ex) {
+                    // Hold có thể đã expire — bỏ qua
+                    log.warn("[PayOS] Release hold failed (may have expired) orderCode={}: {}", orderCode,
+                            ex.getMessage());
                 }
             }
 

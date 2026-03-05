@@ -19,6 +19,7 @@ import MoviesPage from "../pages/Movies/MoviesPage";
 import MovieDetailPage from "../pages/MovieDetail/MovieDetailPage";
 import ForgotPassword from "../pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword/ResetPassword";
+import OrderHistory from "../pages/OrderHistory/OrderHistory";
 
 export default function ClientRoutes() {
   return (
@@ -33,6 +34,14 @@ export default function ClientRoutes() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="order-history"
+          element={
+            <ProtectedRoute>
+              <OrderHistory />
             </ProtectedRoute>
           }
         />

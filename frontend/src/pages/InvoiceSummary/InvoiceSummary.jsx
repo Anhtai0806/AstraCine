@@ -136,7 +136,7 @@ const InvoiceSummary = () => {
         try {
             const origin = window.location.origin;
             const returnUrl = `${origin}/payment/success`;
-            const cancelUrl = `${origin}/payment/cancel`;
+            const cancelUrl = `${origin}/payment/cancel?holdId=${encodeURIComponent(holdId)}`;
 
             const comboPayload = cartItems.map(item => ({
                 comboId: item.id,
@@ -151,6 +151,7 @@ const InvoiceSummary = () => {
                 finalTotal,
                 selectedPromo?.code ?? null,
                 comboPayload,
+                discountAmount > 0 ? discountAmount : null,
             );
 
             if (result?.checkoutUrl) {

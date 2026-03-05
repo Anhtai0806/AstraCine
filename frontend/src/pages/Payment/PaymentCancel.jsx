@@ -1,11 +1,24 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { seatHoldApi } from '../../api/seatHoldApi';
 import './Payment.css';
 
 const PaymentCancel = () => {
     const [params] = useSearchParams();
     const navigate = useNavigate();
     const orderCode = params.get('orderCode');
+    const holdId = params.get('holdId');
+    const releasedRef = useRef(false);
+
+    // Tự động giải phóng hold khi user hủy thanh toán
+    useEffect(() => {
+        if (!holdId || releasedRef.current) return;
+        releasedRef.current = true;
+
+        seatHoldApi.releaseHold(holdId)
+            .then(() => console.info('[PaymentCancel] Hold released:', holdId))
+            .catch(err => console.warn('[PaymentCancel] Release hold failed (may already expired):', err));
+    }, [holdId]);
 
     return (
         <div className="payment-result-page">
@@ -19,7 +32,7 @@ const PaymentCancel = () => {
 
                 <h1 className="result-title">Thanh toán bị huỷ</h1>
                 <p className="result-sub">
-                    Bạn đã huỷ thanh toán. Ghế của bạn vẫn đang được giữ trong thời gian ngắn.
+                    Bạn đã huỷ thanh toán. Ghế đã được giải phóng để người khác có thể đặt.
                 </p>
 
                 {orderCode && (
@@ -30,15 +43,15 @@ const PaymentCancel = () => {
                 )}
 
                 <p className="result-notice">
-                    ⚠️ Nếu bạn muốn hoàn tất giao dịch, hãy quay lại và thử lại trước khi hết thời gian giữ ghế.
+                    💡 Bạn có thể quay lại và chọn ghế mới để tiếp tục đặt vé.
                 </p>
 
                 <div className="result-actions">
-                    <button className="btn-result-back" onClick={() => navigate(-1)}>
-                        ← Quay lại đặt vé
-                    </button>
-                    <button className="btn-result-secondary" onClick={() => navigate('/')}>
+                    <button className="btn-result-back" onClick={() => navigate('/')}>
                         🏠 Về trang chủ
+                    </button>
+                    <button className="btn-result-secondary" onClick={() => navigate('/movies')}>
+                        🎬 Xem phim khác
                     </button>
                 </div>
             </div>

@@ -27,6 +27,9 @@ public class PayOSCreateRequest {
     /** Mã khuyến mãi đã áp dụng (tùy chọn) */
     private String promotionCode;
 
+    /** Số tiền được giảm (tùy chọn, để hiển thị trong PayOS items) */
+    private Long discountAmount;
+
     /** Danh sách combo đã chọn — để lưu vào invoice_combos sau thanh toán */
     private List<ComboCartItemDTO> comboItems;
 }

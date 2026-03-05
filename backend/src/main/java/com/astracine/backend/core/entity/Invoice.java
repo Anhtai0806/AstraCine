@@ -18,9 +18,9 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** customer_id nullable — guest checkout */
-    @Column(name = "customer_id")
-    private Long customerId;
+    /** Tên đăng nhập của customer — dùng để query lịch sử */
+    @Column(name = "customer_username", length = 100)
+    private String customerUsername;
 
     /**
      * staff_id nullable — null khi customer tự đặt online, có giá trị khi staff hỗ

@@ -3,6 +3,7 @@ package com.astracine.backend.core.service;
 import com.astracine.backend.core.entity.*;
 import com.astracine.backend.core.repository.*;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
+import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class InvoiceService {
     private final ComboRepository comboRepository;
     private final PromotionRepository promotionRepository;
     private final UserRepository userRepository;
+    private final MovieRepository movieRepository;
     private final SeatHoldService seatHoldService;
 
     /**
@@ -58,28 +60,25 @@ public class InvoiceService {
                 .orElseThrow(() -> new IllegalStateException("Showtime not found: " + showtimeId));
 
         // 2. Resolve user — tìm theo username (đăng nhập) hoặc email/phone/guestId
-        // userId là username của người dùng đã đăng nhập, hoặc guestId nếu không đăng
-        // nhập.
         Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(userId, userId, userId);
 
-        // customerId: ID của khách hàng nếu tìm thấy, null nếu là guest không đăng nhập
-        Long customerId = userOpt.map(User::getId).orElse(null);
+        // customerUsername: lưu trực tiếp để query lịch sử sau này
+        String customerUsername = userOpt.map(User::getUsername).orElse(userId);
 
-        // staffId: null khi customer tự đặt online (không có nhân viên hỗ trợ)
-        // Sẽ được gán giá trị khi staff tạo invoice thay khách (future flow)
+        // staffId: null khi customer tự đặt online
         Long staffId = null;
 
         // 3. Tạo Invoice
         Invoice newInvoice = Invoice.builder()
                 .showtime(showtime)
                 .staffId(staffId)
-                .customerId(customerId) // null khi guest, có giá trị khi đăng nhập
+                .customerUsername(customerUsername)
                 .totalAmount(amount)
                 .status("PAID")
                 .build();
         final Invoice inv = invoiceRepository.save(newInvoice);
-        log.info("[Invoice] Created id={} holdId={} orderCode={} customerId={} staffId={}",
-                inv.getId(), holdId, orderCode, customerId, staffId);
+        log.info("[Invoice] Created id={} holdId={} orderCode={} customerUsername={}",
+                inv.getId(), holdId, orderCode, customerUsername);
 
         // 4. Tạo Payment
         paymentRepository.save(Payment.builder()
@@ -162,5 +161,80 @@ public class InvoiceService {
                 }
             });
         }
+    }
+
+    /**
+     * Lấy lịch sử mua hàng của user đang đăng nhập.
+     *
+     * @param username Tên đăng nhập (SpringSecurity principal)
+     * @return Danh sách hoá đơn kèm chi tiết
+     */
+
+    public List<InvoiceHistoryDTO> getInvoiceHistory(String username) {
+        Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(username, username, username);
+        if (userOpt.isEmpty()) {
+            log.warn("[InvoiceHistory] User not found for username={}, returning empty list", username);
+            return java.util.Collections.emptyList();
+        }
+        User user = userOpt.get();
+
+        List<Invoice> invoices = invoiceRepository
+                .findByCustomerUsernameOrderByCreatedAtDesc(user.getUsername());
+
+        return invoices.stream().map(inv -> {
+            Showtime showtime = inv.getShowtime();
+
+            // Movie info (title, poster)
+            String movieTitle = null;
+            String moviePosterUrl = null;
+            if (showtime != null && showtime.getMovieId() != null) {
+                Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
+                if (movieOpt.isPresent()) {
+                    movieTitle = movieOpt.get().getTitle();
+                    moviePosterUrl = movieOpt.get().getPosterUrl();
+                }
+            }
+
+            // Seats
+            List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
+            List<InvoiceHistoryDTO.SeatItem> seats = tickets.stream().map(t -> {
+                ShowtimeSeat ss = t.getShowtimeSeat();
+                Seat seat = ss != null ? ss.getSeat() : null;
+                String code = seat != null ? seat.getRowLabel() + seat.getColumnNumber() : "?";
+                String type = seat != null && seat.getSeatType() != null ? seat.getSeatType().name() : "";
+                return InvoiceHistoryDTO.SeatItem.builder()
+                        .seatCode(code)
+                        .seatType(type)
+                        .price(t.getPrice())
+                        .build();
+            }).toList();
+
+            // Combos
+            List<InvoiceCombo> combos = invoiceComboRepository.findByInvoiceId(inv.getId());
+            List<InvoiceHistoryDTO.ComboItem> comboItems = combos.stream().map(ic -> {
+                String comboName = ic.getCombo() != null ? ic.getCombo().getName() : "Combo";
+                return InvoiceHistoryDTO.ComboItem.builder()
+                        .comboName(comboName)
+                        .quantity(ic.getQuantity())
+                        .price(ic.getPrice())
+                        .build();
+            }).toList();
+
+            return InvoiceHistoryDTO.builder()
+                    .invoiceId(inv.getId())
+                    .status(inv.getStatus())
+                    .totalAmount(inv.getTotalAmount())
+                    .createdAt(inv.getCreatedAt())
+                    .showtimeId(showtime != null ? showtime.getId() : null)
+                    .movieId(showtime != null ? showtime.getMovieId() : null)
+                    .movieTitle(movieTitle)
+                    .moviePosterUrl(moviePosterUrl)
+                    .startTime(showtime != null ? showtime.getStartTime() : null)
+                    .endTime(showtime != null ? showtime.getEndTime() : null)
+                    .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
+                    .seats(seats)
+                    .combos(comboItems)
+                    .build();
+        }).toList();
     }
 }
