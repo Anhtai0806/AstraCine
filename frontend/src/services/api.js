@@ -12,12 +12,12 @@ const api = axios.create({
 // Add a request interceptor to include Basic Auth
 api.interceptors.request.use(
     (config) => {
-        // Sử dụng Basic Auth
-        const basicAuth = localStorage.getItem('basicAuth');
-        if (basicAuth) {
-            config.headers.Authorization = `Basic ${basicAuth}`;
+        // Sử dụng JWT Auth
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
-        
+
         return config;
     },
     (error) => {
@@ -54,7 +54,7 @@ export const movieAPI = {
     }),
     delete: (id) => api.delete(`/api/admin/movies/${id}`),
 };
-    export const comboAPI = {
+export const comboAPI = {
     getAll: () => api.get('/api/combos'),
 
     getActive: () => api.get('/api/combos/active'),

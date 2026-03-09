@@ -10,12 +10,9 @@ const adminApi = axios.create({
 // Add request interceptor to include JWT token
 adminApi.interceptors.request.use(
     (config) => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            if (user.token) {
-                config.headers.Authorization = `Bearer ${user.token}`;
-            }
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },

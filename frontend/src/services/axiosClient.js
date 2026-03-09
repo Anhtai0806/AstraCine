@@ -9,13 +9,13 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(async (config) => {
     // Lấy token từ localStorage (nơi bạn lưu khi Login thành công)
-    const token = localStorage.getItem('token'); 
-    
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+
     if (token) {
         // Gắn vào header: Authorization: Bearer eyJhbGci...
         config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
 }, (error) => {
     return Promise.reject(error);
