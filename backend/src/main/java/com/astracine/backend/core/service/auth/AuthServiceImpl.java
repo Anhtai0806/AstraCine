@@ -4,6 +4,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.astracine.backend.core.entity.Role;
@@ -11,6 +15,7 @@ import com.astracine.backend.core.entity.User;
 import com.astracine.backend.core.repository.RoleRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.core.service.PasswordResetService;
+import com.astracine.backend.infrastructure.security.JwtTokenProvider;
 import com.astracine.backend.presentation.dto.auth.AuthResponse;
 import com.astracine.backend.presentation.dto.auth.LoginRequest;
 import com.astracine.backend.presentation.dto.auth.RegisterRequest;
@@ -22,16 +27,22 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider tokenProvider;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            PasswordResetService passwordResetService) {
+            PasswordResetService passwordResetService,
+            AuthenticationManager authenticationManager,
+            JwtTokenProvider tokenProvider) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
+        this.authenticationManager = authenticationManager;
+        this.tokenProvider = tokenProvider;
     }
 
     // ================= LOGIN =================
@@ -51,7 +62,13 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Invalid username/email/phone or password");
         }
 
-        return buildAuthResponse(user);
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword()));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = tokenProvider.generateToken(authentication);
+
+        return buildAuthResponse(user, jwt);
     }
 
     // ================= REGISTER =================
@@ -89,7 +106,13 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         // Auto login sau register
-        return buildAuthResponse(user);
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword()));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = tokenProvider.generateToken(authentication);
+
+        return buildAuthResponse(user, jwt);
     }
 
     // ================= PASSWORD RESET =================
@@ -104,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ================= BUILD RESPONSE =================
-    private AuthResponse buildAuthResponse(User user) {
+    private AuthResponse buildAuthResponse(User user, String jwt) {
 
         Set<String> roles = user.getRoles()
                 .stream()
@@ -112,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
                 .collect(Collectors.toSet());
 
         return new AuthResponse(
-                null, // JWT sẽ làm sau
+                jwt,
                 user.getId(),
                 user.getUsername(),
                 user.getFullName(),

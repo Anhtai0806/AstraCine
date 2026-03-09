@@ -1,5 +1,6 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom'; // 👈 Nhớ import Routes
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 import AdminLayout from '../layouts/AdminLayout';
 import Dashboard from '../pages/Admin/Dashboard';
@@ -9,9 +10,20 @@ import ShowtimeManager from '../pages/Admin/ShowtimeManager';
 import AdminMovies from '../pages/Admin/AdminMovies';
 import AdminGenres from '../pages/Admin/AdminGenres';
 import AdminPromotions from '../pages/Admin/AdminPromotions';
+
 const AdminRoutes = () => {
+    const { user } = useAuth();
+
+    // Kiểm tra authentication và role
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (!user.roles?.includes("ROLE_ADMIN")) {
+        return <Navigate to="/" replace />;
+    }
+
     return (
-        /* 👇 QUAN TRỌNG: Phải bọc trong <Routes> vì đây là một Component độc lập */
         <Routes>
             <Route element={<AdminLayout />}>
                 {/* Mặc định vào /admin -> nhảy sang dashboard */}
@@ -25,7 +37,6 @@ const AdminRoutes = () => {
                 <Route path="promotions" element={<AdminPromotions />} />
                 <Route path="time-slots" element={<TimeSlotManager />} />
                 <Route path="showtimes" element={<ShowtimeManager />} />
-
             </Route>
         </Routes>
     );

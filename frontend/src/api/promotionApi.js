@@ -1,12 +1,45 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
+function getBearerToken() {
+    return (
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("accessToken") ||
+        sessionStorage.getItem("token") ||
+        null
+    );
+}
+
+function getAuthHeader() {
+    const token = getBearerToken();
+    if (token) return `Bearer ${token}`;
+    return null;
+}
+
 async function request(path, options = {}) {
+    let username = null;
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user && user.username) {
+            username = user.username;
+        }
+    } catch (_) { }
+
+    const auth = getAuthHeader();
+    const token = getBearerToken();
+    const guestHeader = token ? {} : { "X-User-Id": username || localStorage.getItem("guestUserId") || "anonymous" };
+
+    const headers = {
+        "Content-Type": "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+        ...guestHeader,
+        ...(options.headers || {}),
+    };
+
     const res = await fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-        },
+        credentials: "include",
+        headers,
     });
     if (!res.ok) {
         let err;
@@ -23,7 +56,7 @@ async function request(path, options = {}) {
  * @returns {Promise<Array>}
  */
 export async function getAllPromotions() {
-    return request("/api/admin/promotions");
+    return request("/api/promotions");
 }
 
 /**
@@ -33,5 +66,5 @@ export async function getAllPromotions() {
  * @returns {Promise<Object>} PromotionDTO
  */
 export async function validatePromotion(code) {
-    return request(`/api/admin/promotions/validate/${encodeURIComponent(code)}`);
+    return request(`/api/promotions/validate/${encodeURIComponent(code)}`);
 }

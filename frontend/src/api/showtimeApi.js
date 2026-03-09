@@ -13,10 +13,20 @@ function getGuestId() {
     return id;
 }
 
+function getBearerToken() {
+    return (
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("accessToken") ||
+        sessionStorage.getItem("token") ||
+        null
+    );
+}
+
 function getAuthHeader() {
-    const stored = localStorage.getItem("basicAuth");
-    if (stored) return stored.startsWith("Basic ") ? stored : `Basic ${stored}`;
-    return `Basic ${btoa("admin:admin")}`;
+    const token = getBearerToken();
+    if (token) return `Bearer ${token}`;
+    return null;
 }
 
 async function request(path, options = {}) {
@@ -32,7 +42,12 @@ async function request(path, options = {}) {
 
     if (!res.ok) {
         let err;
-        try { err = await res.json(); } catch (_) { err = { message: await res.text() }; }
+        const text = await res.text();
+        try {
+            err = JSON.parse(text);
+        } catch (_) {
+            err = { message: text };
+        }
         throw { status: res.status, ...err };
     }
     if (res.status === 204) return null;
@@ -41,5 +56,13 @@ async function request(path, options = {}) {
 }
 
 export const showtimeApi = {
-    listShowtimes: () => request("/api/admin/showtimes", { method: "GET" }),
+    listShowtimes: async () => {
+        // Sử dụng endpoint public cho client
+        const res = await fetch(`${API_BASE}/api/public/showtimes`);
+        if (!res.ok) {
+            throw { status: res.status, message: `Failed to fetch showtimes: ${res.statusText}` };
+        }
+        const text = await res.text();
+        return text ? JSON.parse(text) : [];
+    },
 };

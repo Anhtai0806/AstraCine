@@ -8,9 +8,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const token = localStorage.getItem("accessToken");
+
+    // Nếu có user nhưng không có token (trường hợp còn sót lại từ Basic Auth cũ)
+    if (storedUser && !token) {
+      localStorage.removeItem("user");
+      setUser(null);
+    } else if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
     setLoading(false);
   }, []);
 

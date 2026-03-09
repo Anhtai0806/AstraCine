@@ -9,16 +9,15 @@ const api = axios.create({
     },
 });
 
-// Add a request interceptor to include the JWT token
+// Add a request interceptor to include Basic Auth
 api.interceptors.request.use(
     (config) => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            if (user.token) {
-                config.headers.Authorization = `Bearer ${user.token}`;
-            }
+        // Sử dụng Basic Auth
+        const basicAuth = localStorage.getItem('basicAuth');
+        if (basicAuth) {
+            config.headers.Authorization = `Basic ${basicAuth}`;
         }
+        
         return config;
     },
     (error) => {

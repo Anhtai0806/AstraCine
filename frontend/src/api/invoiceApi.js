@@ -10,19 +10,9 @@ function getBearerToken() {
     );
 }
 
-// bật dev basic nếu muốn (mặc định false)
-const DEV_BASIC_ENABLED = (import.meta.env.VITE_DEV_BASIC || "false") === "true";
-
 function getAuthHeader() {
     const token = getBearerToken();
     if (token) return `Bearer ${token}`;
-
-    if (DEV_BASIC_ENABLED) {
-        const stored = localStorage.getItem("basicAuth");
-        if (stored) return stored.startsWith("Basic ") ? stored : `Basic ${stored}`;
-        return `Basic ${btoa("admin:admin")}`;
-    }
-
     return null;
 }
 
@@ -54,7 +44,12 @@ async function request(path, options = {}) {
     });
     if (!res.ok) {
         let err;
-        try { err = await res.json(); } catch (_) { err = { message: await res.text() }; }
+        const text = await res.text();
+        try {
+            err = JSON.parse(text);
+        } catch (_) {
+            err = { message: text };
+        }
         throw { status: res.status, ...err };
     }
     if (res.status === 204) return null;

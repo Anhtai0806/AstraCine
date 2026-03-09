@@ -6,7 +6,10 @@ import { loginApi } from "../../api/authApi";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+  
+  const returnUrl = location.state?.from?.pathname;
 
   const [form, setForm] = useState({
     identifier: "",
@@ -45,7 +48,13 @@ function Login() {
 
       const res = await loginApi(form);
 
-      login(res.data);
+      // Thêm password vào response data để lưu cho Basic Auth
+      const userDataWithPassword = {
+        ...res.data,
+        password: form.password // Lưu password để dùng cho Basic Auth
+      };
+
+      login(userDataWithPassword);
 
       const roles = res.data.roles || [];
 

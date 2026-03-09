@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { showtimeApi } from "../../api/showtimeApi.js";
 import { timeSlotApi } from "../../api/timeSlotApi.js";
 import movieApi from "../../api/movieApi.js";
-import { useAuth } from "../../contexts/AuthContext.jsx";
 import "./ShowtimeBrowser.css";
 
 function formatDateTime(iso) {
@@ -35,7 +34,6 @@ function parseDate(iso) {
 export default function ShowtimeBrowser() {
     const nav = useNavigate();
     const { movieId } = useParams(); // for /booking/movies/:movieId
-    const { user } = useAuth();
 
     const [items, setItems] = useState([]);           // all showtimes
     const [nowShowingMovies, setNowShowingMovies] = useState([]); // all NOW_SHOWING films
@@ -68,7 +66,7 @@ export default function ShowtimeBrowser() {
     }, []);
 
     useEffect(() => {
-        // Load all showtimes (admin endpoint — contains movieTitle, startTime, etc.)
+        // Load all showtimes (sử dụng public endpoint)
         showtimeApi
             .listShowtimes()
             .then(setItems)
@@ -86,12 +84,13 @@ export default function ShowtimeBrowser() {
                 setNowShowingMovies([]);
             });
 
-        // Load time slot tabs
+        // Load time slot tabs (optional - chỉ dành cho admin)
         timeSlotApi
             .list()
             .then(setSlots)
             .catch((e) => {
-                console.warn("load time slots failed", e);
+                console.warn("load time slots failed (expected for public users)", e);
+                // Không set error để trang vẫn hoạt động bình thường
                 setSlots([]);
             });
     }, []);
@@ -184,22 +183,14 @@ export default function ShowtimeBrowser() {
     }, [filtered, nowShowingMovies, movieId]);
 
     const handlePickShowtime = (s, movieTitle) => {
-        // 1. Auth guard
-        if (!user) {
-            nav("/login", {
-                state: { returnUrl: `/booking/showtimes/${s.id}` },
-            });
-            return;
-        }
-
-        // 2. Validate suất chiếu chưa qua
+        // 1. Validate suất chiếu chưa qua
         const start = parseDate(s.startTime);
         if (!start || start <= new Date()) {
             alert("Suất chiếu đã qua hoặc không hợp lệ. Vui lòng chọn suất khác.");
             return;
         }
 
-        // 3. Navigate với thông tin phim + giờ chiếu
+        // 2. Navigate với thông tin phim + giờ chiếu (không cần đăng nhập ở đây)
         nav(`/booking/showtimes/${s.id}`, {
             state: {
                 movieTitle: movieTitle || s.movieTitle || "",
@@ -223,25 +214,27 @@ export default function ShowtimeBrowser() {
                 />
             </div>
 
-            {/* Time Slot Tabs */}
-            <div className="slot-tabs">
-                <button
-                    className={`tab ${activeSlotId === "ALL" ? "active" : ""}`}
-                    onClick={() => setActiveSlotId("ALL")}
-                >
-                    Tất cả
-                </button>
-                {slots.map((sl) => (
+            {/* Time Slot Tabs - chỉ hiển thị nếu có slots */}
+            {slots.length > 0 && (
+                <div className="slot-tabs">
                     <button
-                        key={sl.id}
-                        className={`tab ${String(activeSlotId) === String(sl.id) ? "active" : ""}`}
-                        onClick={() => setActiveSlotId(sl.id)}
-                        title={`Khung giờ: ${(sl.startTime || sl.from || "").slice(0, 5)} - ${(sl.endTime || sl.to || "").slice(0, 5)}`}
+                        className={`tab ${activeSlotId === "ALL" ? "active" : ""}`}
+                        onClick={() => setActiveSlotId("ALL")}
                     >
-                        {sl.name || sl.label || `Slot ${sl.id}`}
+                        Tất cả
                     </button>
-                ))}
-            </div>
+                    {slots.map((sl) => (
+                        <button
+                            key={sl.id}
+                            className={`tab ${String(activeSlotId) === String(sl.id) ? "active" : ""}`}
+                            onClick={() => setActiveSlotId(sl.id)}
+                            title={`Khung giờ: ${(sl.startTime || sl.from || "").slice(0, 5)} - ${(sl.endTime || sl.to || "").slice(0, 5)}`}
+                        >
+                            {sl.name || sl.label || `Slot ${sl.id}`}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* 7-day picker */}
             <div className="day-picker">

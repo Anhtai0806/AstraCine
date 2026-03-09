@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Spin, Empty, message } from 'antd';
 import { comboAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import './ComboMenu.css';
 
 const formatCurrency = (amount) =>
@@ -11,6 +12,17 @@ const ComboMenu = () => {
     const { showtimeId } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Kiểm tra authentication
+    useEffect(() => {
+        if (!user) {
+            navigate("/login", {
+                state: { returnUrl: `/booking/showtimes/${showtimeId}` },
+            });
+            return;
+        }
+    }, [user, navigate, showtimeId]);
 
     // Nhận state từ SeatSelection (hoặc từ InvoiceSummary khi quay lại)
     const {

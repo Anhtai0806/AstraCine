@@ -79,6 +79,14 @@ const InvoiceSummary = () => {
 
     // ── Load promotions from DB on mount ─────────────────────────
     useEffect(() => {
+        // Kiểm tra authentication
+        if (!user) {
+            navigate("/login", {
+                state: { returnUrl: `/booking/showtimes/${showtimeId}` },
+            });
+            return;
+        }
+
         getAllPromotions()
             .then(data => {
                 const valid = (data || []).filter(isPromoValid);
@@ -86,7 +94,7 @@ const InvoiceSummary = () => {
             })
             .catch(err => console.warn('[Promo] load failed:', err))
             .finally(() => setPromoLoading(false));
-    }, []);
+    }, [user, navigate, showtimeId]);
 
     // ── Discount calculation ──────────────────────────────────────
     const discountAmount = useMemo(() =>

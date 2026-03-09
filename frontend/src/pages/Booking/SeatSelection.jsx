@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { seatHoldApi } from "../../api/seatHoldApi.js";
 import { connectSeatSocket } from "/src/services/seatHoldSocket.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 import SeatGrid from "../../components/admin/SeatGrid.jsx";
 import "../../components/admin/SeatGrid.css";
@@ -39,6 +40,7 @@ export default function SeatSelection() {
     const { showtimeId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth();
     const sid = useMemo(() => Number(showtimeId), [showtimeId]);
 
     // Thông tin phim/suất chiếu được truyền từ ShowtimeBrowser
@@ -199,6 +201,14 @@ export default function SeatSelection() {
     }, [sortedSeats, selectedSeatIds]);
 
     async function toggleSeat(seatId) {
+        // Kiểm tra đăng nhập trước khi cho phép chọn ghế
+        if (!user) {
+            navigate("/login", {
+                state: { returnUrl: `/booking/showtimes/${showtimeId}` },
+            });
+            return;
+        }
+
         setError(null);
 
         const seat = seatById.get(seatId);
@@ -309,6 +319,19 @@ export default function SeatSelection() {
                             </span>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* Login notice for unauthenticated users */}
+            {!user && (
+                <div className="login-notice">
+                    <span className="notice-icon">🔐</span>
+                    <span>Vui lòng <button 
+                        className="login-link" 
+                        onClick={() => navigate("/login", { state: { returnUrl: `/booking/showtimes/${showtimeId}` } })}
+                    >
+                        đăng nhập
+                    </button> để chọn ghế và đặt vé.</span>
                 </div>
             )}
 
