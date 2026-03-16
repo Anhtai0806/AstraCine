@@ -1,22 +1,99 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { getETicket } from '../../api/ticketApi';
 import './TicketResult.css';
 
 const TicketResult = () => {
-    // MOCK DATA: Giả lập dữ liệu trả về từ API sau khi M4 xử lý thanh toán xong
-    // Dữ liệu này được join từ các bảng: movies, rooms, showtimes, seats, tickets
-    const ticketData = {
-        movieTitle: "ĐÀO, PHỞ VÀ PIANO",
-        ageRating: "T18",
-        duration: "120 Phút",
-        showDate: "15 Thg 4, 2026",
-        startTime: "19:30",
-        roomName: "Cinema 01 - IMAX",
-        seats: "H5, H6",
-        seatType: "VIP",
-        ticketCode: "TKT-A8F92B",
-        // Chèn chuỗi Base64 QR code bạn đã gen được từ Backend vào đây
-        qrBase64: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-A8F92B" // Dùng link tạm để demo, thực tế là chuỗi base64 của bạn
+    const location = useLocation();
+    const [params] = useSearchParams();
+
+    const [ticketData, setTicketData] = useState(location.state?.ticketData || null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const orderCode = params.get('orderCode');
+
+    // Nếu không có ticketData từ state (user F5) → fetch từ API
+    useEffect(() => {
+        if (ticketData) return; // Đã có data từ navigate state
+        if (!orderCode) {
+            setError('Không tìm thấy mã đơn hàng.');
+            return;
+        }
+
+        setLoading(true);
+        getETicket(orderCode)
+            .then(data => {
+                setTicketData(data);
+            })
+            .catch(err => {
+                console.error('[Ticket] Fetch failed:', err);
+                setError('Không thể tải thông tin vé. Vui lòng thử lại.');
+            })
+            .finally(() => setLoading(false));
+    }, [orderCode, ticketData]);
+
+    // --- Format helpers ---
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' });
     };
+
+    const formatTime = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const formatDuration = (minutes) => {
+        if (!minutes) return '';
+        return `${minutes} Phút`;
+    };
+
+    // --- Loading state ---
+    if (loading) {
+        return (
+            <div className="ticket-result-page">
+                <div className="success-message">
+                    <h2>⏳ Đang tải vé...</h2>
+                    <p>Vui lòng chờ trong giây lát.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Error state ---
+    if (error) {
+        return (
+            <div className="ticket-result-page">
+                <div className="success-message">
+                    <h2 style={{ color: '#ef4444' }}>❌ Lỗi</h2>
+                    <p>{error}</p>
+                    <button className="btn-download" onClick={() => window.location.href = '/'}>
+                        Về trang chủ
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // --- No data ---
+    if (!ticketData) {
+        return (
+            <div className="ticket-result-page">
+                <div className="success-message">
+                    <h2>🎬 Chưa có thông tin vé</h2>
+                    <p>Vui lòng thanh toán để nhận vé điện tử.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Tạo QR code URL từ ticketCode
+    const qrUrl = ticketData.qrCode
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ticketData.qrCode)}`
+        : null;
 
     return (
         <div className="ticket-result-page">
@@ -31,29 +108,33 @@ const TicketResult = () => {
                 
                 {/* 1. Phần Nền Đậm (Phim & Lịch) */}
                 <div className="ticket-header">
-                    <h1 className="ticket-movie-title">{ticketData.movieTitle}</h1>
+                    <h1 className="ticket-movie-title">{ticketData.movieTitle || 'PHIM'}</h1>
                     <div className="movie-tags">
-                        <span className="tag age-rating">{ticketData.ageRating}</span>
-                        <span className="tag">{ticketData.duration}</span>
+                        {ticketData.ageRating && (
+                            <span className="tag age-rating">{ticketData.ageRating}</span>
+                        )}
+                        {ticketData.durationMinutes && (
+                            <span className="tag">{formatDuration(ticketData.durationMinutes)}</span>
+                        )}
                         <span className="tag">2D Phụ đề</span>
                     </div>
 
                     <div className="ticket-info-grid">
                         <div className="info-box">
                             <span>Ngày chiếu</span>
-                            <strong>{ticketData.showDate}</strong>
+                            <strong>{formatDate(ticketData.showDate)}</strong>
                         </div>
                         <div className="info-box">
                             <span>Giờ chiếu</span>
-                            <strong>{ticketData.startTime}</strong>
+                            <strong>{formatTime(ticketData.startTime)}</strong>
                         </div>
                         <div className="info-box">
                             <span>Phòng chiếu</span>
-                            <strong>{ticketData.roomName}</strong>
+                            <strong>{ticketData.roomName || '-'}</strong>
                         </div>
                         <div className="info-box">
                             <span>Loại ghế</span>
-                            <strong>{ticketData.seatType}</strong>
+                            <strong>{ticketData.seatType || '-'}</strong>
                         </div>
                     </div>
                 </div>
@@ -64,7 +145,7 @@ const TicketResult = () => {
                         Ghế của bạn
                     </span>
                     <div className="seats-highlight">
-                        {ticketData.seats}
+                        {ticketData.seats || '-'}
                     </div>
                 </div>
 
@@ -74,10 +155,15 @@ const TicketResult = () => {
                 {/* 4. Phần Chân (QR Code) */}
                 <div className="ticket-footer">
                     <div className="qr-container">
-                        {/* Hiển thị ảnh QR từ chuỗi Base64 (hoặc URL demo) */}
-                        <img src={ticketData.qrBase64} alt="QR Code" />
+                        {qrUrl ? (
+                            <img src={qrUrl} alt="QR Code" />
+                        ) : (
+                            <div style={{ width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                                Không có QR
+                            </div>
+                        )}
                     </div>
-                    <div className="ticket-code">{ticketData.ticketCode}</div>
+                    <div className="ticket-code">{ticketData.ticketCode || ticketData.orderCode || '-'}</div>
                     <div className="scan-instruction">Vui lòng xuất trình mã QR này cho nhân viên soát vé</div>
                 </div>
             </div>
