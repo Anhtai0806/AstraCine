@@ -33,6 +33,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                         throw new DisabledException("User is not active");
                 }
 
+                if (Boolean.FALSE.equals(user.getEnabled())) {
+                        throw new DisabledException("User is disabled");
+                }
+
                 List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
                                 .map(role -> new SimpleGrantedAuthority(role.getName()))
                                 .toList();

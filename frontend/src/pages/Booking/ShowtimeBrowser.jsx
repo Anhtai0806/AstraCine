@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { showtimeApi } from "../../api/showtimeApi.js";
 import { timeSlotApi } from "../../api/timeSlotApi.js";
 import movieApi from "../../api/movieApi.js";
@@ -33,7 +33,9 @@ function parseDate(iso) {
 
 export default function ShowtimeBrowser() {
     const nav = useNavigate();
+    const location = useLocation();
     const { movieId } = useParams(); // for /booking/movies/:movieId
+    const isStaffMode = location.pathname.startsWith("/staff");
 
     const [items, setItems] = useState([]);           // all showtimes
     const [nowShowingMovies, setNowShowingMovies] = useState([]); // all NOW_SHOWING films
@@ -191,7 +193,7 @@ export default function ShowtimeBrowser() {
         }
 
         // 2. Navigate với thông tin phim + giờ chiếu (không cần đăng nhập ở đây)
-        nav(`/booking/showtimes/${s.id}`, {
+        nav(isStaffMode ? `/staff/showtimes/${s.id}` : `/booking/showtimes/${s.id}`, {
             state: {
                 movieTitle: movieTitle || s.movieTitle || "",
                 startTime: s.startTime,
@@ -203,7 +205,10 @@ export default function ShowtimeBrowser() {
 
     return (
         <div className="showtime-browser">
-            <h2>🎬 Lịch chiếu phim</h2>
+            <h2>{isStaffMode ? "🎟️ Chọn lịch chiếu để bán vé tại quầy" : "🎬 Lịch chiếu phim"}</h2>
+            {isStaffMode && (
+                <p className="staff-booking-note">Nhân viên đang thao tác trên luồng bán vé tại quầy. Sau khi chọn suất chiếu, hệ thống sẽ chuyển sang giữ ghế và chốt đơn nội bộ.</p>
+            )}
 
             {/* Search */}
             <div className="search-row">

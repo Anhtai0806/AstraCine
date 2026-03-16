@@ -75,16 +75,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse register(RegisterRequest request) {
 
+        String normalizedUsername = request.getUsername().trim();
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String normalizedPhone = request.getPhone().trim();
+        String normalizedFullName = request.getFullName().trim();
+        boolean staffRegistration = Boolean.TRUE.equals(request.getStaffRegistration());
+
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Password confirmation does not match");
+        }
+
         // ===== Check tồn tại =====
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsername(normalizedUsername)) {
             throw new RuntimeException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
 
-        if (userRepository.existsByPhone(request.getPhone())) {
+        if (userRepository.existsByPhone(normalizedPhone)) {
             throw new RuntimeException("Phone already exists");
         }
 
@@ -93,10 +103,14 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("Role CUSTOMER not found"));
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
-        user.setFullName(request.getFullName());
+        user.setUsername(normalizedUsername);
+        user.setEmail(normalizedEmail);
+        user.setPhone(normalizedPhone);
+        user.setFullName(normalizedFullName);
+        user.setEnabled(true);
+        user.setStatus("ACTIVE");
+
+
 
         // ===== HASH PASSWORD =====
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -141,6 +155,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhone(),
-                roles);
+                roles,
+                user.getStaffPosition());
     }
 }

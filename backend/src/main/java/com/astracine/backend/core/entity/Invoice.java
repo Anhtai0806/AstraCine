@@ -23,14 +23,13 @@ public class Invoice {
     private String customerUsername;
 
     /**
-     * staff_id nullable — null khi customer tự đặt online, có giá trị khi staff hỗ
-     * trợ
+     * staff_id nullable — null khi customer tự đặt online, có giá trị khi staff hỗ trợ
      */
     @Column(name = "staff_id", nullable = true)
     private Long staffId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "showtime_id", nullable = false)
+    @JoinColumn(name = "showtime_id", nullable = true)
     private Showtime showtime;
 
     @Column(name = "total_amount", nullable = false, precision = 14, scale = 2)

@@ -301,6 +301,55 @@ input[name="password"], input[name="confirmPassword"] {
   border-top-color: #fff;
   animation: spin 1s ease-in-out infinite;
 }
+
+.auth-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    background: #eef2ff;
+    padding: 6px;
+    border-radius: 14px;
+}
+
+.auth-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-weight: 700;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+    background: #ffffff;
+    color: #312e81;
+    box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.error-text {
+    color: #dc2626;
+    font-size: 0.84rem;
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-tabs {
+        flex-direction: column;
+    }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== RESPONSIVE MOBILE ===== */
@@ -314,4 +363,32 @@ input[name="password"], input[name="confirmPassword"] {
     box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
   }
   .form-row { grid-template-columns: 1fr; gap: 20px; } /* Đưa cột về 1 hàng trên mobile */
+}
+.register-staff-box {
+  padding: 16px 18px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 14px;
+}
+
+.register-staff-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.register-staff-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.register-staff-box p {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
 }

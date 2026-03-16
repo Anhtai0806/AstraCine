@@ -21,4 +21,6 @@ public class UserProfileResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Set<String> roles;
+    private String desiredPosition;
+    private String staffApplicationStatus;
 }

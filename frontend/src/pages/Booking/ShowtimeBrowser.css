@@ -393,3 +393,10 @@ input[type="date"],
 input[type="time"] {
     color-scheme: dark;
 }
+
+.staff-booking-note {
+  margin: -6px 0 20px;
+  color: #475569;
+  max-width: 860px;
+  line-height: 1.6;
+}

@@ -10,6 +10,10 @@ export const registerApi = (data) => {
   return axios.post(`${API_URL}/register`, data);
 };
 
+export const submitStaffApplicationApi = (data) => {
+    return axios.post(`${API_URL}/staff-applications`, data);
+};
+
 export const forgotPasswordApi = (email) => {
   return axios.post(`${API_URL}/forgot-password`, { email });
 };

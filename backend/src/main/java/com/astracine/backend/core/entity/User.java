@@ -31,6 +31,18 @@ public class User {
     @Column
     private String status = "ACTIVE";
 
+    @Column(name = "enabled")
+    private Boolean enabled = true;
+
+    @Column(name = "lock_reason")
+    private String lockReason;
+
+    @Column(name = "desired_position")
+    private String desiredPosition;
+
+    @Column(name = "staff_application_status")
+    private String staffApplicationStatus = "NONE";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -41,6 +53,9 @@ public class User {
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
+    @Column(name = "staff_position", length = 30)
+    private String staffPosition;
+
     // ===== Constructor =====
     public User() {
     }
@@ -49,6 +64,12 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (enabled == null) {
+            enabled = true;
+        }
+        if (staffApplicationStatus == null || staffApplicationStatus.isBlank()) {
+            staffApplicationStatus = "NONE";
+        }
     }
 
     @PreUpdate
@@ -86,6 +107,22 @@ public class User {
         return status;
     }
 
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public String getLockReason() {
+        return lockReason;
+    }
+
+    public String getDesiredPosition() {
+        return desiredPosition;
+    }
+
+    public String getStaffApplicationStatus() {
+        return staffApplicationStatus;
+    }
+
     public Set<Role> getRoles() {
         return roles;
     }
@@ -118,6 +155,22 @@ public class User {
         this.status = status;
     }
 
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void setLockReason(String lockReason) {
+        this.lockReason = lockReason;
+    }
+
+    public void setDesiredPosition(String desiredPosition) {
+        this.desiredPosition = desiredPosition;
+    }
+
+    public void setStaffApplicationStatus(String staffApplicationStatus) {
+        this.staffApplicationStatus = staffApplicationStatus;
+    }
+
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
     }
@@ -136,5 +189,12 @@ public class User {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getStaffPosition() {
+        return staffPosition;
+    }
+    public void setStaffPosition(String staffPosition) {
+        this.staffPosition = staffPosition;
     }
 }

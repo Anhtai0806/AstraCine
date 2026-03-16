@@ -10,6 +10,7 @@ import ShowtimeManager from '../pages/Admin/ShowtimeManager';
 import AdminMovies from '../pages/Admin/AdminMovies';
 import AdminGenres from '../pages/Admin/AdminGenres';
 import AdminPromotions from '../pages/Admin/AdminPromotions';
+import AdminStaffManagement from '../pages/Admin/AdminStaffManagement';
 
 const AdminRoutes = () => {
     const { user } = useAuth();
@@ -37,6 +38,7 @@ const AdminRoutes = () => {
                 <Route path="promotions" element={<AdminPromotions />} />
                 <Route path="time-slots" element={<TimeSlotManager />} />
                 <Route path="showtimes" element={<ShowtimeManager />} />
+                <Route path="staff-management" element={<AdminStaffManagement />} />
             </Route>
         </Routes>
     );

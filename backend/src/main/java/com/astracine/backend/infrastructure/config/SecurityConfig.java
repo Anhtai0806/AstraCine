@@ -63,6 +63,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/promotions/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
 
+                        // ===== WEBSOCKET =====
+                        .requestMatchers("/ws", "/ws/**").permitAll()
+                        .requestMatchers("/ws-sockjs", "/ws-sockjs/**").permitAll()
+
                         // GET combos is public, POST/PUT/DELETE requires ADMIN
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/combos/**").permitAll()
 
@@ -80,7 +84,7 @@ public class SecurityConfig {
                         // .requestMatchers("/api/manager/**").hasAuthority("ROLE_MANAGER")
 
                         // ===== STAFF =====
-                        // .requestMatchers("/api/staff/**").hasAuthority("ROLE_STAFF")
+                        .requestMatchers("/api/staff/**").hasAnyAuthority("ROLE_STAFF", "ROLE_ADMIN")
 
                         // ===== CUSTOMER (user thường) / Authenticated users =====
                         .requestMatchers("/api/user/**").authenticated()

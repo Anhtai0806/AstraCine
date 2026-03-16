@@ -29,6 +29,10 @@ public class RegisterRequest {
     @NotBlank(message = "Bạn cần điền họ và tên")
     private String fullName;
 
+    private Boolean staffRegistration = false;
+
+    private String desiredPosition;
+
     public RegisterRequest() {
     }
 
@@ -79,6 +83,22 @@ public class RegisterRequest {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public Boolean getStaffRegistration() {
+        return staffRegistration;
+    }
+
+    public void setStaffRegistration(Boolean staffRegistration) {
+        this.staffRegistration = staffRegistration;
+    }
+
+    public String getDesiredPosition() {
+        return desiredPosition;
+    }
+
+    public void setDesiredPosition(String desiredPosition) {
+        this.desiredPosition = desiredPosition;
     }
 
 }

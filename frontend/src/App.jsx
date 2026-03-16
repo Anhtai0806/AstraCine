@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
 import AdminRoutes from "./routes/AdminRoutes";
+import StaffRoutes from "./routes/StaffRoutes";
 
 function App() {
     return (
@@ -27,8 +28,8 @@ function App() {
                         path="/staff/*"
                         element={
                             <ProtectedRoute>
-                                <RoleRoute allowRoles={["STAFF"]}>
-                                    <div>Staff Dashboard (Coming soon)</div>
+                                <RoleRoute allowRoles={["ROLE_STAFF", "ROLE_ADMIN"]}>
+                                    <StaffRoutes />
                                 </RoleRoute>
                             </ProtectedRoute>
                         }

@@ -71,6 +71,14 @@ const AdminLayout = () => {
                     >
                         🎬 Lịch Chiếu
                     </NavLink>
+
+
+                    <NavLink
+                        to="/admin/staff-management"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        👥 Quản lý Staff
+                    </NavLink>
                 </nav>
             </aside>
 
