@@ -165,12 +165,12 @@ const InvoiceSummary = () => {
             if (result?.checkoutUrl) {
                 window.location.href = result.checkoutUrl;
             } else {
-                setPayError('Không nhận được link thanh toán từ PayOS. Vui lòng thử lại.');
+                setPayError('Không nhận được phản hồi từ hệ thống. Vui lòng thử lại.');
                 setPaying(false);
             }
         } catch (err) {
-            console.error('[PayOS] Create payment link failed:', err);
-            const msg = err?.message || err?.error || 'Có lỗi xảy ra khi tạo link thanh toán.';
+            console.error('[Payment] Create payment link failed:', err);
+            const msg = err?.message || err?.error || 'Có lỗi xảy ra khi xử lý giao dịch.';
             setPayError(msg);
             setPaying(false);
         }
@@ -408,7 +408,9 @@ const InvoiceSummary = () => {
                             disabled={paying}
                         >
                             {paying ? (
-                                <><span className="pay-spinner" /> Đang tạo link thanh toán...</>
+                                <><span className="pay-spinner" /> Đang xử lý giao dịch...</>
+                            ) : finalTotal === 0 ? (
+                                '✅ Xác nhận vé (0đ)'
                             ) : (
                                 '💳 Xác nhận & Thanh toán PayOS'
                             )}

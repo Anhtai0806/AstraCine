@@ -21,7 +21,7 @@ public class PayOSCreateRequest {
     /**
      * Số tiền thực tế cần thanh toán (sau giảm giá, sau combo).
      */
-    @Min(value = 1000, message = "Số tiền thanh toán tối thiểu 1.000đ")
+    @Min(value = 0, message = "Số tiền thanh toán tối thiểu 0đ")
     private Long amount;
 
     /** Mã khuyến mãi đã áp dụng (tùy chọn) */

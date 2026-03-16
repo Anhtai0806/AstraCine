@@ -112,11 +112,54 @@ public class PayOSService {
         }
 
         // Tính amount
-        long amount = (frontendAmount != null && frontendAmount > 0)
+        long amount = (frontendAmount != null && frontendAmount >= 0)
                 ? frontendAmount
                 : Math.max(hold.seatCount, 1) * FALLBACK_PRICE_PER_SEAT;
 
         long orderCode = generateOrderCode(holdId);
+
+        if (amount == 0) {
+            String holdRaw = redis.opsForValue().get(HOLD_SUMMARY_KEY_PREFIX + holdId);
+            long showtimeId = (holdRaw != null) ? parseShowtimeId(holdRaw) : 0L;
+            List<Long> seatIds = (holdRaw != null) ? parseSeatIds(holdRaw) : Collections.emptyList();
+
+            try {
+                invoiceService.createInvoice(
+                        holdId, userId, orderCode, BigDecimal.ZERO, promotionCode,
+                        comboItems, showtimeId, seatIds);
+            } catch (Exception ex) {
+                log.error("[PayOS] Invoice creation failed for 0 VND orderCode={}: {}", orderCode, ex.getMessage(), ex);
+                throw new RuntimeException("Lỗi tạo hoá đơn 0đ: " + ex.getMessage(), ex);
+            }
+
+            Map<String, Object> sessionData = new HashMap<>();
+            sessionData.put("holdId", holdId);
+            sessionData.put("userId", userId);
+            sessionData.put("status", "PAID");
+            sessionData.put("amount", amount);
+            sessionData.put("promotionCode", promotionCode);
+            sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
+            sessionData.put("showtimeId", showtimeId);
+            sessionData.put("seatIds", seatIds);
+
+            try {
+                long ttlMillis = Math.max(60_000, hold.expiresAt - Instant.now().toEpochMilli());
+                Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
+                redis.opsForValue().set(PAYOS_ORDER_KEY_PREFIX + orderCode,
+                        objectMapper.writeValueAsString(sessionData), ttl);
+                redis.opsForValue().set(PAYOS_HOLD_KEY_PREFIX + holdId,
+                        String.valueOf(orderCode), ttl);
+            } catch (Exception ignored) {
+            }
+
+            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode + "&status=PAID";
+            return PayOSCreateResponse.builder()
+                    .orderCode(orderCode)
+                    .checkoutUrl(returnUrlWithParams)
+                    .qrCode("")
+                    .status("PAID")
+                    .build();
+        }
 
         // Description tối đa 25 ký tự
         String desc = (promotionCode != null && !promotionCode.isBlank())

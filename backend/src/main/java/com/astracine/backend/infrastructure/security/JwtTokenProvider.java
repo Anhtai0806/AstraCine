@@ -37,7 +37,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject((userPrincipal.getUsername()))
                 .issuedAt(new Date())
-                .expiration(expiryDate)
+                // .expiration(expiryDate)
                 .signWith(key())
                 .compact();
     }
@@ -49,7 +49,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date())
-                .expiration(expiryDate)
+                // .expiration(expiryDate)
                 .signWith(key())
                 .compact();
     }
