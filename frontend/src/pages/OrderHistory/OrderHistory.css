@@ -337,3 +337,30 @@
     padding: 60px 20px;
     color: #f87171;
 }
+
+/* Nút Xem Vé Điện Tử */
+.oh-btn-view-ticket {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.oh-btn-view-ticket:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+}
+
+.oh-btn-view-ticket:active {
+    transform: translateY(0);
+}
