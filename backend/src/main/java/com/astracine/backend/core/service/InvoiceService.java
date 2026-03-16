@@ -24,9 +24,12 @@ import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
-import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
+import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -353,6 +356,13 @@ public class InvoiceService {
                         .build();
             }).toList();
 
+            String transCode = null;
+            // Lấy Payment theo invoiceId
+            Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
+            if (paymentOpt.isPresent()) {
+                transCode = paymentOpt.get().getTransactionCode();
+            }
+
             return InvoiceHistoryDTO.builder()
                     .invoiceId(inv.getId())
                     .status(inv.getStatus())
@@ -367,7 +377,87 @@ public class InvoiceService {
                     .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
                     .seats(seats)
                     .combos(comboItems)
+                    .orderCode(transCode) // 👈 NHÉT CHÌA KHÓA VÀO ĐÂY LÀ XONG!
                     .build();
         }).toList();
+    }
+
+    /**
+     * Lấy thông tin E-ticket theo orderCode (transactionCode trong bảng payments).
+     * Dùng cho trang hiển thị vé sau khi thanh toán thành công.
+     */
+    @Transactional(readOnly = true)
+    public ETicketDTO getETicketByOrderCode(String orderCode) {
+        // 1. Tìm Payment theo transactionCode = orderCode
+        Payment payment = paymentRepository.findByTransactionCode(orderCode)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Không tìm thấy thanh toán với orderCode=" + orderCode));
+
+        // 2. Lấy Invoice → Showtime → Movie, Room
+        Invoice inv = payment.getInvoice();
+        Showtime showtime = inv.getShowtime();
+
+        String movieTitle = null;
+        String ageRating = null;
+        Integer durationMinutes = null;
+        if (showtime != null && showtime.getMovieId() != null) {
+            Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
+            if (movieOpt.isPresent()) {
+                Movie movie = movieOpt.get();
+                movieTitle = movie.getTitle();
+                ageRating = movie.getAgeRating();
+                durationMinutes = movie.getDurationMinutes();
+            }
+        }
+
+        String roomName = (showtime != null && showtime.getRoom() != null)
+                ? showtime.getRoom().getName()
+                : null;
+
+        // 3. Lấy tất cả Tickets → ShowtimeSeat → Seat
+        List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
+
+        StringBuilder seatsBuilder = new StringBuilder();
+        String seatType = null;
+        String ticketCode = null;
+        String qrCode = null;
+
+        for (int i = 0; i < tickets.size(); i++) {
+            Ticket t = tickets.get(i);
+            ShowtimeSeat ss = t.getShowtimeSeat();
+            Seat seat = ss != null ? ss.getSeat() : null;
+
+            if (seat != null) {
+                if (i > 0)
+                    seatsBuilder.append(", ");
+                seatsBuilder.append(seat.getRowLabel()).append(seat.getColumnNumber());
+
+                // Lấy loại ghế từ ghế đầu tiên
+                if (seatType == null && seat.getSeatType() != null) {
+                    seatType = seat.getSeatType().name();
+                }
+            }
+
+            // Lấy ticketCode và qrCode từ ticket đầu tiên
+            if (ticketCode == null && t.getQrCode() != null) {
+                ticketCode = t.getQrCode();
+                qrCode = t.getQrCode();
+            }
+        }
+
+        return ETicketDTO.builder()
+                .movieTitle(movieTitle)
+                .ageRating(ageRating)
+                .durationMinutes(durationMinutes)
+                .showDate(showtime != null ? showtime.getStartTime() : null)
+                .startTime(showtime != null ? showtime.getStartTime() : null)
+                .roomName(roomName)
+                .seats(seatsBuilder.toString())
+                .seatType(seatType)
+                .ticketCode(ticketCode)
+                .qrCode(qrCode)
+                .totalAmount(inv.getTotalAmount())
+                .orderCode(orderCode)
+                .build();
     }
 }

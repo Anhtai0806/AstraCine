@@ -66,7 +66,12 @@ const PaymentSuccess = () => {
                 )}
 
                 <div className="result-actions">
-                    <button className="btn-result-primary" onClick={() => navigate('/')}>
+                    {confirmDone && orderCode && (
+                        <button className="btn-result-primary" onClick={() => navigate(`/ticket?orderCode=${orderCode}`)}>
+                            🎫 Xem vé điện tử
+                        </button>
+                    )}
+                    <button className="btn-result-secondary" onClick={() => navigate('/')}>
                         🏠 Về trang chủ
                     </button>
                     <button className="btn-result-secondary" onClick={() => navigate('/booking')}>

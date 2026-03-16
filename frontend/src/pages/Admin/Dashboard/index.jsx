@@ -14,9 +14,9 @@ const Dashboard = () => {
     { title: 'Khách hàng', dataIndex: 'user', key: 'user' },
     { title: 'Tổng tiền', dataIndex: 'amount', key: 'amount' },
     { title: 'Thời gian', dataIndex: 'time', key: 'time' },
-    { 
-      title: 'Trạng thái', 
-      dataIndex: 'status', 
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
       key: 'status',
       render: (status) => (
         <Tag color={status === 'Success' ? 'green' : 'orange'}>{status}</Tag>
@@ -27,7 +27,7 @@ const Dashboard = () => {
   return (
     <div>
       <h2 style={{ marginBottom: 20, fontWeight: 'bold' }}>Tổng Quan Doanh Thu</h2>
-      
+
       {/* 4 Thẻ Thống Kê */}
       <Row gutter={16}>
         <Col span={6}>
@@ -78,11 +78,11 @@ const Dashboard = () => {
       {/* Bảng Giao Dịch Gần Đây */}
       <div style={{ marginTop: 24 }}>
         <h3 style={{ marginBottom: 16 }}>Giao Dịch Gần Nhất</h3>
-        <Table 
-            columns={columns} 
-            dataSource={recentTransactions} 
-            pagination={false} 
-            bordered
+        <Table
+          columns={columns}
+          dataSource={recentTransactions}
+          pagination={false}
+          bordered
         />
       </div>
     </div>

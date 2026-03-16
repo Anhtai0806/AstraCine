@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Container, Table, Button, Modal, Form,
-    Alert, Spinner, Row, Col, Badge
-} from 'react-bootstrap';
 import { movieAPI, genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa';
 import './AdminMovies.css';
@@ -189,51 +185,55 @@ const AdminMovies = () => {
 
     if (loading && !movies.length) {
         return (
-            <div className="loading-spinner">
-                <Spinner animation="border" />
+            <div className="admin-movies-page">
+                <div className="loading-spinner">
+                    <div className="spinner-border"></div>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="admin-movies-page">
-            <Container className="admin-movies-container">
+            <div className="admin-movies-container">
 
                 {/* HEADER */}
                 <div className="admin-movies-header">
                     <h2>Manage Movies</h2>
-                    <Button className="btn-add-movie" onClick={() => openModal()}>
-                        <FaPlus /> Add Movie
-                    </Button>
+                    <button className="btn-custom btn-primary btn-add-movie" onClick={() => openModal()}>
+                        <FaPlus className="me-2" /> Add Movie
+                    </button>
                 </div>
 
                 {/* SEARCH */}
-                <Form onSubmit={handleSearch} className="search-section">
-                    <Row className="g-2">
-                        <Col md={8}>
-                            <Form.Control
+                <form onSubmit={handleSearch} className="search-section">
+                    <div className="form-row align-items-center mb-0">
+                        <div className="form-col" style={{ flex: 2 }}>
+                            <input
+                                className="form-control-custom"
                                 placeholder="Search by title..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
-                        </Col>
-                        <Col md={4}>
-                            <Button type="submit" className="btn-search w-100">
-                                <FaSearch /> Search
-                            </Button>
-                        </Col>
-                    </Row>
-                </Form>
+                        </div>
+                        <div className="form-col">
+                            <button type="submit" className="btn-custom btn-primary btn-search w-100">
+                                <FaSearch className="me-2" /> Search
+                            </button>
+                        </div>
+                    </div>
+                </form>
 
                 {error && (
-                    <Alert variant="danger" onClose={() => setError(null)} dismissible>
-                        {error}
-                    </Alert>
+                    <div className="alert-custom alert-danger">
+                        <span>{error}</span>
+                        <button className="alert-close" onClick={() => setError(null)}>✕</button>
+                    </div>
                 )}
 
                 {/* TABLE */}
-                <div className="movies-table">
-                    <Table hover bordered>
+                <div className="movies-table table-responsive">
+                    <table className="custom-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -252,8 +252,8 @@ const AdminMovies = () => {
                         <tbody>
                             {movies.length === 0 && (
                                 <tr>
-                                    <td colSpan="11" className="text-center text-muted">
-                                        No movies found 🎬
+                                    <td colSpan="11" className="text-center text-muted no-data-message">
+                                        No movies found
                                     </td>
                                 </tr>
                             )}
@@ -272,147 +272,144 @@ const AdminMovies = () => {
                                     </td>
                                     <td className="movie-title">{movie.title}</td>
                                     <td>{movie.genres?.map(g => g.name).join(', ') || 'N/A'}</td>
-                                    <td>{movie.durationMinutes}</td>
+                                    <td>{movie.durationMinutes} min</td>
                                     <td>{movie.ageRating}</td>
                                     <td>
-                                        <Badge bg={movie.status === 'NOW_SHOWING' ? 'success' : 'secondary'}>
-                                            {movie.status}
-                                        </Badge>
+                                        <span className={`badge-custom ${movie.status === 'NOW_SHOWING' ? 'badge-success' : 'badge-secondary'}`}>
+                                            {movie.status === 'NOW_SHOWING' ? 'Showing' : movie.status === 'COMING_SOON' ? 'Coming Soon' : 'Stopped'}
+                                        </span>
                                     </td>
                                     <td>{movie.releaseDate}</td>
                                     <td>{movie.endDate || 'N/A'}</td>
                                     <td>
                                         {movie.trailerUrl
-                                            ? <a href={movie.trailerUrl} target="_blank" rel="noreferrer">View</a>
+                                            ? <a href={movie.trailerUrl} target="_blank" rel="noreferrer" className="trailer-link">View</a>
                                             : 'N/A'}
                                     </td>
                                     <td className="movie-actions">
-                                        <Button size="sm" onClick={() => openModal(movie)}>
+                                        <button className="btn-custom btn-warning btn-sm" onClick={() => openModal(movie)}>
                                             <FaEdit />
-                                        </Button>
-                                        <Button size="sm" variant="danger" onClick={() => handleDelete(movie.id)}>
+                                        </button>
+                                        <button className="btn-custom btn-danger btn-sm" onClick={() => handleDelete(movie.id)}>
                                             <FaTrash />
-                                        </Button>
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
-                    </Table>
+                    </table>
                 </div>
 
                 {/* MODAL */}
-                <Modal
-                    show={showModal}
-                    onHide={closeModal}
-                    centered
-                    size="xl"
-                    className="movie-modal"
-                    backdrop="static"
-                    enforceFocus={false}
-                >
-                    <Form onSubmit={handleSave}>
-                        <Modal.Header closeButton>
-                            <Modal.Title>{isEditing ? 'Edit Movie' : 'Add Movie'}</Modal.Title>
-                        </Modal.Header>
+                {showModal && (
+                    <div className="custom-modal-backdrop" onClick={closeModal}>
+                        <div className="custom-modal-panel movie-modal" onClick={e => e.stopPropagation()}>
+                            <div className="custom-modal-header">
+                                <h3>{isEditing ? 'Edit Movie' : 'Add Movie'}</h3>
+                                <button className="modal-close-btn" type="button" onClick={closeModal}>✕</button>
+                            </div>
+                            
+                            <form onSubmit={handleSave}>
+                                <div className="custom-modal-body">
+                                    <div className="form-row">
+                                        <div className="form-col" style={{ flex: 2 }}>
+                                            <div className="form-group-custom">
+                                                <label>Title</label>
+                                                <input className="form-control-custom" name="title" value={currentMovie.title} onChange={handleChange} required />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Genre</label>
+                                                <select className="form-control-custom" name="genreId" value={currentMovie.genreId} onChange={handleChange} required>
+                                                    <option value="">Select</option>
+                                                    {genres.map(g => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <Modal.Body>
-                            <Row className="g-3">
-                                <Col md={8}>
-                                    <Form.Group>
-                                        <Form.Label>Title</Form.Label>
-                                        <Form.Control name="title" value={currentMovie.title} onChange={handleChange} required />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Genre</Form.Label>
-                                        <Form.Select name="genreId" value={currentMovie.genreId} onChange={handleChange} required>
-                                            <option value="">Select</option>
-                                            {genres.map(g => (
-                                                <option key={g.id} value={g.id}>{g.name}</option>
-                                            ))}
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={12}>
-                                    <Form.Group>
-                                        <Form.Label>Description</Form.Label>
-                                        <Form.Control
-                                            as="textarea"
-                                            rows={3}
+                                    <div className="form-group-custom mt-3">
+                                        <label>Description</label>
+                                        <textarea
+                                            className="form-control-custom"
+                                            rows="3"
                                             name="description"
                                             value={currentMovie.description}
                                             onChange={handleChange}
-                                        />
-                                    </Form.Group>
-                                </Col>
+                                        ></textarea>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Duration (min)</Form.Label>
-                                        <Form.Control type="number" name="duration" value={currentMovie.duration} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Duration (min)</label>
+                                                <input className="form-control-custom" type="number" name="duration" value={currentMovie.duration} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Age Rating</label>
+                                                <select className="form-control-custom" name="ageRating" value={currentMovie.ageRating} onChange={handleChange}>
+                                                    <option value="ALL_AGE">All Age</option>
+                                                    <option value="16+">16+</option>
+                                                    <option value="18+">18+</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Age Rating</Form.Label>
-                                        <Form.Select name="ageRating" value={currentMovie.ageRating} onChange={handleChange}>
-                                            <option value="ALL_AGE">All Age</option>
-                                            <option value="16+">16+</option>
-                                            <option value="18+">18+</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Release Date</label>
+                                                <input className="form-control-custom" type="date" name="releaseDate" value={currentMovie.releaseDate} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>End Date</label>
+                                                <input
+                                                    className="form-control-custom"
+                                                    type="date"
+                                                    name="endDate"
+                                                    value={currentMovie.endDate}
+                                                    onChange={handleChange}
+                                                    min={currentMovie.releaseDate ? new Date(new Date(currentMovie.releaseDate).getTime() + 86400000).toISOString().split('T')[0] : ''}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Release Date</Form.Label>
-                                        <Form.Control type="date" name="releaseDate" value={currentMovie.releaseDate} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Poster Image</label>
+                                                <input className="form-control-custom" type="file" name="poster" accept="image/*" onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Trailer Video</label>
+                                                <input className="form-control-custom" type="file" name="trailer" accept="video/*" onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>End Date</Form.Label>
-                                        <Form.Control
-                                            type="date"
-                                            name="endDate"
-                                            value={currentMovie.endDate}
-                                            onChange={handleChange}
-                                            min={currentMovie.releaseDate ? new Date(new Date(currentMovie.releaseDate).getTime() + 86400000).toISOString().split('T')[0] : ''}
-                                        />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label>Poster</Form.Label>
-                                        <Form.Control type="file" name="poster" accept="image/*" onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label>Trailer</Form.Label>
-                                        <Form.Control type="file" name="trailer" accept="video/*" onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                        </Modal.Body>
-
-                        <Modal.Footer>
-                            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-                            <Button type="submit" disabled={loading}>
-                                {isEditing ? 'Update' : 'Create'}
-                            </Button>
-                        </Modal.Footer>
-                    </Form>
-                </Modal>
-
-            </Container>
+                                <div className="custom-modal-footer">
+                                    <button type="button" className="btn-custom btn-secondary" onClick={closeModal}>Cancel</button>
+                                    <button type="submit" className="btn-custom btn-primary" disabled={loading}>
+                                        {isEditing ? 'Update Movie' : 'Create Movie'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

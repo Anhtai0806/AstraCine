@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form, Alert, Spinner } from 'react-bootstrap';
 import { genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import './AdminGenres.css';
@@ -78,91 +77,98 @@ const AdminGenres = () => {
     if (loading) return (
         <div className="admin-genres-page">
             <div className="loading-spinner">
-                <Spinner animation="border" />
+                <div className="spinner-border"></div>
             </div>
         </div>
     );
 
     return (
         <div className="admin-genres-page">
-            <Container className="admin-genres-container">
+            <div className="admin-genres-container">
                 <div className="admin-genres-header">
                     <h2>Manage Genres</h2>
-                    <Button variant="primary" className="btn-add-genre" onClick={() => handleShowModal()}>
+                    <button className="btn-custom btn-primary btn-add-genre" onClick={() => handleShowModal()}>
                         <FaPlus className="me-2" /> Add Genre
-                    </Button>
+                    </button>
                 </div>
 
-                {error && <Alert variant="danger" className="alert-custom" dismissible onClose={() => setError(null)}>{error}</Alert>}
+                {error && (
+                    <div className="alert-custom alert-danger">
+                        <span>{error}</span>
+                        <button className="alert-close" onClick={() => setError(null)}>✕</button>
+                    </div>
+                )}
 
-                <Table striped bordered hover responsive className="genres-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {genres.length > 0 ? (
-                            genres.map((genre) => (
-                                <tr key={genre.id}>
-                                    <td className="genre-id">{genre.id}</td>
-                                    <td className="genre-name">{genre.name}</td>
-                                    <td>
-                                        <div className="genre-actions">
-                                            <Button variant="warning" size="sm" className="btn-edit-genre" onClick={() => handleShowModal(genre)}>
-                                                <FaEdit />
-                                            </Button>
-                                            <Button variant="danger" size="sm" className="btn-delete-genre" onClick={() => handleDelete(genre.id)}>
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="table-responsive">
+                    <table className="genres-table custom-table">
+                        <thead>
                             <tr>
-                                <td colSpan="3" className="no-data-message">No genres found.</td>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Actions</th>
                             </tr>
-                        )}
-                    </tbody>
-                </Table>
+                        </thead>
+                        <tbody>
+                            {genres.length > 0 ? (
+                                genres.map((genre) => (
+                                    <tr key={genre.id}>
+                                        <td className="genre-id">{genre.id}</td>
+                                        <td className="genre-name">{genre.name}</td>
+                                        <td>
+                                            <div className="genre-actions">
+                                                <button className="btn-custom btn-warning btn-sm btn-edit-genre" onClick={() => handleShowModal(genre)}>
+                                                    <FaEdit />
+                                                </button>
+                                                <button className="btn-custom btn-danger btn-sm btn-delete-genre" onClick={() => handleDelete(genre.id)}>
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="3" className="no-data-message">No genres found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                <Modal
-                    show={showModal}
-                    onHide={handleCloseModal}
-                    className="genre-modal"
-                    backdrop="static"
-                    enforceFocus={false}
-                >
-                    <Modal.Header closeButton>
-                        <Modal.Title>{isEditing ? 'Edit Genre' : 'Add New Genre'}</Modal.Title>
-                    </Modal.Header>
-                    <Form onSubmit={handleSave}>
-                        <Modal.Body>
-                            <Form.Group controlId="genreName">
-                                <Form.Label>Genre Name</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Enter genre name"
-                                    value={currentGenre.name}
-                                    onChange={(e) => setCurrentGenre({ ...currentGenre, name: e.target.value })}
-                                    required
-                                />
-                            </Form.Group>
-                        </Modal.Body>
-                        <Modal.Footer>
-                            <Button variant="secondary" onClick={handleCloseModal}>
-                                Cancel
-                            </Button>
-                            <Button variant="primary" type="submit">
-                                {isEditing ? 'Update' : 'Create'}
-                            </Button>
-                        </Modal.Footer>
-                    </Form>
-                </Modal>
-            </Container>
+                {showModal && (
+                    <div className="custom-modal-backdrop" onClick={handleCloseModal}>
+                        <div className="custom-modal-panel genre-modal" onClick={e => e.stopPropagation()}>
+                            <div className="custom-modal-header">
+                                <h3>{isEditing ? 'Edit Genre' : 'Add New Genre'}</h3>
+                                <button className="modal-close-btn" onClick={handleCloseModal}>✕</button>
+                            </div>
+                            <form onSubmit={handleSave}>
+                                <div className="custom-modal-body">
+                                    <div className="form-group-custom">
+                                        <label>Genre Name</label>
+                                        <input
+                                            type="text"
+                                            className="form-control-custom"
+                                            placeholder="Enter genre name"
+                                            value={currentGenre.name}
+                                            onChange={(e) => setCurrentGenre({ ...currentGenre, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="custom-modal-footer">
+                                    <button type="button" className="btn-custom btn-secondary" onClick={handleCloseModal}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn-custom btn-primary">
+                                        {isEditing ? 'Update' : 'Create'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

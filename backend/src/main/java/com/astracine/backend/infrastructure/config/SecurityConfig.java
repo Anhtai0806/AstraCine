@@ -90,6 +90,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/api/my/**").authenticated()
 
+                        .requestMatchers("/ws", "/ws/**").permitAll()
+                        .requestMatchers("/ws-sockjs", "/ws-sockjs/**").permitAll()
+
                         // ===== CÒN LẠI =====
                         .anyRequest().authenticated())
                 // Use JWT Filter instead of HTTP Basic

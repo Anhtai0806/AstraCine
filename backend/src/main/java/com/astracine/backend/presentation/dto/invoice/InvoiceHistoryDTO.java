@@ -15,7 +15,8 @@ public class InvoiceHistoryDTO {
     private String status;
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
-
+    private String orderCode;
+    
     // Thông tin phim / suất chiếu
     private Long showtimeId;
     private Long movieId;
@@ -24,6 +25,7 @@ public class InvoiceHistoryDTO {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String roomName;
+    
 
     // Danh sách ghế
     private List<SeatItem> seats;

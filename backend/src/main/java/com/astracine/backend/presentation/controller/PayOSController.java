@@ -1,29 +1,36 @@
 package com.astracine.backend.presentation.controller;
 
+import com.astracine.backend.core.service.InvoiceService;
 import com.astracine.backend.core.service.PayOSService;
+import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateRequest;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/payments/payos")
 @CrossOrigin(origins = { "http://localhost:5173", "http://localhost:3000" })
 public class PayOSController {
 
     private final PayOSService payOSService;
+    private final InvoiceService invoiceService;
 
-    public PayOSController(PayOSService payOSService) {
-        this.payOSService = payOSService;
-    }
+    // public PayOSController(PayOSService payOSService) {
+    // this.payOSService = payOSService;
+
+    // }
 
     /**
      * Tạo PayOS payment link cho một hold đã có.
@@ -85,6 +92,25 @@ public class PayOSController {
         } else {
             return ResponseEntity.ok(Map.of("code", "01", "message", "Payment not confirmed or session expired"));
         }
+    }
+
+    /**
+     * Lấy thông tin E-ticket theo orderCode.
+     * Dùng khi user F5 trang vé hoặc truy cập trực tiếp /ticket?orderCode=xxx
+     */
+   
+    @GetMapping("/ticket/{orderCode}")
+    public ResponseEntity<?> getETicket(@PathVariable String orderCode) {
+        
+        
+        try {
+            ETicketDTO ticket = invoiceService.getETicketByOrderCode(orderCode);
+            return ResponseEntity.ok(ticket);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+        }
+         
+
     }
 
     /**
