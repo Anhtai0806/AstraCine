@@ -28,13 +28,26 @@ const OrderHistory = () => {
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState({}); // { [invoiceId]: bool }
 
-    useEffect(() => {
-        getMyInvoices()
-            .then(data => setInvoices(data || []))
-            .catch(err => setError(err?.message || 'Không thể tải lịch sử mua hàng.'))
-            .finally(() => setLoading(false));
-    }, []);
+  useEffect(() => {
+        console.log("1. Bắt đầu gọi API getMyInvoices..."); // Bẫy 1: Xem có lọt vào useEffect không
 
+        getMyInvoices()
+            .then(data => {
+                // Bẫy 2: Nếu API thành công, nó PHẢI vào đây
+                console.log("2. 👉 THÀNH CÔNG! Dữ liệu hóa đơn từ API:", data); 
+                setInvoices(data || []);
+            })
+            .catch(err => {
+                // Bẫy 3: Nếu API thất bại (lỗi 403, 404, 500...), nó sẽ nhảy thẳng vào đây
+                console.error("3. ❌ LỖI RỒI! API thất bại:", err); 
+                setError(err?.message || 'Không thể tải lịch sử mua hàng.');
+            })
+            .finally(() => {
+                // Bẫy 4: Kiểu gì cũng phải chạy qua đây cuối cùng
+                console.log("4. Đã chạy xong hàm finally, tắt loading.");
+                setLoading(false);
+            });
+    }, []);
     const toggleExpand = (id) =>
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -180,6 +193,18 @@ const OrderHistory = () => {
                                         <span className="oh-total-label">Tổng thanh toán</span>
                                         <span className="oh-total-amount">{formatCurrency(inv.totalAmount)}</span>
                                     </div>
+                                    {/* 🔥 THÊM NÚT XEM VÉ Ở ĐÂY */}
+                                    {inv.status === 'PAID' && (
+                                        <div className="oh-action-row" style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                                            <button 
+                                                className="oh-btn-view-ticket" 
+                                                // Lưu ý: Đảm bảo API getMyInvoices trả về biến orderCode hoặc transactionCode nhé
+                                                onClick={() => navigate(`/ticket?orderCode=${inv.orderCode}`)}
+                                            >
+                                                🎟️ Xem Vé Điện Tử
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

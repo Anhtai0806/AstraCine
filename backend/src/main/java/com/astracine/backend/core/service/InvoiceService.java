@@ -4,11 +4,12 @@ import com.astracine.backend.core.entity.*;
 import com.astracine.backend.core.repository.*;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
-import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
-
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -222,6 +223,13 @@ public class InvoiceService {
                         .build();
             }).toList();
 
+            String transCode = null;
+            // Lấy Payment theo invoiceId
+            Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
+            if (paymentOpt.isPresent()) {
+                transCode = paymentOpt.get().getTransactionCode();
+            }
+
             return InvoiceHistoryDTO.builder()
                     .invoiceId(inv.getId())
                     .status(inv.getStatus())
@@ -236,6 +244,7 @@ public class InvoiceService {
                     .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
                     .seats(seats)
                     .combos(comboItems)
+                    .orderCode(transCode) // 👈 NHÉT CHÌA KHÓA VÀO ĐÂY LÀ XONG!
                     .build();
         }).toList();
     }
