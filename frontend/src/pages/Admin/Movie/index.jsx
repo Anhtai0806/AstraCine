@@ -62,7 +62,7 @@ const MovieManager = () => {
       key: 'action',
       render: () => (
         <Space>
-           <Button icon={<EditOutlined />} type="default">Sửa</Button>
+          <Button icon={<EditOutlined />} type="default">Sửa</Button>
         </Space>
       )
     }
@@ -70,11 +70,11 @@ const MovieManager = () => {
 
   return (
     <div>
-        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-            <h2>Quản Lý Phim</h2>
-            <Button type="primary" icon={<PlusOutlined />} size="large">Thêm Phim Mới</Button>
-        </div>
-        <Table columns={columns} dataSource={movies} rowKey="id" />
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+        <h2>Quản Lý Phim</h2>
+        <Button type="primary" icon={<PlusOutlined />} size="large">Thêm Phim Mới</Button>
+      </div>
+      <Table columns={columns} dataSource={movies} rowKey="id" />
     </div>
   );
 };

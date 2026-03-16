@@ -117,128 +117,176 @@
     justify-content: center;
 }
 
-.btn-edit-promotion,
-.btn-delete-promotion {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
+/* ===== BUTTONS STYLING ===== */
+.btn-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
     transition: all 0.3s ease;
+    text-decoration: none;
 }
-
-.btn-edit-promotion {
-    background-color: #ffc107;
-    border: none;
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
 }
-
-.btn-edit-promotion:hover {
-    background-color: #e0a800;
-    transform: scale(1.1);
-}
-
-.btn-delete-promotion {
-    background-color: #dc3545;
-    border: none;
-}
-
-.btn-delete-promotion:hover {
-    background-color: #c82333;
-    transform: scale(1.1);
-}
-
-.no-data-message {
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-    padding: 2rem !important;
-}
-
-/* ===================================
-   MODAL STYLING
-   =================================== */
-
-.promotion-modal .modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.promotion-modal .modal-header {
+.btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border-radius: 15px 15px 0 0;
-    padding: 1.5rem;
-}
-
-.promotion-modal .modal-title {
-    font-weight: 700;
-    font-size: 1.3rem;
-}
-
-.promotion-modal .modal-body {
-    padding: 2rem;
-}
-
-.promotion-modal .modal-footer {
-    border-top: 1px solid #e9ecef;
-    padding: 1rem 2rem;
-}
-
-.promotion-modal .form-label {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-}
-
-.promotion-modal .form-control,
-.promotion-modal .form-select {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 0.6rem 1rem;
-    transition: all 0.3s ease;
-}
-
-.promotion-modal .form-control:focus,
-.promotion-modal .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-}
-
-.promotion-modal .btn-secondary {
-    background-color: #6c757d;
-    border: none;
-    padding: 0.6rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.promotion-modal .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    padding: 0.6rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
-
-.promotion-modal .btn-primary:hover {
+.btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
-
-/* ===================================
-   ALERT STYLING
-   =================================== */
-
-.alert-custom {
-    border-radius: 10px;
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    font-weight: 500;
+.btn-warning {
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+    color: white;
+}
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(246, 173, 85, 0.5);
+}
+.btn-danger {
+    background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+    color: white;
+}
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(252, 129, 129, 0.5);
+}
+.btn-secondary {
+    background: #718096;
+    color: white;
+}
+.btn-secondary:hover {
+    background: #4a5568;
 }
 
-/* ===================================
-   LOADING SPINNER
-   =================================== */
+/* ===== MODAL STYLING ===== */
+.custom-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+    animation: fadeIn 0.2s ease-in-out;
+}
 
+.custom-modal-panel {
+    background-color: #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 95%;
+    max-width: 1000px; /* promotion is larger */
+    display: flex;
+    flex-direction: column;
+    animation: slideDown 0.3s ease-in-out;
+    margin: 1rem;
+    max-height: 90vh;
+}
+
+.custom-modal-panel form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.custom-modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.custom-modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.modal-close-btn:hover {
+    opacity: 1;
+}
+
+.custom-modal-body {
+    padding: 2rem;
+    background: white;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.custom-modal-footer {
+    padding: 1.5rem;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0 0 20px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+/* ===== FORM STYLING ===== */
+.form-group-custom label {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.form-control-custom {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.form-control-custom:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-col {
+    flex: 1;
+}
+
+/* ===== LOADING & ALERTS ===== */
 .loading-spinner {
     display: flex;
     justify-content: center;
@@ -246,27 +294,103 @@
     min-height: 400px;
 }
 
-.loading-spinner .spinner-border {
+.spinner-border {
     width: 3rem;
     height: 3rem;
-    color: #667eea;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
 
-/* ===================================
-   BADGE STYLING
-   =================================== */
+.alert-custom {
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-.badge {
-    padding: 0.5rem 1rem;
+.alert-danger {
+    background-color: #fff5f5;
+    color: #c53030;
+    border-left: 4px solid #f56565;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.alert-close:hover {
+    opacity: 1;
+}
+
+/* ===== BADGE STYLING ===== */
+.badge-custom {
+    padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
     font-weight: 600;
     border-radius: 20px;
+    display: inline-block;
 }
 
-/* ===================================
-   RESPONSIVE DESIGN
-   =================================== */
+.badge-success {
+    background-color: #c6f6d5;
+    color: #22543d;
+}
 
+.badge-secondary {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+/* ===== UTILITIES ===== */
+.text-muted {
+    color: #718096;
+}
+.mt-1 { margin-top: 0.25rem; }
+.mb-3 { margin-bottom: 1rem; }
+.d-block { display: block; }
+.text-center { text-align: center; }
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Table Addition */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.custom-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN (Fix Overflow Mobile)
+   ========================================= */
 @media (max-width: 768px) {
     .admin-promotions-header {
         flex-direction: column;
@@ -276,15 +400,7 @@
 
     .btn-add-promotion {
         width: 100%;
-    }
-
-    .promotions-table {
-        font-size: 0.85rem;
-    }
-
-    .promotions-table thead th,
-    .promotions-table tbody td {
-        padding: 0.5rem;
+        text-align: center;
     }
 
     .promotion-description {
@@ -294,5 +410,10 @@
     .promotion-actions {
         flex-direction: column;
         gap: 0.3rem;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
     }
 }

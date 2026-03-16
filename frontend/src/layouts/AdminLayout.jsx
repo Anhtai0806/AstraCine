@@ -24,7 +24,15 @@ const AdminLayout = () => {
                         📊 Dashboard
                     </NavLink>
 
-                    {/* 2. Quản lý Phim (Từ AdminLayout cũ) */}
+                    {/* 2. Thể loại (Từ AdminLayout cũ) */}
+                    <NavLink
+                        to="/admin/genres"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🎭 Thể loại
+                    </NavLink>
+
+                    {/* 3. Quản lý Phim (Từ AdminLayout cũ) */}
                     <NavLink
                         to="/admin/movies"
                         className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
@@ -32,13 +40,6 @@ const AdminLayout = () => {
                         🎥 Quản lý Phim
                     </NavLink>
 
-                    {/* 3. Thể loại (Từ AdminLayout cũ) */}
-                    <NavLink
-                        to="/admin/genres"
-                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
-                    >
-                        🎭 Thể loại
-                    </NavLink>
 
                     {/* 4. Quản lý Phòng (Từ PortalLayout) */}
                     <NavLink

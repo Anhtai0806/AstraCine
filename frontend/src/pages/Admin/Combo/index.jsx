@@ -53,7 +53,7 @@ const ComboManager = () => {
 
   return (
     <Card title="Danh sách Combo Bắp & Nước" extra={
-        <Button type="primary" icon={<PlusOutlined />}>Thêm Combo mới</Button>
+      <Button type="primary" icon={<PlusOutlined />}>Thêm Combo mới</Button>
     }>
       <Table columns={columns} dataSource={data} rowKey="id" bordered />
     </Card>
