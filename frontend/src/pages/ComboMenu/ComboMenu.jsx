@@ -13,12 +13,13 @@ const ComboMenu = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const isStaffMode = location.pathname.startsWith("/staff");
 
     // Kiểm tra authentication
     useEffect(() => {
         if (!user) {
             navigate("/login", {
-                state: { returnUrl: `/booking/showtimes/${showtimeId}` },
+                state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` },
             });
             return;
         }
@@ -93,7 +94,7 @@ const ComboMenu = () => {
     // --- NAVIGATION ---
     const handleGoBack = () => {
         // Truyền lại thông tin ghế để SeatSelection khôi phục
-        navigate(`/booking/showtimes/${showtimeId}`, {
+        navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`, {
             state: {
                 movieTitle,
                 startTime,
@@ -108,10 +109,10 @@ const ComboMenu = () => {
     const handleContinue = () => {
         if (!holdId) {
             message.warning('Phiên đặt vé đã hết hạn, vui lòng chọn ghế lại.');
-            navigate(`/booking/showtimes/${showtimeId}`);
+            navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`);
             return;
         }
-        navigate(`/booking/showtimes/${showtimeId}/invoice`, {
+        navigate(isStaffMode ? `/staff/showtimes/${showtimeId}/checkout` : `/booking/showtimes/${showtimeId}/invoice`, {
             state: {
                 holdId,
                 showtimeId,
@@ -226,7 +227,7 @@ const ComboMenu = () => {
                             <span>🎬 Ghế đã chọn</span>
                             <span
                                 className="summary-edit-link"
-                                onClick={() => navigate(`/booking/showtimes/${showtimeId}`)}
+                                onClick={() => navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`)}
                             >
                                 Đổi ghế
                             </span>

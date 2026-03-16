@@ -112,6 +112,8 @@ public class UserServiceImpl implements UserService {
                 user.getUpdatedAt(),
                 user.getRoles().stream()
                         .map(role -> role.getName())
-                        .collect(Collectors.toSet()));
+                        .collect(Collectors.toSet()),
+                user.getDesiredPosition(),
+                user.getStaffApplicationStatus());
     }
 }

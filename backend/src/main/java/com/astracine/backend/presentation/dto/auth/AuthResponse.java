@@ -14,6 +14,8 @@ public class AuthResponse {
 
     private Set<String> roles;
 
+    private String staffPosition;
+
     public AuthResponse() {
     }
 
@@ -24,7 +26,8 @@ public class AuthResponse {
             String fullName,
             String email,
             String phone,
-            Set<String> roles) {
+            Set<String> roles,
+            String staffPosition) {
         this.token = token;
         this.userId = userId;
         this.username = username;
@@ -32,6 +35,8 @@ public class AuthResponse {
         this.email = email;
         this.phone = phone;
         this.roles = roles;
+        this.staffPosition = staffPosition;
+
     }
 
     // ===== getters =====
@@ -92,5 +97,13 @@ public class AuthResponse {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public String getStaffPosition() {
+        return staffPosition;
+    }
+
+    public void setStaffPosition(String staffPosition) {
+        this.staffPosition = staffPosition;
     }
 }

@@ -266,6 +266,12 @@ public class SeatHoldService {
                 .build();
     }
 
+
+    public HoldSnapshot getHoldSnapshot(String holdId, String userId) {
+        HoldSummary summary = getAndValidateHoldSummary(holdId, userId);
+        return new HoldSnapshot(summary.showtimeId, summary.userId, summary.expiresAt, summary.seatIds);
+    }
+
     @Transactional
     public void confirmHoldToSold(String holdId, String userId) {
         HoldSummary summary = getAndValidateHoldSummary(holdId, userId);
@@ -429,6 +435,36 @@ public class SeatHoldService {
     }
 
     private record HoldSummary(Long showtimeId, String userId, long expiresAt, List<Long> seatIds) {
+    }
+
+    public static class HoldSnapshot {
+        private final Long showtimeId;
+        private final String userId;
+        private final long expiresAt;
+        private final List<Long> seatIds;
+
+        public HoldSnapshot(Long showtimeId, String userId, long expiresAt, List<Long> seatIds) {
+            this.showtimeId = showtimeId;
+            this.userId = userId;
+            this.expiresAt = expiresAt;
+            this.seatIds = seatIds;
+        }
+
+        public Long getShowtimeId() {
+            return showtimeId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public long getExpiresAt() {
+            return expiresAt;
+        }
+
+        public List<Long> getSeatIds() {
+            return seatIds;
+        }
     }
 
     // ===============================

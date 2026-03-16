@@ -45,6 +45,7 @@ export default function SeatSelection() {
 
     // Thông tin phim/suất chiếu được truyền từ ShowtimeBrowser
     const { movieTitle, startTime, endTime, roomName, restoredHoldId, restoredSeatIds } = location.state || {};
+    const isStaffMode = location.pathname.startsWith("/staff");
 
     const [seats, setSeats] = useState([]); // SeatStateDto[]
     // Khôi phục hold & ghế đã chọn nếu quay lại từ ComboMenu
@@ -204,7 +205,7 @@ export default function SeatSelection() {
         // Kiểm tra đăng nhập trước khi cho phép chọn ghế
         if (!user) {
             navigate("/login", {
-                state: { returnUrl: `/booking/showtimes/${showtimeId}` },
+                state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` },
             });
             return;
         }
@@ -266,7 +267,7 @@ export default function SeatSelection() {
 
     function goToCombo() {
         if (!hold?.holdId || selectedSeatIds.length === 0) return;
-        navigate(`/booking/showtimes/${sid}/combo`, {
+        navigate(isStaffMode ? `/staff/showtimes/${sid}/combo` : `/booking/showtimes/${sid}/combo`, {
             state: {
                 holdId: hold.holdId,
                 showtimeId: sid,
@@ -328,7 +329,7 @@ export default function SeatSelection() {
                     <span className="notice-icon">🔐</span>
                     <span>Vui lòng <button 
                         className="login-link" 
-                        onClick={() => navigate("/login", { state: { returnUrl: `/booking/showtimes/${showtimeId}` } })}
+                        onClick={() => navigate("/login", { state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` } })}
                     >
                         đăng nhập
                     </button> để chọn ghế và đặt vé.</span>

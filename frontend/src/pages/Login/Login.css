@@ -260,6 +260,72 @@ input[name="password"] {
 
 .form-footer a:hover { color: #3730a3; text-decoration: underline; }
 
+
+.auth-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    background: #eef2ff;
+    padding: 6px;
+    border-radius: 14px;
+}
+
+.auth-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-weight: 700;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+    background: #ffffff;
+    color: #312e81;
+    box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.request-note {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.alert-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857;
+}
+
+.error-text {
+    color: #dc2626;
+    font-size: 0.84rem;
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-tabs {
+        flex-direction: column;
+    }
+}
+
 /* ===== ANIMATIONS & HIỆU ỨNG TRƯỢT ===== */
 .fade-in-up {
   opacity: 0;

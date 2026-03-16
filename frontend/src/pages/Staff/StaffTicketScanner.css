@@ -1,0 +1,148 @@
+.staff-scanner-page {
+    display: grid;
+    gap: 22px;
+}
+
+.staff-scanner-header,
+.staff-scanner-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.07);
+}
+
+.staff-scanner-header h1 {
+    margin: 0 0 10px;
+}
+
+.staff-scanner-header p,
+.staff-scan-note {
+    color: #475569;
+    line-height: 1.6;
+}
+
+.staff-scan-input-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.staff-scan-input-row input {
+    border: 1px solid #dbe3ef;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 1rem;
+}
+
+.staff-scan-input-row button {
+    border: none;
+    border-radius: 14px;
+    background: #111827;
+    color: #fff;
+    padding: 0 16px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.staff-scan-input-row button.secondary {
+    background: #2563eb;
+}
+
+.staff-scan-note {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.staff-scan-error {
+    margin-top: 16px;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.staff-ticket-result {
+    margin-top: 20px;
+    border-radius: 20px;
+    padding: 22px;
+    border: 1px solid #e2e8f0;
+}
+
+.staff-ticket-result.ok {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.staff-ticket-result.warn {
+    background: #fff7ed;
+    border-color: #fdba74;
+}
+
+.staff-ticket-result-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.result-label {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.staff-ticket-result-head h2 {
+    margin: 4px 0 0;
+}
+
+.result-status {
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-weight: 700;
+    background: #e2e8f0;
+}
+
+.result-status.valid {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.result-status.used {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.result-message {
+    margin: 14px 0 0;
+    font-weight: 600;
+}
+
+.staff-ticket-result-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.staff-ticket-result-grid div {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 14px;
+    padding: 14px;
+    display: grid;
+    gap: 6px;
+}
+
+.staff-ticket-result-grid span {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 920px) {
+    .staff-scan-input-row,
+    .staff-ticket-result-grid {
+        grid-template-columns: 1fr;
+    }
+}

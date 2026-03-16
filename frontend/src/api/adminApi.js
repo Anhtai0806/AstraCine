@@ -61,4 +61,14 @@ export const promotionAPI = {
     validate: (code) => adminApi.get(`/promotions/validate/${code}`),
 };
 
+export const staffApplicationAPI = {
+    getAll: (keyword) => adminApi.get("/staff-applications", { params: keyword ? { keyword } : {} }),
+    handle: (applicationId, payload) => adminApi.put(`/staff-applications/${applicationId}`, payload),
+};
+
+export const userManagementAPI = {
+    getAll: (keyword) => adminApi.get("/users", { params: keyword ? { keyword } : {} }),
+    updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
+};
+
 export default adminApi;
