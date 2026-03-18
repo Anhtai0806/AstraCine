@@ -135,8 +135,7 @@ public class InvoiceService {
                 customerName,
                 customerEmail,
                 customerPhone,
-                staffId != null
-        );
+                staffId != null);
         Invoice newInvoice = Invoice.builder()
                 .showtime(showtime)
                 .staffId(staffId)
@@ -281,6 +280,7 @@ public class InvoiceService {
         }
         return "WALK_IN";
     }
+
     private String normalizePaymentMethod(String paymentMethod) {
         if (paymentMethod == null || paymentMethod.isBlank()) {
             return "PAYOS";

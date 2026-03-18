@@ -1,7 +1,6 @@
 package com.astracine.backend.presentation.dto.profile;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,13 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "Current password is required")
+    @NotBlank(message = "M\u1eadt kh\u1ea9u hi\u1ec7n t\u1ea1i l\u00e0 b\u1eaft bu\u1ed9c")
     private String currentPassword;
 
-    @NotBlank(message = "New password is required")
-    @Size(min = 6, message = "New password must be at least 6 characters")
     private String newPassword;
 
-    @NotBlank(message = "Confirm password is required")
     private String confirmPassword;
 }
