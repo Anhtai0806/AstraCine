@@ -66,39 +66,48 @@
     transition: all 0.3s ease;
     text-decoration: none;
 }
+
 .btn-sm {
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
 }
+
 .btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
+
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
+
 .btn-warning {
     background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
     color: white;
 }
+
 .btn-warning:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(246, 173, 85, 0.5);
 }
+
 .btn-danger {
     background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
     color: white;
 }
+
 .btn-danger:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(252, 129, 129, 0.5);
 }
+
 .btn-secondary {
     background: #718096;
     color: white;
 }
+
 .btn-secondary:hover {
     background: #4a5568;
 }
@@ -185,6 +194,7 @@
     text-decoration: none;
     font-weight: 600;
 }
+
 .trailer-link:hover {
     text-decoration: underline;
 }
@@ -375,6 +385,32 @@
     outline: none;
 }
 
+.current-file-note {
+    display: block;
+    margin-top: 0.45rem;
+    color: #4a5568;
+}
+
+.field-error-text {
+    display: block;
+    margin-top: 0.45rem;
+    color: #c53030;
+    font-weight: 600;
+}
+
+.existing-file-wrapper {
+    margin-top: 0.45rem;
+}
+
+.current-poster-preview {
+    margin-top: 0.45rem;
+    width: 92px;
+    height: 132px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
 .form-row {
     display: flex;
     gap: 1rem;
@@ -384,10 +420,21 @@
     flex: 1;
 }
 
-.align-items-center { align-items: center; }
-.mb-0 { margin-bottom: 0; }
-.mt-3 { margin-top: 1rem; }
-.w-100 { width: 100%; }
+.align-items-center {
+    align-items: center;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.w-100 {
+    width: 100%;
+}
 
 /* ===== LOADING & ALERTS ===== */
 .loading-spinner {
@@ -436,8 +483,14 @@
 }
 
 /* ===== NO DATA MESSAGE ===== */
-.text-muted { color: #718096; }
-.text-center { text-align: center; }
+.text-muted {
+    color: #718096;
+}
+
+.text-center {
+    text-align: center;
+}
+
 .no-data-message {
     padding: 3rem !important;
     font-size: 1.1rem;
@@ -463,20 +516,42 @@
     color: #4a5568;
 }
 
+.badge-warning {
+    background-color: #eef59f;
+    color: #45500f;
+}
+
 /* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes popupScale {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===== RESPONSIVE DESIGN ===== */

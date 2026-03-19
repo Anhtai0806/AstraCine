@@ -22,6 +22,21 @@ const getTodayDateString = () => {
     return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
 };
 
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_POSTER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const ALLOWED_TRAILER_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi'];
+
+const getFileNameFromUrl = (url) => {
+    if (!url) return '';
+
+    try {
+        const cleanedUrl = url.split('?')[0].split('#')[0];
+        return decodeURIComponent(cleanedUrl.substring(cleanedUrl.lastIndexOf('/') + 1)) || cleanedUrl;
+    } catch {
+        return url;
+    }
+};
+
 const AdminMovies = () => {
     const [movies, setMovies] = useState([]);
     const [genres, setGenres] = useState([]);
@@ -31,8 +46,11 @@ const AdminMovies = () => {
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentMovie, setCurrentMovie] = useState(emptyMovie);
+    const [fileErrors, setFileErrors] = useState({ poster: '', trailer: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const genreRequiredRef = useRef(null);
+    const posterInputRef = useRef(null);
+    const trailerInputRef = useRef(null);
     const today = getTodayDateString();
 
     useEffect(() => {
@@ -94,9 +112,11 @@ const AdminMovies = () => {
                 poster: null,
                 trailer: null
             });
+            setFileErrors({ poster: '', trailer: '' });
             setIsEditing(true);
         } else {
             setCurrentMovie(emptyMovie);
+            setFileErrors({ poster: '', trailer: '' });
             setIsEditing(false);
         }
         setShowModal(true);
@@ -105,6 +125,7 @@ const AdminMovies = () => {
     const closeModal = () => {
         setShowModal(false);
         setCurrentMovie(emptyMovie);
+        setFileErrors({ poster: '', trailer: '' });
         setError(null);
     };
 
@@ -147,6 +168,44 @@ const AdminMovies = () => {
     const handleChange = (e) => {
         const { name, value, files } = e.target;
 
+        if (files) {
+            const selectedFile = files[0];
+            const allowedExtensions = name === 'poster' ? ALLOWED_POSTER_EXTENSIONS : ALLOWED_TRAILER_EXTENSIONS;
+            const inputRef = name === 'poster' ? posterInputRef : trailerInputRef;
+
+            if (!selectedFile) {
+                setFileErrors((prev) => ({ ...prev, [name]: '' }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            const fileName = selectedFile.name || '';
+            const fileExtension = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (inputRef.current) {
+                    inputRef.current.value = '';
+                }
+                setFileErrors((prev) => ({
+                    ...prev,
+                    [name]: `Định dạng tệp không hợp lệ. Chỉ chấp nhận: ${allowedExtensions.join(', ')}`
+                }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+                if (inputRef.current) {
+                    inputRef.current.value = '';
+                }
+                setFileErrors((prev) => ({ ...prev, [name]: 'Kích thước tệp vượt quá 10MB.' }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            setFileErrors((prev) => ({ ...prev, [name]: '' }));
+        }
+
         setCurrentMovie((prev) => {
             const updated = { ...prev, [name]: files ? files[0] : value };
 
@@ -167,6 +226,11 @@ const AdminMovies = () => {
 
             return updated;
         });
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
     const handleSave = async (e) => {
@@ -323,20 +387,20 @@ const AdminMovies = () => {
                                         )}
                                     </td>
                                     <td className="movie-title">{movie.title}</td>
-                                    <td>{movie.genres?.map((g) => g.name).join(', ') || 'Không có'}</td>
+                                    <td>{movie.genres?.map((g) => g.name).join(', ')}</td>
                                     <td>{movie.durationMinutes} phút</td>
                                     <td>{movie.ageRating}</td>
                                     <td>
-                                        <span className={`badge-custom ${movie.status === 'NOW_SHOWING' ? 'badge-success' : 'badge-secondary'}`}>
+                                        <span className={`badge-custom ${movie.status === 'NOW_SHOWING' ? 'badge-success' : movie.status === 'COMING_SOON' ? 'badge-warning' : 'badge-secondary'}`}>
                                             {movie.status === 'NOW_SHOWING' ? 'Đang chiếu' : movie.status === 'COMING_SOON' ? 'Sắp chiếu' : 'Ngừng chiếu'}
                                         </span>
                                     </td>
-                                    <td>{movie.releaseDate}</td>
-                                    <td>{movie.endDate || 'Không có'}</td>
+                                    <td>{formatDate(movie.releaseDate)}</td>
+                                    <td>{formatDate(movie.endDate)}</td>
                                     <td>
                                         {movie.trailerUrl
                                             ? <a href={movie.trailerUrl} target="_blank" rel="noreferrer" className="trailer-link">Xem</a>
-                                            : 'Không có'}
+                                            : 'Chưa có'}
                                     </td>
                                     <td className="movie-actions">
                                         <button className="btn-custom btn-warning btn-sm" onClick={() => openModal(movie)}>
@@ -470,13 +534,66 @@ const AdminMovies = () => {
                                         <div className="form-col">
                                             <div className="form-group-custom">
                                                 <label>Poster</label>
-                                                <input className="form-control-custom" type="file" name="poster" accept="image/*" onChange={handleChange} />
+                                                <input
+                                                    ref={posterInputRef}
+                                                    className="form-control-custom"
+                                                    type="file"
+                                                    name="poster"
+                                                    accept=".jpg,.jpeg,.png,.webp,image/*"
+                                                    onChange={handleChange}
+                                                />
+                                                {fileErrors.poster && (
+                                                    <small className="field-error-text">{fileErrors.poster}</small>
+                                                )}
+                                                {currentMovie.poster ? (
+                                                    <small className="current-file-note">
+                                                        File mới: {currentMovie.poster.name}
+                                                    </small>
+                                                ) : (
+                                                    isEditing && currentMovie.posterUrl && (
+                                                        <div className="existing-file-wrapper">
+                                                            <small className="current-file-note">
+                                                                Poster hiện tại: {getFileNameFromUrl(currentMovie.posterUrl)}
+                                                            </small>
+                                                            <img
+                                                                src={currentMovie.posterUrl}
+                                                                alt="Poster hiện tại"
+                                                                className="current-poster-preview"
+                                                            />
+                                                        </div>
+                                                    )
+                                                )}
                                             </div>
                                         </div>
                                         <div className="form-col">
                                             <div className="form-group-custom">
                                                 <label>Trailer</label>
-                                                <input className="form-control-custom" type="file" name="trailer" accept="video/*" onChange={handleChange} />
+                                                <input
+                                                    ref={trailerInputRef}
+                                                    className="form-control-custom"
+                                                    type="file"
+                                                    name="trailer"
+                                                    accept=".mp4,.webm,.mov,.avi,video/*"
+                                                    onChange={handleChange}
+                                                />
+                                                {fileErrors.trailer && (
+                                                    <small className="field-error-text">{fileErrors.trailer}</small>
+                                                )}
+                                                {currentMovie.trailer ? (
+                                                    <small className="current-file-note">
+                                                        File mới: {currentMovie.trailer.name}
+                                                    </small>
+                                                ) : (
+                                                    isEditing && currentMovie.trailerUrl && (
+                                                        <small className="current-file-note">
+                                                            Trailer hiện tại: {getFileNameFromUrl(currentMovie.trailerUrl)} (
+                                                            <a href={currentMovie.trailerUrl} target="_blank" rel="noreferrer">
+                                                                mở file
+                                                            </a>
+                                                            )
+                                                        </small>
+                                                    )
+                                                )}
                                             </div>
                                         </div>
                                     </div>
