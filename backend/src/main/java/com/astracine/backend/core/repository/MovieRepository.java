@@ -16,6 +16,8 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
         List<Movie> findByStatus(MovieStatus status);
 
+        long countByStatus(MovieStatus status);
+
         List<Movie> findByTitleContainingIgnoreCase(String title);
 
         @Query("SELECT m FROM Movie m WHERE m.releaseDate <= :date AND (m.endDate IS NULL OR m.endDate >= :date)")

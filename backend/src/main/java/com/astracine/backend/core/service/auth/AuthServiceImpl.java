@@ -86,15 +86,21 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // ===== Check tồn tại =====
-        if (userRepository.existsByUsername(normalizedUsername)) {
+        if (userRepository.existsByUsername(normalizedUsername) ||
+            userRepository.existsByEmail(normalizedUsername) ||
+            userRepository.existsByPhone(normalizedUsername)) {
             throw new RuntimeException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
+        if (userRepository.existsByEmail(normalizedEmail) ||
+            userRepository.existsByUsername(normalizedEmail) ||
+            userRepository.existsByPhone(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
 
-        if (userRepository.existsByPhone(normalizedPhone)) {
+        if (userRepository.existsByPhone(normalizedPhone) ||
+            userRepository.existsByUsername(normalizedPhone) ||
+            userRepository.existsByEmail(normalizedPhone)) {
             throw new RuntimeException("Phone already exists");
         }
 
