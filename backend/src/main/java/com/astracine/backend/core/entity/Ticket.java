@@ -35,4 +35,5 @@ public class Ticket {
     @Builder.Default
     @Column(length = 20)
     private String status = "VALID";
+
 }

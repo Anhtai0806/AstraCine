@@ -137,6 +137,43 @@ background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #c9a44
     letter-spacing: 2px;
 }
 
+/* --- COMBO SECTION --- */
+.ticket-combos {
+    padding: 16px 24px;
+    background: #faf5ff;
+    text-align: center;
+    border-top: 1px solid #f0e6ff;
+}
+
+.combo-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #7c3aed;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.combo-items {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.combo-chip {
+    display: inline-block;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+
 /* --- ĐƯỜNG XÉ VÉ (PERFORATION LINE) --- */
 .ticket-divider {
     position: relative;
