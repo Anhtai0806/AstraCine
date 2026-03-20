@@ -1,6 +1,6 @@
 import "./MovieCard.css";
 
-function MovieCard({ title, age = "P", posterUrl, onBuy, onClick, status }) {
+function MovieCard({id, title, age = "P", posterUrl, onBuy, onClick, status }) {
   // Determine button state based on status
   const isComingSoon = status === 'COMING_SOON';
   const isEnded = status === 'ENDED' || status === 'STOPPED';
