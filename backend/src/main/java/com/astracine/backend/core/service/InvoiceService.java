@@ -30,6 +30,8 @@ import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
+import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
+import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
@@ -132,8 +134,7 @@ public class InvoiceService {
                 customerName,
                 customerEmail,
                 customerPhone,
-                staffId != null
-        );
+                staffId != null);
         Invoice newInvoice = Invoice.builder()
                 .showtime(showtime)
                 .staffId(staffId)
@@ -278,6 +279,7 @@ public class InvoiceService {
         }
         return "WALK_IN";
     }
+
     private String normalizePaymentMethod(String paymentMethod) {
         if (paymentMethod == null || paymentMethod.isBlank()) {
             return "PAYOS";

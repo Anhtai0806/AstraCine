@@ -1,6 +1,6 @@
-import axios from "axios";
+import axiosClient from "../services/axiosClient";
 
-const API_URL = "http://localhost:8080/api/user";
+const API_URL = "/user";
 
 // Lấy userId từ localStorage
 const getUserId = () => {
@@ -16,7 +16,7 @@ export const userApi = {
     // Lấy thông tin profile
     getProfile: () => {
         const userId = getUserId();
-        return axios.get(`${API_URL}/profile`, {
+        return axiosClient.get(`${API_URL}/profile`, {
             params: { userId },
         });
     },
@@ -24,7 +24,7 @@ export const userApi = {
     // Cập nhật thông tin profile
     updateProfile: (data, id) => {
         const userId = id || getUserId();
-        return axios.put(`${API_URL}/profile`, data, {
+        return axiosClient.put(`${API_URL}/profile`, data, {
             params: { userId },
         });
     },
@@ -32,7 +32,7 @@ export const userApi = {
     // Thay đổi mật khẩu
     changePassword: (data, id) => {
         const userId = id || getUserId();
-        return axios.put(`${API_URL}/change-password`, data, {
+        return axiosClient.put(`${API_URL}/change-password`, data, {
             params: { userId },
         });
     },
