@@ -1,12 +1,19 @@
 package com.astracine.backend.core.service;
 
-import com.astracine.backend.core.entity.Combo;
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.astracine.backend.core.entity.Invoice;
 import com.astracine.backend.core.entity.InvoiceCombo;
 import com.astracine.backend.core.entity.InvoicePromotion;
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Payment;
-import com.astracine.backend.core.entity.Promotion;
 import com.astracine.backend.core.entity.Seat;
 import com.astracine.backend.core.entity.Showtime;
 import com.astracine.backend.core.entity.ShowtimeSeat;
@@ -26,19 +33,11 @@ import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
-import lombok.Builder;
-import lombok.Data;
+import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
+import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 
 @Slf4j
 @Service
