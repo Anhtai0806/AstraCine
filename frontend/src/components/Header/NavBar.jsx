@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import "./Header.css";
 import logo from "../../assets/logo.png";
 
@@ -6,21 +6,45 @@ function NavBar() {
   return (
     <div className="navbar">
       <div className="navbar-container">
+        
         {/* Logo */}
         <div className="logo">
-          <Link to="/">
+          <NavLink to="/">
             <img src={logo} alt="AstraCine" />
-          </Link>
+          </NavLink>
         </div>
 
         {/* Menu */}
         <ul className="menu">
-          <Link to="/"><li>Trang chủ</li></Link>
-          <Link to="/movies"><li>Phim</li></Link>
-            <Link to="/booking"><li>Lịch chiếu</li></Link>
-          <li>Giá vé</li>
-          <li>Tin mới & ưu đãi</li>
-          <li>Thành viên</li>
+          <li>
+            <NavLink to="/" end>
+              Trang chủ
+            </NavLink>
+          </li>
+
+          <li>
+            <NavLink to="/movies">
+              Phim
+            </NavLink>
+          </li>
+
+          <li>
+            <NavLink to="/booking">
+              Lịch chiếu
+            </NavLink>
+          </li>
+
+          <li>
+            <NavLink to="/news">
+              Tin mới & ưu đãi
+            </NavLink>
+          </li>
+
+          <li>
+            <NavLink to="/member">
+              Thành viên
+            </NavLink>
+          </li>
         </ul>
       </div>
     </div>

@@ -90,6 +90,18 @@
 .title {
   padding: 14px;
   text-align: center;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.5px;
+
+  /* màu vàng điện ảnh */
+  color: #f5c518;
+
+  /* glow nhẹ */
+  text-shadow: 
+    0 0 6px rgba(245, 197, 24, 0.6),
+    0 0 12px rgba(245, 197, 24, 0.4);
+
+  transition: all 0.3s ease;
 }
