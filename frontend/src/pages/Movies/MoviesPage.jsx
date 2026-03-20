@@ -144,7 +144,7 @@ const MoviesPage = () => {
                                     age={movie.ageRating}
                                     posterUrl={movie.posterUrl}
                                     status={movie.status}
-                                    onBuy={() => console.log("Booking:", movie.id)}
+                                    onBuy={() => navigate(`/booking/movies/${movie.id}`)}
                                     // Make sure navigation works
                                     onClick={() => navigate(`/movies/${movie.id}`)}
                                 />
