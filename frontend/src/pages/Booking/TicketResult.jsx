@@ -149,6 +149,18 @@ const TicketResult = () => {
                     </div>
                 </div>
 
+                {/* 2.5. Phần Combo (Bắp nước) — chỉ hiện khi có */}
+                {ticketData.combos && (
+                    <div className="ticket-combos">
+                        <span className="combo-label">🍿 Combo đã chọn</span>
+                        <div className="combo-items">
+                            {ticketData.combos.split(', ').map((item, idx) => (
+                                <span key={idx} className="combo-chip">{item}</span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* 3. Đường Cắt Xé Vé (Hiệu ứng CSS) */}
                 <div className="ticket-divider"></div>
 

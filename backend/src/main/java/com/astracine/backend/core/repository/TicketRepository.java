@@ -11,5 +11,8 @@ import java.util.Optional;
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByInvoiceId(Long invoiceId);
 
-    Optional<Ticket> findByQrCode(String qrCode);
+    List<Ticket> findByQrCode(String qrCode);
+
+    Optional<Ticket> findFirstByQrCode(String qrCode);
+
 }

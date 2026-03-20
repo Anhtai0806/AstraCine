@@ -28,6 +28,16 @@ public class TimeSlotService {
         if (dto.getStartTime().isAfter(dto.getEndTime())) {
             throw new RuntimeException("Giờ bắt đầu phải trước giờ kết thúc");
         }
+
+        // Kiểm tra trùng lặp thời gian với các slot đã tồn tại
+        List<TimeSlot> overlapping = timeSlotRepository.findOverlapping(dto.getStartTime(), dto.getEndTime());
+        if (!overlapping.isEmpty()) {
+            TimeSlot conflict = overlapping.get(0);
+            throw new RuntimeException("Khung giờ bị trùng với khung giờ đã tồn tại: "
+                    + conflict.getName()
+                    + " (" + conflict.getStartTime() + " - " + conflict.getEndTime() + ")");
+        }
+
         TimeSlot timeSlot = mapToEntity(dto);
         return mapToDTO(timeSlotRepository.save(timeSlot));
     }

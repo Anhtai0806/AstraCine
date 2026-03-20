@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import StaffTicketScanner from "./StaffTicketScanner";
 import "./StaffDashboard.css";
 
 export default function StaffDashboard() {
     const navigate = useNavigate();
+    const [showScanner, setShowScanner] = useState(false);
 
     return (
         <div className="staff-dashboard-page">
@@ -38,16 +41,24 @@ export default function StaffDashboard() {
                     <button onClick={() => navigate("/staff/combo-sales")}>Mở bán combo</button>
                 </div>
 
-                <div className="staff-feature-card muted">
+                <div className={`staff-feature-card ${showScanner ? "active-scanner" : ""}`}>
                     <div className="staff-feature-icon">✅</div>
                     <h2>Soát vé QR</h2>
                     <p>
-                        Đã dựng sẵn màn hình tra cứu và xác nhận mã vé. Sau khi phần gửi mail hoàn tất,
-                        chỉ cần nối máy quét/camera là dùng được.
+                        Quét mã QR hoặc nhập mã vé thủ công để tra cứu và xác nhận check-in cho khách hàng.
                     </p>
-                    <button onClick={() => navigate("/staff/ticket-checkin")}>Mở màn hình soát vé</button>
+                    <button onClick={() => setShowScanner(!showScanner)}>
+                        {showScanner ? "🔽 Đóng soát vé" : "📷 Mở màn hình soát vé"}
+                    </button>
                 </div>
             </div>
+
+            {/* Inline QR Scanner */}
+            {showScanner && (
+                <div className="inline-scanner-container">
+                    <StaffTicketScanner />
+                </div>
+            )}
         </div>
     );
 }

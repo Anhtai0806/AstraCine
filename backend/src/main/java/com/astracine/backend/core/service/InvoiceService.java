@@ -154,14 +154,19 @@ public class InvoiceService {
                 .status("PAID")
                 .build());
 
+        // Sinh QR code cho hóa đơn
+        String masterQrCode = "TICKET-" + invoice.getId() + "-"
+                + java.util.UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
         for (Long seatId : seatIds) {
             showtimeSeatRepository.findByShowtimeIdAndSeatId(showtimeId, seatId).ifPresent(ss -> {
                 BigDecimal price = ss.getFinalPrice() != null ? ss.getFinalPrice() : BigDecimal.ZERO;
+
                 ticketRepository.save(Ticket.builder()
                         .invoice(invoice)
                         .showtimeSeat(ss)
                         .price(price)
-                        .qrCode("TICKET-" + invoice.getId() + "-" + ss.getId())
+                        .qrCode(masterQrCode)
                         .status("VALID")
                         .build());
             });
@@ -445,6 +450,17 @@ public class InvoiceService {
             }
         }
 
+        // 4. LẤY THÔNG TIN COMBO (BẮP NƯỚC) TỪ INVOICE_COMBOS
+        List<InvoiceCombo> invoiceCombos = invoiceComboRepository.findByInvoiceId(inv.getId());
+        String comboDetails = null;
+
+        if (invoiceCombos != null && !invoiceCombos.isEmpty()) {
+            comboDetails = invoiceCombos.stream()
+                    .map(ic -> ic.getQuantity() + "x " + ic.getCombo().getName())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        // 5. Trả về DTO
         return ETicketDTO.builder()
                 .movieTitle(movieTitle)
                 .ageRating(ageRating)
@@ -458,6 +474,7 @@ public class InvoiceService {
                 .qrCode(qrCode)
                 .totalAmount(inv.getTotalAmount())
                 .orderCode(orderCode)
+                .combos(comboDetails)
                 .build();
     }
 }

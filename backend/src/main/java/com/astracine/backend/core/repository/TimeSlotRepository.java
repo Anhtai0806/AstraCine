@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.astracine.backend.core.entity.TimeSlot;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,4 +17,7 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
     @Query("SELECT t FROM TimeSlot t " +
             "WHERE :time >= t.startTime AND :time < t.endTime")
     Optional<TimeSlot> findByTime(@Param("time") LocalTime time);
+
+    @Query("SELECT t FROM TimeSlot t WHERE t.startTime < :endTime AND t.endTime > :startTime")
+    List<TimeSlot> findOverlapping(@Param("startTime") LocalTime startTime, @Param("endTime") LocalTime endTime);
 }

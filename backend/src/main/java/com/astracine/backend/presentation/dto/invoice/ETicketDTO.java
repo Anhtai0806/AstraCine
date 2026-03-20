@@ -23,7 +23,7 @@ public class ETicketDTO {
     private LocalDateTime showDate;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startTime;
-    
+
     private String roomName;
 
     /** Danh sách ghế, e.g. "H5, H6" */
@@ -42,4 +42,6 @@ public class ETicketDTO {
 
     /** Mã đơn PayOS */
     private String orderCode;
+
+    private String combos;
 }
