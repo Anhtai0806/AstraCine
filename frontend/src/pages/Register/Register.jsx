@@ -264,8 +264,8 @@ function Register() {
                                 <p>Điền thông tin bên dưới để tạo tài khoản khách hàng mới.</p>
                             </div>
 
-                            {success && <div className="alert alert-success fade-in-up">{success}</div>}
-                            {errors.global && <div className="alert alert-danger fade-in-up">{errors.global}</div>}
+                            {success && <div className="alert alert-success">{success}</div>}
+                            {errors.global && <div className="alert alert-danger">{errors.global}</div>}
 
                             <form onSubmit={handleCustomerSubmit}>
                                 <div className="form-row fade-in-up delay-1">
@@ -404,8 +404,8 @@ function Register() {
                                 <p>Điền thông tin bên dưới để gửi yêu cầu tạo tài khoản staff cho admin duyệt.</p>
                             </div>
 
-                            {success && <div className="alert alert-success fade-in-up">{success}</div>}
-                            {errors.global && <div className="alert alert-danger fade-in-up">{errors.global}</div>}
+                            {success && <div className="alert alert-success">{success}</div>}
+                            {errors.global && <div className="alert alert-danger">{errors.global}</div>}
 
                             <form onSubmit={handleStaffSubmit}>
                                 <div className="form-row fade-in-up delay-1">

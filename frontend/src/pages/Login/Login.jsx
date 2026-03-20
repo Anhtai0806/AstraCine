@@ -102,7 +102,7 @@ function Login() {
                         <p>Truy cập vào tài khoản AstraCine của bạn</p>
                     </div>
 
-                    {error && <div className="alert alert-danger fade-in-up">{error}</div>}
+                    {error && <div className="alert alert-danger">{error}</div>}
 
                     <form onSubmit={handleSubmit}>
                         <div className="input-group fade-in-up delay-1">

@@ -54,12 +54,12 @@ public class AuthServiceImpl implements AuthService {
                         request.getIdentifier(),
                         request.getIdentifier(),
                         request.getIdentifier())
-                .orElseThrow(() -> new RuntimeException("Invalid username/email/phone or password"));
+                .orElseThrow(() -> new RuntimeException("Sai username/email/SĐT hoặc mật khẩu"));
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword())) {
-            throw new RuntimeException("Invalid username/email/phone or password");
+            throw new RuntimeException("Sai username/email/SĐT hoặc mật khẩu");
         }
 
         Authentication authentication = authenticationManager.authenticate(
@@ -86,16 +86,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // ===== Check tồn tại =====
-        if (userRepository.existsByUsername(normalizedUsername)) {
-            throw new RuntimeException("Username already exists");
+        if (userRepository.existsByUsername(normalizedUsername) ||
+                userRepository.existsByEmail(normalizedUsername) ||
+                userRepository.existsByPhone(normalizedUsername)) {
+            throw new RuntimeException("Tên người dùng đã được sử dụng");
         }
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new RuntimeException("Email already exists");
+        if (userRepository.existsByEmail(normalizedEmail) ||
+                userRepository.existsByUsername(normalizedEmail) ||
+                userRepository.existsByPhone(normalizedEmail)) {
+            throw new RuntimeException("Email đã được sử dụng");
         }
 
-        if (userRepository.existsByPhone(normalizedPhone)) {
-            throw new RuntimeException("Phone already exists");
+        if (userRepository.existsByPhone(normalizedPhone) ||
+                userRepository.existsByUsername(normalizedPhone) ||
+                userRepository.existsByEmail(normalizedPhone)) {
+            throw new RuntimeException("Số điện thoại đã được sử dụng");
         }
 
         Role customerRole = roleRepository
@@ -109,8 +115,6 @@ public class AuthServiceImpl implements AuthService {
         user.setFullName(normalizedFullName);
         user.setEnabled(true);
         user.setStatus("ACTIVE");
-
-
 
         // ===== HASH PASSWORD =====
         user.setPassword(passwordEncoder.encode(request.getPassword()));
