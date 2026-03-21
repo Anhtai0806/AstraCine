@@ -25,6 +25,9 @@ public class AdminUserManagementResponse {
     private String staffApplicationStatus;
     private String staffPosition;
     private Boolean staff;
+    private Boolean blankStaffAccount;
+    private String staffTemporaryPassword;
+    private LocalDateTime staffCredentialsIssuedAt;
     private Set<String> roles;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

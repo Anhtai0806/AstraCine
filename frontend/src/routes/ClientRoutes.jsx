@@ -1,6 +1,7 @@
 // routes/ClientRoutes.jsx
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ClientLayout from "../layouts/ClientLayout";
+import { useAuth } from "../contexts/AuthContext";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
@@ -22,6 +23,9 @@ import ResetPassword from "../pages/ResetPassword/ResetPassword";
 import OrderHistory from "../pages/OrderHistory/OrderHistory";
 
 export default function ClientRoutes() {
+  const { user } = useAuth();
+  const isStaffUser = user?.roles?.includes("ROLE_STAFF");
+
   return (
     <Routes>
       <Route element={<ClientLayout />}>
@@ -33,7 +37,7 @@ export default function ClientRoutes() {
           path="profile"
           element={
             <ProtectedRoute>
-              <ProfilePage />
+              {isStaffUser ? <Navigate to="/staff/profile" replace /> : <ProfilePage />}
             </ProtectedRoute>
           }
         />
@@ -41,7 +45,7 @@ export default function ClientRoutes() {
           path="order-history"
           element={
             <ProtectedRoute>
-              <OrderHistory />
+              {isStaffUser ? <Navigate to="/staff/profile" replace /> : <OrderHistory />}
             </ProtectedRoute>
           }
         />

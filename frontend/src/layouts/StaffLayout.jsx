@@ -17,8 +17,8 @@ export default function StaffLayout() {
     const rawPosition = user?.staffPosition || "";
     const position = rawPosition.toUpperCase().trim();
 
-    const effectivePosition =
-        position || (roles.includes("ROLE_ADMIN") ? "MULTI" : roles.includes("ROLE_STAFF") ? "COUNTER" : "");
+    const effectivePosition = position || (roles.includes("ROLE_ADMIN") ? "MULTI" : "");
+    const hasAssignedPosition = Boolean(effectivePosition);
 
     const canCounter = effectivePosition === "COUNTER" || effectivePosition === "MULTI";
     const canCheckin = effectivePosition === "CHECKIN" || effectivePosition === "MULTI";
@@ -40,7 +40,7 @@ export default function StaffLayout() {
                 <div className="staff-user-box">
                     <div className="staff-user-name">{user?.fullName || user?.username}</div>
                     <div className="staff-user-role">
-                        {positionLabels[effectivePosition] || "Nhân viên rạp"}
+                        {positionLabels[effectivePosition] || "Chưa gán vị trí"}
                     </div>
                 </div>
 
@@ -55,7 +55,16 @@ export default function StaffLayout() {
                         🏠 Tổng quan
                     </NavLink>
 
-                    {canCounter && (
+                    <NavLink
+                        to="/staff/profile"
+                        className={({ isActive }) =>
+                            isActive ? "staff-nav-link active" : "staff-nav-link"
+                        }
+                    >
+                        👤 Thông tin cá nhân
+                    </NavLink>
+
+                    {hasAssignedPosition && canCounter && (
                         <NavLink
                             to="/staff/booking"
                             className={({ isActive }) =>
@@ -66,7 +75,7 @@ export default function StaffLayout() {
                         </NavLink>
                     )}
 
-                    {canConcession && (
+                    {hasAssignedPosition && canConcession && (
                         <NavLink
                             to="/staff/combo-sales"
                             className={({ isActive }) =>
@@ -77,7 +86,7 @@ export default function StaffLayout() {
                         </NavLink>
                     )}
 
-                    {canCheckin && (
+                    {hasAssignedPosition && canCheckin && (
                         <NavLink
                             to="/staff/ticket-checkin"
                             className={({ isActive }) =>
@@ -87,12 +96,15 @@ export default function StaffLayout() {
                             ✅ Soát vé QR
                         </NavLink>
                     )}
+
+                    {!hasAssignedPosition && (
+                        <div className="staff-nav-hint">
+                            Tài khoản này chưa được admin gán vị trí làm việc nên chưa thể dùng các chức năng nghiệp vụ.
+                        </div>
+                    )}
                 </nav>
 
                 <div className="staff-sidebar-footer">
-                    <button className="staff-ghost-btn" onClick={() => navigate("/")}>
-                        Về trang khách
-                    </button>
                     <button className="staff-danger-btn" onClick={handleLogout}>
                         Đăng xuất
                     </button>

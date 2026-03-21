@@ -2,38 +2,27 @@ import axiosClient from "../services/axiosClient";
 
 const API_URL = "/user";
 
-// Lấy userId từ localStorage
-const getUserId = () => {
-    const userString = localStorage.getItem("user");
-    if (userString) {
-        const user = JSON.parse(userString);
-        return user.userId || user.id;
-    }
-    return null; // Trả về null nếu không tìm thấy
+const getAuthHeaders = () => {
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export const userApi = {
-    // Lấy thông tin profile
     getProfile: () => {
-        const userId = getUserId();
-        return axiosClient.get(`${API_URL}/profile`, {
-            params: { userId },
+        return axios.get(`${API_URL}/profile`, {
+            headers: getAuthHeaders(),
         });
     },
 
-    // Cập nhật thông tin profile
-    updateProfile: (data, id) => {
-        const userId = id || getUserId();
-        return axiosClient.put(`${API_URL}/profile`, data, {
-            params: { userId },
+    updateProfile: (data) => {
+        return axios.put(`${API_URL}/profile`, data, {
+            headers: getAuthHeaders(),
         });
     },
 
-    // Thay đổi mật khẩu
-    changePassword: (data, id) => {
-        const userId = id || getUserId();
-        return axiosClient.put(`${API_URL}/change-password`, data, {
-            params: { userId },
+    changePassword: (data) => {
+        return axios.put(`${API_URL}/change-password`, data, {
+            headers: getAuthHeaders(),
         });
     },
 };

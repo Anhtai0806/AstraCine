@@ -105,8 +105,7 @@ function ProfilePage() {
             console.log("Sending normalized profileData:", normalizedData);
             console.log("Current user email:", user.email);
 
-            const userId = user.userId || user.id;
-            const response = await userApi.updateProfile(normalizedData, userId);
+            const response = await userApi.updateProfile(normalizedData);
 
             // Cập nhật user context với dữ liệu mới
             login({
@@ -114,6 +113,7 @@ function ProfilePage() {
                 fullName: response.data.fullName,
                 email: response.data.email,
                 phone: response.data.phone,
+                staffApplicationStatus: response.data.staffApplicationStatus,
             });
 
             setSuccessMessage("Cập nhật thông tin thành công!");
@@ -133,9 +133,7 @@ function ProfilePage() {
         try {
             setLoading(true);
             setError("");
-            const userId = user.userId || user.id;
-            await userApi.changePassword(passwordData, userId);
-            setIsCurrentPasswordVerified(true);
+            await userApi.changePassword(passwordData);
             setSuccessMessage("Đổi mật khẩu thành công!");
             setPasswordSubmitAttempted(false);
             setIsCurrentPasswordVerified(false);

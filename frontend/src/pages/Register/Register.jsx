@@ -1,7 +1,7 @@
 import "./Register.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { registerApi, submitStaffApplicationApi } from "../../api/authApi";
+import { registerApi } from "../../api/authApi";
 
 const userIcon = (
     <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -30,18 +30,9 @@ const lockIcon = (
     </svg>
 );
 
-const briefcaseIcon = (
-    <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
-        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-    </svg>
-);
-
 function Register() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState("customer");
-
-    const [customerForm, setCustomerForm] = useState({
+    const [form, setForm] = useState({
         username: "",
         fullName: "",
         email: "",
@@ -49,25 +40,11 @@ function Register() {
         password: "",
         confirmPassword: "",
     });
-
-    const [staffForm, setStaffForm] = useState({
-        username: "",
-        fullName: "",
-        email: "",
-        phone: "",
-        password: "",
-        confirmPassword: "",
-        desiredPosition: "",
-    });
-
     const [errors, setErrors] = useState({});
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
-
-    const [showCustomerPassword, setShowCustomerPassword] = useState(false);
-    const [showCustomerConfirmPassword, setShowCustomerConfirmPassword] = useState(false);
-    const [showStaffPassword, setShowStaffPassword] = useState(false);
-    const [showStaffConfirmPassword, setShowStaffConfirmPassword] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const checkPasswordStrength = (pass) => {
         if (!pass) return { score: 0, text: "", color: "#e2e8f0" };
@@ -82,14 +59,21 @@ function Register() {
         if (score <= 1) return { score: 1, text: "Yếu", color: "#ef4444" };
         if (score === 2) return { score: 2, text: "Trung bình", color: "#f59e0b" };
         if (score === 3) return { score: 3, text: "Khá", color: "#3b82f6" };
-        if (score === 4) return { score: 4, text: "Mạnh", color: "#10b981" };
-        return { score: 0, text: "", color: "#e2e8f0" };
+        return { score: 4, text: "Mạnh", color: "#10b981" };
     };
 
-    const customerStrength = checkPasswordStrength(customerForm.password);
-    const staffStrength = checkPasswordStrength(staffForm.password);
+    const strength = checkPasswordStrength(form.password);
 
-    const handleCustomerChange = (e) => {
+    const getErrorWrapperStyle = (fieldName) => {
+        if (!errors[fieldName]) return undefined;
+        return {
+            borderColor: "#ef4444",
+            background: "#fff5f5",
+            boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.12)",
+        };
+    };
+
+    const handleChange = (e) => {
         const { name } = e.target;
         let value = e.target.value;
 
@@ -97,32 +81,24 @@ function Register() {
             value = String(value).replace(/\s/g, "");
         }
 
-        setCustomerForm((prev) => ({
+        setForm((prev) => ({
             ...prev,
             [name]: value,
         }));
+
+        setErrors((prev) => {
+            const next = { ...prev };
+            delete next[name];
+            return next;
+        });
     };
 
-    const handleStaffChange = (e) => {
-        const { name } = e.target;
-        let value = e.target.value;
-
-        if (["username", "password", "confirmPassword"].includes(name)) {
-            value = String(value).replace(/\s/g, "");
-        }
-
-        setStaffForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    const handleCustomerSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
         setSuccess("");
 
-        if (customerForm.password !== customerForm.confirmPassword) {
+        if (form.password !== form.confirmPassword) {
             setErrors({ confirmPassword: "Mật khẩu xác nhận không khớp" });
             return;
         }
@@ -130,10 +106,10 @@ function Register() {
         try {
             setLoading(true);
 
-            await registerApi(customerForm);
+            await registerApi(form);
 
             setSuccess("Tạo tài khoản thành công! Đang chuyển hướng...");
-            setCustomerForm({
+            setForm({
                 username: "",
                 fullName: "",
                 email: "",
@@ -150,66 +126,40 @@ function Register() {
             }
 
             const data = err.response.data;
-            if (data?.errors) setErrors(data.errors);
-            else if (data?.message) setErrors({ global: data.message });
-            else setErrors({ global: "Đăng ký thất bại. Vui lòng thử lại." });
-            return;
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const handleStaffSubmit = async (e) => {
-        e.preventDefault();
-        setErrors({});
-        setSuccess("");
-
-        if (staffForm.password !== staffForm.confirmPassword) {
-            setErrors({ confirmPassword: "Mật khẩu xác nhận không khớp" });
-            return;
-        }
-
-        if (!staffForm.desiredPosition.trim()) {
-            setErrors({ desiredPosition: "Vui lòng nhập vị trí mong muốn" });
-            return;
-        }
-
-        try {
-            setLoading(true);
-
-            await submitStaffApplicationApi({
-                username: staffForm.username,
-                fullName: staffForm.fullName,
-                email: staffForm.email,
-                phone: staffForm.phone,
-                password: staffForm.password,
-                confirmPassword: staffForm.confirmPassword,
-                desiredPosition: staffForm.desiredPosition.trim(),
-            });
-
-            setSuccess("Đã gửi yêu cầu tạo tài khoản staff đến admin. Khi được duyệt, tài khoản staff sẽ được tạo cho bạn.");
-            setStaffForm({
-                username: "",
-                fullName: "",
-                email: "",
-                phone: "",
-                password: "",
-                confirmPassword: "",
-                desiredPosition: "",
-            });
-
-            setTimeout(() => navigate("/login"), 2200);
-        } catch (err) {
-            if (!err.response) {
-                setErrors({ global: "Không thể kết nối tới máy chủ. Vui lòng thử lại." });
+            if (data?.errors) {
+                setErrors(data.errors);
                 return;
             }
 
-            const data = err.response.data;
-            if (data?.errors) setErrors(data.errors);
-            else if (data?.message) setErrors({ global: data.message });
-            else setErrors({ global: "Gửi yêu cầu thất bại. Vui lòng thử lại." });
-            return;
+            if (data?.message) {
+                const message = String(data.message).toLowerCase();
+
+                if (message.includes("email")) {
+                    setErrors({ email: "Email đã được sử dụng" });
+                    return;
+                }
+
+                if (message.includes("phone")) {
+                    setErrors({ phone: "Số điện thoại đã được sử dụng" });
+                    return;
+                }
+
+                if (message.includes("username")) {
+                    setErrors({ username: "Tên đăng nhập đã tồn tại" });
+                    return;
+                }
+
+                if (message.includes("password confirmation")) {
+                    setErrors({ confirmPassword: "Mật khẩu xác nhận không khớp" });
+                    return;
+                }
+
+                setErrors({ global: data.message });
+                return;
+            }
+
+            setErrors({ global: "Đăng ký thất bại. Vui lòng thử lại." });
         } finally {
             setLoading(false);
         }
@@ -232,327 +182,151 @@ function Register() {
 
             <div className="astra-panel">
                 <div className="astra-form-container">
-                    <div className="auth-tabs fade-in-up">
-                        <button
-                            type="button"
-                            className={activeTab === "customer" ? "auth-tab active" : "auth-tab"}
-                            onClick={() => {
-                                setActiveTab("customer");
-                                setErrors({});
-                                setSuccess("");
-                            }}
-                        >
-                            Đăng ký khách hàng
-                        </button>
-                        <button
-                            type="button"
-                            className={activeTab === "staff-request" ? "auth-tab active" : "auth-tab"}
-                            onClick={() => {
-                                setActiveTab("staff-request");
-                                setErrors({});
-                                setSuccess("");
-                            }}
-                        >
-                            Yêu cầu tài khoản staff
-                        </button>
+                    <div className="form-header fade-in-up">
+                        <h2>Đăng ký khách hàng</h2>
+                        <p>Tạo tài khoản khách hàng để đặt vé, theo dõi lịch sử và nhận ưu đãi</p>
                     </div>
 
-                    {activeTab === "customer" && (
-                        <>
-                            <div className="form-header fade-in-up">
-                                <h2>Bắt đầu hành trình</h2>
-                                <p>Điền thông tin bên dưới để tạo tài khoản khách hàng mới.</p>
+                    <div className="alert fade-in-up" style={{ background: "#eff6ff", color: "#1d4ed8" }}>
+                        Tài khoản staff không còn đăng ký tại đây. Admin sẽ cấp sẵn tài khoản staff cho nhân viên.
+                    </div>
+
+                    {errors.global && <div className="alert alert-danger fade-in-up">{errors.global}</div>}
+                    {success && <div className="alert alert-success fade-in-up">{success}</div>}
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-group fade-in-up delay-1">
+                            <label>Tên đăng nhập</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("username")}>
+                                {userIcon}
+                                <input
+                                    name="username"
+                                    value={form.username}
+                                    onChange={handleChange}
+                                    placeholder="Nhập tên đăng nhập"
+                                    required
+                                />
+                            </div>
+                            {errors.username && <small className="error-text">{errors.username}</small>}
+                        </div>
+
+                        <div className="input-group fade-in-up delay-1">
+                            <label>Họ và tên</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("fullName")}>
+                                {userIcon}
+                                <input
+                                    name="fullName"
+                                    value={form.fullName}
+                                    onChange={handleChange}
+                                    placeholder="Nhập họ và tên"
+                                    required
+                                />
+                            </div>
+                            {errors.fullName && <small className="error-text">{errors.fullName}</small>}
+                        </div>
+
+                        <div className="input-group fade-in-up delay-2">
+                            <label>Email</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("email")}>
+                                {mailIcon}
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={form.email}
+                                    onChange={handleChange}
+                                    placeholder="Nhập email"
+                                    required
+                                />
+                            </div>
+                            {errors.email && <small className="error-text">{errors.email}</small>}
+                        </div>
+
+                        <div className="input-group fade-in-up delay-2">
+                            <label>Số điện thoại</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("phone")}>
+                                {phoneIcon}
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={form.phone}
+                                    onChange={handleChange}
+                                    placeholder="Nhập số điện thoại"
+                                    required
+                                />
+                            </div>
+                            {errors.phone && <small className="error-text">{errors.phone}</small>}
+                        </div>
+
+                        <div className="input-group fade-in-up delay-3">
+                            <label>Mật khẩu</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("password")}>
+                                {lockIcon}
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="password"
+                                    value={form.password}
+                                    onChange={handleChange}
+                                    placeholder="Nhập mật khẩu"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-monkey"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                >
+                                    {showPassword ? "🐵" : "🙈"}
+                                </button>
                             </div>
 
-                            {success && <div className="alert alert-success">{success}</div>}
-                            {errors.global && <div className="alert alert-danger">{errors.global}</div>}
-
-                            <form onSubmit={handleCustomerSubmit}>
-                                <div className="form-row fade-in-up delay-1">
-                                    <div className="input-group">
-                                        <label>Tên đăng nhập</label>
-                                        <div className="input-wrapper">
-                                            {userIcon}
-                                            <input
-                                                name="username"
-                                                placeholder="Nhập tên đăng nhập"
-                                                value={customerForm.username}
-                                                onChange={handleCustomerChange}
-                                            />
-                                        </div>
-                                        {errors.username && <span className="error-text">{errors.username}</span>}
-                                    </div>
-
-                                    <div className="input-group">
-                                        <label>Họ và tên</label>
-                                        <div className="input-wrapper">
-                                            {userIcon}
-                                            <input
-                                                name="fullName"
-                                                placeholder="VD: Nguyễn Văn A"
-                                                value={customerForm.fullName}
-                                                onChange={handleCustomerChange}
-                                            />
-                                        </div>
-                                        {errors.fullName && <span className="error-text">{errors.fullName}</span>}
-                                    </div>
-                                </div>
-
-                                <div className="form-row fade-in-up delay-2">
-                                    <div className="input-group">
-                                        <label>Địa chỉ Email</label>
-                                        <div className="input-wrapper">
-                                            {mailIcon}
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                placeholder="name@example.com"
-                                                value={customerForm.email}
-                                                onChange={handleCustomerChange}
-                                            />
-                                        </div>
-                                        {errors.email && <span className="error-text">{errors.email}</span>}
-                                    </div>
-
-                                    <div className="input-group">
-                                        <label>Số điện thoại</label>
-                                        <div className="input-wrapper">
-                                            {phoneIcon}
-                                            <input
-                                                name="phone"
-                                                placeholder="09xx xxx xxx"
-                                                value={customerForm.phone}
-                                                onChange={handleCustomerChange}
-                                            />
-                                        </div>
-                                        {errors.phone && <span className="error-text">{errors.phone}</span>}
-                                    </div>
-                                </div>
-
-                                <div className="input-group fade-in-up delay-4">
-                                    <label>Mật khẩu</label>
-                                    <div className="input-wrapper">
-                                        {lockIcon}
-                                        <input
-                                            type={showCustomerPassword ? "text" : "password"}
-                                            name="password"
-                                            placeholder="Bảo mật bằng ký tự đặc biệt và số"
-                                            value={customerForm.password}
-                                            onChange={handleCustomerChange}
+                            {!!form.password && (
+                                <div className="password-strength">
+                                    <div className="password-strength-bar">
+                                        <span
+                                            style={{
+                                                width: `${(strength.score / 4) * 100}%`,
+                                                background: strength.color,
+                                            }}
                                         />
-                                        <button
-                                            type="button"
-                                            className="btn-monkey"
-                                            onClick={() => setShowCustomerPassword(!showCustomerPassword)}
-                                            title="Ẩn/Hiện"
-                                        >
-                                            {showCustomerPassword ? "🐵" : "🙈"}
-                                        </button>
                                     </div>
-
-                                    {customerForm.password && (
-                                        <div className="password-meter">
-                                            <div className="meter-track">
-                                                <div
-                                                    className="meter-fill"
-                                                    style={{
-                                                        width: `${(customerStrength.score / 4) * 100}%`,
-                                                        backgroundColor: customerStrength.color,
-                                                    }}
-                                                ></div>
-                                            </div>
-                                            <span style={{ color: customerStrength.color }}>{customerStrength.text}</span>
-                                        </div>
-                                    )}
-                                    {errors.password && <span className="error-text">{errors.password}</span>}
+                                    <small style={{ color: strength.color }}>{strength.text}</small>
                                 </div>
+                            )}
 
-                                <div className="input-group fade-in-up delay-5">
-                                    <label>Xác nhận mật khẩu</label>
-                                    <div className="input-wrapper">
-                                        {lockIcon}
-                                        <input
-                                            type={showCustomerConfirmPassword ? "text" : "password"}
-                                            name="confirmPassword"
-                                            placeholder="Nhập lại mật khẩu ở trên"
-                                            value={customerForm.confirmPassword}
-                                            onChange={handleCustomerChange}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn-monkey"
-                                            onClick={() => setShowCustomerConfirmPassword(!showCustomerConfirmPassword)}
-                                            title="Ẩn/Hiện"
-                                        >
-                                            {showCustomerConfirmPassword ? "🐵" : "🙈"}
-                                        </button>
-                                    </div>
-                                    {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-                                </div>
+                            {errors.password && <small className="error-text">{errors.password}</small>}
+                        </div>
 
-                                <button type="submit" disabled={loading || Boolean(success)} className="btn-primary fade-in-up delay-5">
-                                    {loading ? <span className="spinner"></span> : "Tạo Tài Khoản"}
+                        <div className="input-group fade-in-up delay-4">
+                            <label>Xác nhận mật khẩu</label>
+                            <div className="input-wrapper" style={getErrorWrapperStyle("confirmPassword")}>
+                                {lockIcon}
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    name="confirmPassword"
+                                    value={form.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Nhập lại mật khẩu"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-monkey"
+                                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                >
+                                    {showConfirmPassword ? "🐵" : "🙈"}
                                 </button>
-                            </form>
-                        </>
-                    )}
-
-                    {activeTab === "staff-request" && (
-                        <>
-                            <div className="form-header fade-in-up">
-                                <h2>Yêu cầu tài khoản nhân viên</h2>
-                                <p>Điền thông tin bên dưới để gửi yêu cầu tạo tài khoản staff cho admin duyệt.</p>
                             </div>
+                            {errors.confirmPassword && (
+                                <small className="error-text">{errors.confirmPassword}</small>
+                            )}
+                        </div>
 
-                            {success && <div className="alert alert-success">{success}</div>}
-                            {errors.global && <div className="alert alert-danger">{errors.global}</div>}
-
-                            <form onSubmit={handleStaffSubmit}>
-                                <div className="form-row fade-in-up delay-1">
-                                    <div className="input-group">
-                                        <label>Tên đăng nhập</label>
-                                        <div className="input-wrapper">
-                                            {userIcon}
-                                            <input
-                                                name="username"
-                                                placeholder="Nhập tên đăng nhập"
-                                                value={staffForm.username}
-                                                onChange={handleStaffChange}
-                                            />
-                                        </div>
-                                        {errors.username && <span className="error-text">{errors.username}</span>}
-                                    </div>
-
-                                    <div className="input-group">
-                                        <label>Họ và tên</label>
-                                        <div className="input-wrapper">
-                                            {userIcon}
-                                            <input
-                                                name="fullName"
-                                                placeholder="VD: Nguyễn Văn A"
-                                                value={staffForm.fullName}
-                                                onChange={handleStaffChange}
-                                            />
-                                        </div>
-                                        {errors.fullName && <span className="error-text">{errors.fullName}</span>}
-                                    </div>
-                                </div>
-
-                                <div className="form-row fade-in-up delay-2">
-                                    <div className="input-group">
-                                        <label>Địa chỉ Email</label>
-                                        <div className="input-wrapper">
-                                            {mailIcon}
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                placeholder="name@example.com"
-                                                value={staffForm.email}
-                                                onChange={handleStaffChange}
-                                            />
-                                        </div>
-                                        {errors.email && <span className="error-text">{errors.email}</span>}
-                                    </div>
-
-                                    <div className="input-group">
-                                        <label>Số điện thoại</label>
-                                        <div className="input-wrapper">
-                                            {phoneIcon}
-                                            <input
-                                                name="phone"
-                                                placeholder="09xx xxx xxx"
-                                                value={staffForm.phone}
-                                                onChange={handleStaffChange}
-                                            />
-                                        </div>
-                                        {errors.phone && <span className="error-text">{errors.phone}</span>}
-                                    </div>
-                                </div>
-
-                                <div className="input-group fade-in-up delay-3">
-                                    <label>Vị trí mong muốn</label>
-                                    <div className="input-wrapper">
-                                        {briefcaseIcon}
-                                        <input
-                                            name="desiredPosition"
-                                            placeholder="VD: Nhân viên quầy, soát vé, quầy combo"
-                                            value={staffForm.desiredPosition}
-                                            onChange={handleStaffChange}
-                                        />
-                                    </div>
-                                    {errors.desiredPosition && <span className="error-text">{errors.desiredPosition}</span>}
-                                </div>
-
-                                <div className="input-group fade-in-up delay-4">
-                                    <label>Mật khẩu</label>
-                                    <div className="input-wrapper">
-                                        {lockIcon}
-                                        <input
-                                            type={showStaffPassword ? "text" : "password"}
-                                            name="password"
-                                            placeholder="Nhập mật khẩu"
-                                            value={staffForm.password}
-                                            onChange={handleStaffChange}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn-monkey"
-                                            onClick={() => setShowStaffPassword(!showStaffPassword)}
-                                            title="Ẩn/Hiện"
-                                        >
-                                            {showStaffPassword ? "🐵" : "🙈"}
-                                        </button>
-                                    </div>
-
-                                    {staffForm.password && (
-                                        <div className="password-meter">
-                                            <div className="meter-track">
-                                                <div
-                                                    className="meter-fill"
-                                                    style={{
-                                                        width: `${(staffStrength.score / 4) * 100}%`,
-                                                        backgroundColor: staffStrength.color,
-                                                    }}
-                                                ></div>
-                                            </div>
-                                            <span style={{ color: staffStrength.color }}>{staffStrength.text}</span>
-                                        </div>
-                                    )}
-                                    {errors.password && <span className="error-text">{errors.password}</span>}
-                                </div>
-
-                                <div className="input-group fade-in-up delay-5">
-                                    <label>Xác nhận mật khẩu</label>
-                                    <div className="input-wrapper">
-                                        {lockIcon}
-                                        <input
-                                            type={showStaffConfirmPassword ? "text" : "password"}
-                                            name="confirmPassword"
-                                            placeholder="Nhập lại mật khẩu"
-                                            value={staffForm.confirmPassword}
-                                            onChange={handleStaffChange}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn-monkey"
-                                            onClick={() => setShowStaffConfirmPassword(!showStaffConfirmPassword)}
-                                            title="Ẩn/Hiện"
-                                        >
-                                            {showStaffConfirmPassword ? "🐵" : "🙈"}
-                                        </button>
-                                    </div>
-                                    {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-                                </div>
-
-                                <button type="submit" disabled={loading || Boolean(success)} className="btn-primary fade-in-up delay-5">
-                                    {loading ? <span className="spinner"></span> : "Gửi yêu cầu tạo tài khoản staff"}
-                                </button>
-                            </form>
-                        </>
-                    )}
+                        <button type="submit" disabled={loading} className="btn-primary fade-in-up delay-5">
+                            {loading ? <span className="spinner"></span> : "Đăng Ký"}
+                        </button>
+                    </form>
 
                     <div className="form-footer fade-in-up delay-5">
-                        Đã là thành viên? <Link to="/login">Đăng nhập ngay</Link>
+                        Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
                     </div>
                 </div>
             </div>

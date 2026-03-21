@@ -74,6 +74,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // Cập nhật mật khẩu mới (BCrypt encode)
         User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setStaffTemporaryPassword(null);
         userRepository.save(user);
 
         // Đánh dấu token đã dùng (không xoá để có thể audit)

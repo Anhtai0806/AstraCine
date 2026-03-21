@@ -5,7 +5,6 @@ import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.profile.ChangePasswordRequest;
 import com.astracine.backend.presentation.dto.profile.UpdateProfileRequest;
 import com.astracine.backend.presentation.dto.profile.UserProfileResponse;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,61 +23,57 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(Long userId) {
-        User user = userRepository.findById(userId)
+    public UserProfileResponse getProfile(String username) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return buildUserProfileResponse(user);
     }
 
     @Override
-    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
+    public UserProfileResponse updateProfile(String username, UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Normalize request data (trim whitespace, lowercase email)
+        String normalizedFullName = request.getFullName().trim();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = request.getPhone().trim();
 
-        // Kiá»ƒm tra email Ä‘Ã£ tá»“n táº¡i (ngoáº¡i trá»« user hiá»‡n táº¡i)
-        if (!user.getEmail().equalsIgnoreCase(normalizedEmail) &&
-                userRepository.existsByEmail(normalizedEmail)) {
+        String currentEmail = user.getEmail();
+        if ((currentEmail == null || !currentEmail.equalsIgnoreCase(normalizedEmail))
+                && userRepository.existsByEmail(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
 
-        // Kiá»ƒm tra phone Ä‘Ã£ tá»“n táº¡i (ngoáº¡i trá»« user hiá»‡n táº¡i)
-        if (!user.getPhone().equals(normalizedPhone) &&
-                userRepository.existsByPhone(normalizedPhone)) {
+        String currentPhone = user.getPhone();
+        if ((currentPhone == null || !currentPhone.equals(normalizedPhone))
+                && userRepository.existsByPhone(normalizedPhone)) {
             throw new RuntimeException("Phone already exists");
         }
 
-        user.setFullName(request.getFullName().trim());
+        user.setFullName(normalizedFullName);
         user.setEmail(normalizedEmail);
         user.setPhone(normalizedPhone);
+
+        syncStaffAccountStatus(user);
 
         userRepository.save(user);
         return buildUserProfileResponse(user);
     }
 
     @Override
-    public void changePassword(Long userId, ChangePasswordRequest request) {
-        User user = userRepository.findById(userId)
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Kiem tra mat khau hien tai
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("M\u1eadt kh\u1ea9u hi\u1ec7n t\u1ea1i kh\u00f4ng ch\u00ednh x\u00e1c");
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác");
         }
 
-        if (!StringUtils.hasText(request.getNewPassword())) {
-            throw new RuntimeException("M\u1eadt kh\u1ea9u m\u1edbi l\u00e0 b\u1eaft bu\u1ed9c");
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("New password and confirm password do not match");
         }
 
-        if (!StringUtils.hasText(request.getConfirmPassword())) {
-            throw new RuntimeException("X\u00e1c nh\u1eadn m\u1eadt kh\u1ea9u l\u00e0 b\u1eaft bu\u1ed9c");
-        }
-
-        // Kiem tra mat khau moi khong trung voi mat khau cu
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
             throw new RuntimeException("M\u1eadt kh\u1ea9u m\u1edbi ph\u1ea3i kh\u00e1c m\u1eadt kh\u1ea9u hi\u1ec7n t\u1ea1i");
         }
@@ -105,8 +100,22 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("M\u1eadt kh\u1ea9u m\u1edbi v\u00e0 x\u00e1c nh\u1eadn m\u1eadt kh\u1ea9u kh\u00f4ng kh\u1edbp");
         }
 
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setStaffTemporaryPassword(null);
         userRepository.save(user);
+    }
+
+    private void syncStaffAccountStatus(User user) {
+        boolean isStaff = user.getRoles().stream().anyMatch(role -> "ROLE_STAFF".equals(role.getName()));
+        if (!isStaff) {
+            return;
+        }
+
+        boolean hasProfile = user.getFullName() != null && !user.getFullName().isBlank()
+                && user.getEmail() != null && !user.getEmail().isBlank()
+                && user.getPhone() != null && !user.getPhone().isBlank();
+
+        user.setStaffApplicationStatus(hasProfile ? "ASSIGNED" : "AVAILABLE");
     }
 
     private UserProfileResponse buildUserProfileResponse(User user) {
