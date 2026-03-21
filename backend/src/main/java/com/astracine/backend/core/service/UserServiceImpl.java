@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.stream.Collectors;
 
@@ -74,21 +75,29 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
-            throw new RuntimeException("New password must be different from current password");
+            throw new RuntimeException("M\u1eadt kh\u1ea9u m\u1edbi ph\u1ea3i kh\u00e1c m\u1eadt kh\u1ea9u hi\u1ec7n t\u1ea1i");
         }
 
         String newPassword = request.getNewPassword();
 
+        // Kiem tra do dai mat khau (it nhat 8 ky tu)
         if (newPassword.length() < 8) {
-            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự");
+            throw new RuntimeException("M\u1eadt kh\u1ea9u ph\u1ea3i c\u00f3 \u00edt nh\u1ea5t 8 k\u00fd t\u1ef1");
         }
 
+        // Kiem tra co it nhat mot chu hoa
         if (!newPassword.matches(".*[A-Z].*")) {
-            throw new RuntimeException("Mật khẩu phải chứa ít nhất một chữ cái viết hoa");
+            throw new RuntimeException("M\u1eadt kh\u1ea9u ph\u1ea3i ch\u1ee9a \u00edt nh\u1ea5t m\u1ed9t ch\u1eef c\u00e1i vi\u1ebft hoa");
         }
 
+        // Kiem tra co it nhat mot ky tu dac biet
         if (!newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
-            throw new RuntimeException("Mật khẩu phải chứa ít nhất một ký tự đặc biệt");
+            throw new RuntimeException("M\u1eadt kh\u1ea9u ph\u1ea3i ch\u1ee9a \u00edt nh\u1ea5t m\u1ed9t k\u00fd t\u1ef1 \u0111\u1eb7c bi\u1ec7t");
+        }
+
+        // Kiem tra mat khau moi va xac nhan
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("M\u1eadt kh\u1ea9u m\u1edbi v\u00e0 x\u00e1c nh\u1eadn m\u1eadt kh\u1ea9u kh\u00f4ng kh\u1edbp");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));

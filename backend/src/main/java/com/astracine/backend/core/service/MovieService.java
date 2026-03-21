@@ -179,7 +179,9 @@ public class MovieService {
         movie.setReleaseDate(request.getReleaseDate());
         movie.setEndDate(request.getEndDate());
         movie.setAgeRating(request.getAgeRating());
-        movie.setTrailerUrl(request.getTrailerUrl());
+        if (request.getTrailerUrl() != null && !request.getTrailerUrl().isBlank()) {
+            movie.setTrailerUrl(request.getTrailerUrl());
+        }
 
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             movie.setStatus(MovieStatus.valueOf(request.getStatus().toUpperCase()));

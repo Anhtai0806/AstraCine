@@ -22,7 +22,7 @@ const AdminGenres = () => {
             setGenres(response.data);
             setError(null);
         } catch (err) {
-            setError('Failed to fetch genres. Please try again.');
+            setError('Khong the tai danh sach the loai. Vui long thu lai.');
             console.error(err);
         } finally {
             setLoading(false);
@@ -57,45 +57,47 @@ const AdminGenres = () => {
             fetchGenres();
             handleCloseModal();
         } catch (err) {
-            setError('Failed to save genre. Please try again.');
+            setError('Khong the luu the loai. Vui long thu lai.');
             console.error(err);
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this genre?')) {
+        if (window.confirm('Ban co chac muon xoa the loai nay khong?')) {
             try {
                 await genreAPI.delete(id);
                 fetchGenres();
             } catch (err) {
-                setError('Failed to delete genre. It might be in use.');
+                setError('Khong the xoa the loai. The loai co the dang duoc su dung.');
                 console.error(err);
             }
         }
     };
 
-    if (loading) return (
-        <div className="admin-genres-page">
-            <div className="loading-spinner">
-                <div className="spinner-border"></div>
+    if (loading) {
+        return (
+            <div className="admin-genres-page">
+                <div className="loading-spinner">
+                    <div className="spinner-border"></div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="admin-genres-page">
             <div className="admin-genres-container">
                 <div className="admin-genres-header">
-                    <h2>Manage Genres</h2>
+                    <h2>Quản Lý Thể Loại</h2>
                     <button className="btn-custom btn-primary btn-add-genre" onClick={() => handleShowModal()}>
-                        <FaPlus className="me-2" /> Add Genre
+                        <FaPlus className="me-2" /> Thêm thể loại
                     </button>
                 </div>
 
                 {error && (
                     <div className="alert-custom alert-danger">
                         <span>{error}</span>
-                        <button className="alert-close" onClick={() => setError(null)}>✕</button>
+                        <button className="alert-close" onClick={() => setError(null)}>x</button>
                     </div>
                 )}
 
@@ -104,8 +106,8 @@ const AdminGenres = () => {
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Name</th>
-                                <th>Actions</th>
+                                <th>Tên thể loại</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -128,7 +130,7 @@ const AdminGenres = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="3" className="no-data-message">No genres found.</td>
+                                    <td colSpan="3" className="no-data-message">Khong co the loai nao.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -137,19 +139,19 @@ const AdminGenres = () => {
 
                 {showModal && (
                     <div className="custom-modal-backdrop" onClick={handleCloseModal}>
-                        <div className="custom-modal-panel genre-modal" onClick={e => e.stopPropagation()}>
+                        <div className="custom-modal-panel genre-modal" onClick={(e) => e.stopPropagation()}>
                             <div className="custom-modal-header">
-                                <h3>{isEditing ? 'Edit Genre' : 'Add New Genre'}</h3>
-                                <button className="modal-close-btn" onClick={handleCloseModal}>✕</button>
+                                <h3>{isEditing ? 'Chinh sua the loai' : 'Them the loai moi'}</h3>
+                                <button className="modal-close-btn" onClick={handleCloseModal}>x</button>
                             </div>
                             <form onSubmit={handleSave}>
                                 <div className="custom-modal-body">
                                     <div className="form-group-custom">
-                                        <label>Genre Name</label>
+                                        <label>Tên thể loại</label>
                                         <input
                                             type="text"
                                             className="form-control-custom"
-                                            placeholder="Enter genre name"
+                                            placeholder="Nhập tên thể loại"
                                             value={currentGenre.name}
                                             onChange={(e) => setCurrentGenre({ ...currentGenre, name: e.target.value })}
                                             required
@@ -158,10 +160,10 @@ const AdminGenres = () => {
                                 </div>
                                 <div className="custom-modal-footer">
                                     <button type="button" className="btn-custom btn-secondary" onClick={handleCloseModal}>
-                                        Cancel
+                                        Huỷ
                                     </button>
                                     <button type="submit" className="btn-custom btn-primary">
-                                        {isEditing ? 'Update' : 'Create'}
+                                        {isEditing ? 'Cap nhat' : 'Tao moi'}
                                     </button>
                                 </div>
                             </form>

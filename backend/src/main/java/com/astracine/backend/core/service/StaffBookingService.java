@@ -37,8 +37,7 @@ public class StaffBookingService {
     public StaffCounterBookingResponse createCounterBooking(StaffCounterBookingRequest request, String staffUsername) {
         validateCounterPermission(staffUsername);
 
-        SeatHoldService.HoldSnapshot holdSnapshot =
-                seatHoldService.getHoldSnapshot(request.getHoldId(), staffUsername);
+        SeatHoldService.HoldSnapshot holdSnapshot = seatHoldService.getHoldSnapshot(request.getHoldId(), staffUsername);
 
         Invoice invoice = invoiceService.createCounterInvoice(
                 request.getHoldId(),
@@ -107,7 +106,7 @@ public class StaffBookingService {
         if (ticketCode == null || ticketCode.isBlank()) {
             throw new RuntimeException("Mã vé/QR không được để trống.");
         }
-        return ticketRepository.findByQrCode(ticketCode.trim())
+        return ticketRepository.findFirstByQrCode(ticketCode.trim())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy vé với mã QR đã cung cấp."));
     }
 
@@ -163,8 +162,7 @@ public class StaffBookingService {
                 .customerDisplay(
                         invoice.getCustomerUsername() != null && !invoice.getCustomerUsername().isBlank()
                                 ? invoice.getCustomerUsername()
-                                : "Khách lẻ"
-                )
+                                : "Khách lẻ")
                 .createdAt(invoice.getCreatedAt())
                 .showtimeId(showtime != null ? showtime.getId() : null)
                 .movieTitle(movie != null ? movie.getTitle() : null)
@@ -195,10 +193,10 @@ public class StaffBookingService {
                 .canCheckIn(canCheckIn(ticket))
                 .message(message)
                 .customerDisplay(
-                        invoice != null && invoice.getCustomerUsername() != null && !invoice.getCustomerUsername().isBlank()
-                                ? invoice.getCustomerUsername()
-                                : "Khách lẻ"
-                )
+                        invoice != null && invoice.getCustomerUsername() != null
+                                && !invoice.getCustomerUsername().isBlank()
+                                        ? invoice.getCustomerUsername()
+                                        : "Khách lẻ")
                 .movieTitle(movie != null ? movie.getTitle() : null)
                 .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
                 .startTime(showtime != null ? showtime.getStartTime() : null)

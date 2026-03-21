@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,4 +27,16 @@ public class StaffTicketVerificationResponse {
     private LocalDateTime endTime;
     private String seatCode;
     private String seatType;
+    private List<ComboPickupItem> comboItems;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ComboPickupItem {
+        private Long id; // InvoiceCombo ID
+        private String comboName;
+        private Integer quantity;
+        private boolean isPickedUp;
+    }
 }

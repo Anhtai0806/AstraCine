@@ -47,6 +47,19 @@
     border: 1px dashed #cbd5e1;
 }
 
+.staff-feature-card.active-scanner {
+    border: 2px solid #22c55e;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.staff-feature-card.active-scanner .staff-feature-icon {
+    background: #dcfce7;
+}
+
+.staff-feature-card.active-scanner button {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
 .staff-feature-icon {
     width: 54px;
     height: 54px;
@@ -76,6 +89,16 @@
     padding: 12px 16px;
     cursor: pointer;
     font-weight: 700;
+}
+
+/* ── inline scanner below dashboard ────────────── */
+.inline-scanner-container {
+    animation: scanner-slide-in 0.4s ease-out;
+}
+
+@keyframes scanner-slide-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 1100px) {

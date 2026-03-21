@@ -434,3 +434,265 @@
         opacity: 1;
     }
 }
+
+/* === 5. CREATE MODAL (PREMIUM) === */
+.create-modal {
+    width: 540px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: none;
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* --- Header: Dark gradient for max contrast --- */
+.create-modal-header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #3730a3 100%);
+    padding: 26px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    border-bottom: 3px solid rgba(99, 102, 241, 0.5);
+}
+
+.create-modal-header h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.create-modal-subtitle {
+    margin: 4px 0 0 0;
+    color: rgba(199, 210, 254, 0.85);
+    font-size: 0.82rem;
+    font-weight: 400;
+    letter-spacing: 0.1px;
+}
+
+.create-modal-header-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(99, 102, 241, 0.35);
+    border: 1px solid rgba(165, 180, 252, 0.3);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.create-modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+}
+
+.create-modal-close:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    transform: rotate(90deg);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Body: Clean white for high contrast --- */
+.create-modal-body {
+    padding: 28px;
+    background: #ffffff;
+}
+
+/* --- Section divider above datetime --- */
+.create-form-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+    margin: 6px 0 22px 0;
+}
+
+/* --- Form Fields --- */
+.create-form-group {
+    margin-bottom: 20px;
+    flex: 1;
+}
+
+.create-form-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #1e293b;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.create-label-icon {
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.create-form-select,
+.create-form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.create-form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-color: #f8fafc;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.create-form-select:focus,
+.create-form-input:focus {
+    border-color: #6366f1;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.create-form-select:hover,
+.create-form-input:hover {
+    border-color: #a5b4fc;
+    background: #ffffff;
+}
+
+/* Fix: native date/time picker icons blending with bg */
+.create-form-input::-webkit-calendar-picker-indicator {
+    filter: invert(20%) sepia(10%) saturate(1500%) hue-rotate(190deg) brightness(30%);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.create-form-input::-webkit-calendar-picker-indicator:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+/* --- Date / Time Row --- */
+.create-form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.create-form-row .create-form-group {
+    flex: 1;
+    margin-bottom: 20px;
+}
+
+/* --- Section Label (small caps above groups) --- */
+.create-section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+}
+
+.create-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+/* --- Submit Button --- */
+.create-form-submit {
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #312e81, #4f46e5);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    margin-top: 8px;
+    box-shadow:
+        0 4px 14px rgba(49, 46, 129, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.create-form-submit::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -75%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+}
+
+.create-form-submit:hover {
+    background: linear-gradient(135deg, #1e1b4b, #4338ca);
+    transform: translateY(-2px);
+    box-shadow:
+        0 8px 24px rgba(49, 46, 129, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.create-form-submit:hover::after {
+    left: 130%;
+}
+
+.create-form-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(49, 46, 129, 0.3);
+}
+
+/* --- Footer note --- */
+.create-modal-footer {
+    padding: 0 28px 20px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.create-modal-footer-note {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 12px 0 0 0;
+    font-weight: 400;
+    letter-spacing: 0.1px;
+}

@@ -32,8 +32,7 @@ public class StaffBookingController {
         }
 
         return ResponseEntity.ok(
-                staffBookingService.createCounterBooking(request, userDetails.getUsername())
-        );
+                staffBookingService.createCounterBooking(request, userDetails.getUsername()));
     }
 
     @GetMapping("/tickets/lookup")
@@ -45,8 +44,7 @@ public class StaffBookingController {
         }
 
         return ResponseEntity.ok(
-                staffBookingService.lookupTicket(code, userDetails.getUsername())
-        );
+                staffBookingService.lookupTicket(code, userDetails.getUsername()));
     }
 
     @PostMapping("/tickets/check-in")
@@ -58,7 +56,6 @@ public class StaffBookingController {
         }
 
         return ResponseEntity.ok(
-                staffBookingService.checkInTicket(code, userDetails.getUsername())
-        );
+                staffBookingService.checkInTicket(code, userDetails.getUsername()));
     }
 }

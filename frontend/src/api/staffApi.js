@@ -60,4 +60,22 @@ export const staffApi = {
             method: "POST",
             body: JSON.stringify(payload),
         }),
+
+    scanTicket: (qrCode) =>
+        request("/api/staff/tickets/scan", {
+            method: "POST",
+            body: JSON.stringify({ qrCode }),
+        }),
+
+    confirmCheckIn: (ticketIds) =>
+        request("/api/staff/tickets/checkin", {
+            method: "POST",
+            body: JSON.stringify({ ticketIds }),
+        }),
+
+    confirmComboPickup: (invoiceComboIds) =>
+        request("/api/staff/tickets/combo-pickup", {
+            method: "POST",
+            body: JSON.stringify(invoiceComboIds),
+        }),
 };

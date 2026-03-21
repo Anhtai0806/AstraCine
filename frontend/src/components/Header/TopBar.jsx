@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
 import { FaUserCircle } from "react-icons/fa";
+import { AiFillProfile } from "react-icons/ai";
+import { FaCartShopping } from "react-icons/fa6";
+
 import "./Header.css";
 
 function TopBar() {

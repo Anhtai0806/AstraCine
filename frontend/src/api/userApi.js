@@ -1,6 +1,6 @@
-import axios from "axios";
+import axiosClient from "../services/axiosClient";
 
-const API_URL = "http://localhost:8080/api/user";
+const API_URL = "/user";
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");

@@ -24,8 +24,10 @@ public class MovieRequest {
     @Positive(message = "Duration must be positive")
     private Integer durationMinutes;
 
+    @NotNull(message = "Release date is required")
     private LocalDate releaseDate;
 
+    @NotNull(message = "End date is required")
     private LocalDate endDate;
 
     private String ageRating;

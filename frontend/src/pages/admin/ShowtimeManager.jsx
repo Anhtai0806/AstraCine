@@ -20,7 +20,7 @@ const ShowtimeManager = () => {
 
     // UI & Modals
     const [modal, setModal] = useState(null); // { type: 'create' | 'seat', data: ... }
-    const [createForm, setCreateForm] = useState({ movieId: '', roomId: '', startTime: '' });
+    const [createForm, setCreateForm] = useState({ movieId: '', roomId: '', startTime: '', date: '' });
     const [selectedSeats, setSelectedSeats] = useState(null);
     const [roomCols, setRoomCols] = useState(10);
 
@@ -94,7 +94,8 @@ const ShowtimeManager = () => {
 
         setCreateForm({
             movieId: '', roomId,
-            startTime: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+            startTime: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+            date: date.toISOString().split('T')[0]
         });
         setModal({ type: 'create' });
     };
@@ -102,7 +103,7 @@ const ShowtimeManager = () => {
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         try {
-            const dStr = date.toISOString().split('T')[0]; // Lấy ngày hiện tại đang xem
+            const dStr = createForm.date; // Lấy ngày đã chọn trong form
             await axiosClient.post('/admin/showtimes', {
                 ...createForm,
                 startTime: `${dStr}T${createForm.startTime}:00`
@@ -253,7 +254,7 @@ const ShowtimeManager = () => {
                 </div>
 
                 <button className="btn-create" onClick={() => {
-                    setCreateForm({ movieId: '', roomId: rooms[0]?.id || '', startTime: '' });
+                    setCreateForm({ movieId: '', roomId: rooms[0]?.id || '', startTime: '', date: date.toISOString().split('T')[0] });
                     setModal({ type: 'create' });
                 }}>+ Tạo Mới</button>
             </div>
@@ -264,35 +265,64 @@ const ShowtimeManager = () => {
             {/* MODAL: CREATE */}
             {modal?.type === 'create' && (
                 <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
-                    <div className="modal-panel" onClick={e => e.stopPropagation()}>
-                        <div className="modal-head">
-                            <h3>Thêm Suất Chiếu Mới</h3>
-                            <button className="nav-btn" onClick={() => setModal(null)}>✕</button>
+                    <div className="modal-panel create-modal" onClick={e => e.stopPropagation()}>
+                        <div className="create-modal-header">
+                            <div className="create-modal-header-icon">🎬</div>
+                            <div>
+                                <h3>Thêm Suất Chiếu Mới</h3>
+                                <p className="create-modal-subtitle">Tạo lịch chiếu phim cho rạp của bạn</p>
+                            </div>
+                            <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
                         </div>
-                        <div className="modal-content">
+                        <div className="create-modal-body">
                             <form onSubmit={handleCreateSubmit}>
-                                <div style={{ marginBottom: 16 }}>
-                                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>Phim</label>
-                                    <select style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #cbd5e1' }}
+                                <div className="create-section-label">Thông tin phim</div>
+                                <div className="create-form-group">
+                                    <label className="create-form-label">
+                                        <span className="create-label-icon">🎥</span> Chọn Phim
+                                    </label>
+                                    <select className="create-form-select"
                                         value={createForm.movieId} onChange={e => setCreateForm({ ...createForm, movieId: e.target.value })} required>
                                         <option value="">-- Chọn phim --</option>
                                         {movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                                     </select>
                                 </div>
-                                <div style={{ marginBottom: 16 }}>
-                                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>Phòng</label>
-                                    <select style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #cbd5e1' }}
+                                <div className="create-form-group">
+                                    <label className="create-form-label">
+                                        <span className="create-label-icon">🏠</span> Phòng Chiếu
+                                    </label>
+                                    <select className="create-form-select"
                                         value={createForm.roomId} onChange={e => setCreateForm({ ...createForm, roomId: e.target.value })} required>
                                         {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                     </select>
                                 </div>
-                                <div style={{ marginBottom: 24 }}>
-                                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>Giờ Bắt Đầu</label>
-                                    <input type="time" style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #cbd5e1' }}
-                                        value={createForm.startTime} onChange={e => setCreateForm({ ...createForm, startTime: e.target.value })} required />
+
+                                <div className="create-form-divider"></div>
+                                <div className="create-section-label">Thời gian chiếu</div>
+
+                                <div className="create-form-row">
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">
+                                            <span className="create-label-icon">📅</span> Ngày Chiếu
+                                        </label>
+                                        <input type="date" className="create-form-input"
+                                            value={createForm.date} onChange={e => setCreateForm({ ...createForm, date: e.target.value })} required />
+                                    </div>
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">
+                                            <span className="create-label-icon">⏰</span> Giờ Bắt Đầu
+                                        </label>
+                                        <input type="time" className="create-form-input"
+                                            value={createForm.startTime} onChange={e => setCreateForm({ ...createForm, startTime: e.target.value })} required />
+                                    </div>
                                 </div>
-                                <button type="submit" className="btn-create" style={{ width: '100%' }}>Lưu Lịch Chiếu</button>
+                                <button type="submit" className="create-form-submit">
+                                    Tạo Lịch Chiếu
+                                </button>
                             </form>
+                        </div>
+                        <div className="create-modal-footer">
+                            <p className="create-modal-footer-note">Hệ thống sẽ tự động kiểm tra trùng lịch và tạo ghế cho suất chiếu</p>
                         </div>
                     </div>
                 </div>

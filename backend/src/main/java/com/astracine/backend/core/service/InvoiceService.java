@@ -1,12 +1,19 @@
 package com.astracine.backend.core.service;
 
-import com.astracine.backend.core.entity.Combo;
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.astracine.backend.core.entity.Invoice;
 import com.astracine.backend.core.entity.InvoiceCombo;
 import com.astracine.backend.core.entity.InvoicePromotion;
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Payment;
-import com.astracine.backend.core.entity.Promotion;
 import com.astracine.backend.core.entity.Seat;
 import com.astracine.backend.core.entity.Showtime;
 import com.astracine.backend.core.entity.ShowtimeSeat;
@@ -24,21 +31,16 @@ import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
+import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import lombok.Builder;
 import lombok.Data;
+import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
+import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -135,8 +137,7 @@ public class InvoiceService {
                 customerName,
                 customerEmail,
                 customerPhone,
-                staffId != null
-        );
+                staffId != null);
         Invoice newInvoice = Invoice.builder()
                 .showtime(showtime)
                 .staffId(staffId)
@@ -156,14 +157,19 @@ public class InvoiceService {
                 .status("PAID")
                 .build());
 
+        // Sinh QR code cho hóa đơn
+        String masterQrCode = "TICKET-" + invoice.getId() + "-"
+                + java.util.UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
         for (Long seatId : seatIds) {
             showtimeSeatRepository.findByShowtimeIdAndSeatId(showtimeId, seatId).ifPresent(ss -> {
                 BigDecimal price = ss.getFinalPrice() != null ? ss.getFinalPrice() : BigDecimal.ZERO;
+
                 ticketRepository.save(Ticket.builder()
                         .invoice(invoice)
                         .showtimeSeat(ss)
                         .price(price)
-                        .qrCode("TICKET-" + invoice.getId() + "-" + ss.getId())
+                        .qrCode(masterQrCode)
                         .status("VALID")
                         .build());
             });
@@ -281,6 +287,7 @@ public class InvoiceService {
         }
         return "WALK_IN";
     }
+
     private String normalizePaymentMethod(String paymentMethod) {
         if (paymentMethod == null || paymentMethod.isBlank()) {
             return "PAYOS";
@@ -446,6 +453,17 @@ public class InvoiceService {
             }
         }
 
+        // 4. LẤY THÔNG TIN COMBO (BẮP NƯỚC) TỪ INVOICE_COMBOS
+        List<InvoiceCombo> invoiceCombos = invoiceComboRepository.findByInvoiceId(inv.getId());
+        String comboDetails = null;
+
+        if (invoiceCombos != null && !invoiceCombos.isEmpty()) {
+            comboDetails = invoiceCombos.stream()
+                    .map(ic -> ic.getQuantity() + "x " + ic.getCombo().getName())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        // 5. Trả về DTO
         return ETicketDTO.builder()
                 .movieTitle(movieTitle)
                 .ageRating(ageRating)
@@ -459,6 +477,7 @@ public class InvoiceService {
                 .qrCode(qrCode)
                 .totalAmount(inv.getTotalAmount())
                 .orderCode(orderCode)
+                .combos(comboDetails)
                 .build();
     }
 }

@@ -160,6 +160,15 @@
     border: 1px solid #fcc;
 }
 
+.alert-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.alert-list li {
+    margin: 2px 0;
+}
+
 .alert-success {
     background-color: #efe;
     color: #3c3;

@@ -30,4 +30,8 @@ public class InvoiceCombo {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "is_picked_up", nullable = false)
+    @Builder.Default
+    private Boolean isPickedUp = false;
 }
