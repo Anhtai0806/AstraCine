@@ -8,6 +8,7 @@ import StaffComboSale from "../pages/Staff/StaffComboSale";
 import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
 import SeatSelection from "../pages/Booking/SeatSelection";
 import ComboMenu from "../pages/ComboMenu/ComboMenu";
+import ProfilePage from "../pages/Profile/ProfilePage";
 
 export default function StaffRoutes() {
     const { user } = useAuth();
@@ -16,9 +17,7 @@ export default function StaffRoutes() {
     const rawPosition = user?.staffPosition || "";
     const position = rawPosition.toUpperCase().trim();
 
-    // fallback tạm nếu frontend chưa nhận được staffPosition
-    const effectivePosition =
-        position || (roles.includes("ROLE_ADMIN") ? "MULTI" : roles.includes("ROLE_STAFF") ? "COUNTER" : "");
+    const effectivePosition = position || (roles.includes("ROLE_ADMIN") ? "MULTI" : "");
 
     const canCounter = effectivePosition === "COUNTER" || effectivePosition === "MULTI";
     const canCheckin = effectivePosition === "CHECKIN" || effectivePosition === "MULTI";
@@ -29,6 +28,7 @@ export default function StaffRoutes() {
         <Routes>
             <Route element={<StaffLayout />}>
                 <Route index element={<StaffDashboard />} />
+                <Route path="profile" element={<ProfilePage />} />
 
                 <Route
                     path="booking"

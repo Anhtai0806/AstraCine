@@ -93,3 +93,19 @@
         padding: 24px;
     }
 }
+
+
+.staff-dashboard-alert {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fdba74;
+    font-weight: 500;
+}
+
+.staff-feature-card button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}

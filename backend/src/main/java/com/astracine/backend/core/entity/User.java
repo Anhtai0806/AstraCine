@@ -43,6 +43,12 @@ public class User {
     @Column(name = "staff_application_status")
     private String staffApplicationStatus = "NONE";
 
+    @Column(name = "staff_temporary_password", length = 120)
+    private String staffTemporaryPassword;
+
+    @Column(name = "staff_credentials_issued_at")
+    private LocalDateTime staffCredentialsIssuedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -56,7 +62,6 @@ public class User {
     @Column(name = "staff_position", length = 30)
     private String staffPosition;
 
-    // ===== Constructor =====
     public User() {
     }
 
@@ -76,8 +81,6 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-    // ===== Getter / Setter =====
 
     public Long getId() {
         return id;
@@ -121,6 +124,14 @@ public class User {
 
     public String getStaffApplicationStatus() {
         return staffApplicationStatus;
+    }
+
+    public String getStaffTemporaryPassword() {
+        return staffTemporaryPassword;
+    }
+
+    public LocalDateTime getStaffCredentialsIssuedAt() {
+        return staffCredentialsIssuedAt;
     }
 
     public Set<Role> getRoles() {
@@ -171,6 +182,14 @@ public class User {
         this.staffApplicationStatus = staffApplicationStatus;
     }
 
+    public void setStaffTemporaryPassword(String staffTemporaryPassword) {
+        this.staffTemporaryPassword = staffTemporaryPassword;
+    }
+
+    public void setStaffCredentialsIssuedAt(LocalDateTime staffCredentialsIssuedAt) {
+        this.staffCredentialsIssuedAt = staffCredentialsIssuedAt;
+    }
+
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
     }
@@ -194,6 +213,7 @@ public class User {
     public String getStaffPosition() {
         return staffPosition;
     }
+
     public void setStaffPosition(String staffPosition) {
         this.staffPosition = staffPosition;
     }

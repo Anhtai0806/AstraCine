@@ -25,6 +25,7 @@ import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
+import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;

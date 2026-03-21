@@ -79,7 +79,6 @@ public class AuthServiceImpl implements AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = request.getPhone().trim();
         String normalizedFullName = request.getFullName().trim();
-        boolean staffRegistration = Boolean.TRUE.equals(request.getStaffRegistration());
 
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("Password confirmation does not match");

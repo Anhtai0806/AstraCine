@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext(null);
 
@@ -10,7 +10,6 @@ export function AuthProvider({ children }) {
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("accessToken");
 
-    // Nếu có user nhưng không có token (trường hợp còn sót lại từ Basic Auth cũ)
     if (storedUser && !token) {
       localStorage.removeItem("user");
       setUser(null);
@@ -21,30 +20,25 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = (userData) => {
+  const login = useCallback((userData) => {
     const normalizedUser = {
       ...userData,
-      role: userData.roles?.[0] || "CUSTOMER",
+      role: Array.isArray(userData.roles) ? userData.roles[0] || "CUSTOMER" : "CUSTOMER",
     };
 
     setUser(normalizedUser);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
 
-    // Lưu JWT token để các API có thể dùng Bearer auth
     if (userData.token) {
       localStorage.setItem("accessToken", userData.token);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("accessToken");
-  };
-
-  const hasRole = (role) => {
-    return user?.roles?.includes(role);
-  };
+  }, []);
 
   if (loading) return null;
 

@@ -68,6 +68,7 @@ export const staffApplicationAPI = {
 
 export const userManagementAPI = {
     getAll: (keyword) => adminApi.get("/users", { params: keyword ? { keyword } : {} }),
+    createAutoStaffAccount: () => adminApi.post("/users/staff-accounts"),
     updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
 };
 

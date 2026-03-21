@@ -5,7 +5,6 @@ import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.profile.ChangePasswordRequest;
 import com.astracine.backend.presentation.dto.profile.UpdateProfileRequest;
 import com.astracine.backend.presentation.dto.profile.UserProfileResponse;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,81 +22,91 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(Long userId) {
-        User user = userRepository.findById(userId)
+    public UserProfileResponse getProfile(String username) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return buildUserProfileResponse(user);
     }
 
     @Override
-    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
+    public UserProfileResponse updateProfile(String username, UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Normalize request data (trim whitespace, lowercase email)
+        String normalizedFullName = request.getFullName().trim();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = request.getPhone().trim();
 
-        // Kiểm tra email đã tồn tại (ngoại trừ user hiện tại)
-        if (!user.getEmail().equalsIgnoreCase(normalizedEmail) &&
-                userRepository.existsByEmail(normalizedEmail)) {
+        String currentEmail = user.getEmail();
+        if ((currentEmail == null || !currentEmail.equalsIgnoreCase(normalizedEmail))
+                && userRepository.existsByEmail(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
 
-        // Kiểm tra phone đã tồn tại (ngoại trừ user hiện tại)
-        if (!user.getPhone().equals(normalizedPhone) &&
-                userRepository.existsByPhone(normalizedPhone)) {
+        String currentPhone = user.getPhone();
+        if ((currentPhone == null || !currentPhone.equals(normalizedPhone))
+                && userRepository.existsByPhone(normalizedPhone)) {
             throw new RuntimeException("Phone already exists");
         }
 
-        user.setFullName(request.getFullName().trim());
+        user.setFullName(normalizedFullName);
         user.setEmail(normalizedEmail);
         user.setPhone(normalizedPhone);
+
+        syncStaffAccountStatus(user);
 
         userRepository.save(user);
         return buildUserProfileResponse(user);
     }
 
     @Override
-    public void changePassword(Long userId, ChangePasswordRequest request) {
-        User user = userRepository.findById(userId)
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Kiểm tra mật khẩu hiện tại
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Mật Khẩu hiện tại không chính xác");
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác");
         }
 
-        // Kiểm tra mật khẩu mới và xác nhận
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("New password and confirm password do not match");
         }
 
-        // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
             throw new RuntimeException("New password must be different from current password");
         }
 
         String newPassword = request.getNewPassword();
 
-        // Kiểm tra độ dài mật khẩu (ít nhất 8 ký tự)
         if (newPassword.length() < 8) {
             throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự");
         }
 
-        // Kiểm tra có ít nhất một chữ hoa
         if (!newPassword.matches(".*[A-Z].*")) {
             throw new RuntimeException("Mật khẩu phải chứa ít nhất một chữ cái viết hoa");
         }
 
-        // Kiểm tra có ít nhất một ký tự đặc biệt
         if (!newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
             throw new RuntimeException("Mật khẩu phải chứa ít nhất một ký tự đặc biệt");
         }
 
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setStaffTemporaryPassword(null);
         userRepository.save(user);
+    }
+
+    private void syncStaffAccountStatus(User user) {
+        boolean isStaff = user.getRoles().stream().anyMatch(role -> "ROLE_STAFF".equals(role.getName()));
+        if (!isStaff) {
+            return;
+        }
+
+        boolean hasProfile = user.getFullName() != null && !user.getFullName().isBlank()
+                && user.getEmail() != null && !user.getEmail().isBlank()
+                && user.getPhone() != null && !user.getPhone().isBlank();
+
+        user.setStaffApplicationStatus(hasProfile ? "ASSIGNED" : "AVAILABLE");
     }
 
     private UserProfileResponse buildUserProfileResponse(User user) {

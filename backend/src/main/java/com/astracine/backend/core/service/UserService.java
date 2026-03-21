@@ -6,18 +6,9 @@ import com.astracine.backend.presentation.dto.profile.UserProfileResponse;
 
 public interface UserService {
 
-    /**
-     * Lấy thông tin profile của user hiện tại
-     */
-    UserProfileResponse getProfile(Long userId);
+    UserProfileResponse getProfile(String username);
 
-    /**
-     * Cập nhật thông tin profile của user
-     */
-    UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request);
+    UserProfileResponse updateProfile(String username, UpdateProfileRequest request);
 
-    /**
-     * Thay đổi mật khẩu
-     */
-    void changePassword(Long userId, ChangePasswordRequest request);
+    void changePassword(String username, ChangePasswordRequest request);
 }

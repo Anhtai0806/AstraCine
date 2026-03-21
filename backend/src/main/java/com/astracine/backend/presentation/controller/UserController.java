@@ -4,11 +4,16 @@ import com.astracine.backend.core.service.UserService;
 import com.astracine.backend.presentation.dto.profile.ChangePasswordRequest;
 import com.astracine.backend.presentation.dto.profile.UpdateProfileRequest;
 import com.astracine.backend.presentation.dto.profile.UserProfileResponse;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/user")
@@ -17,46 +22,31 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Lấy thông tin profile của user
-     * GET /api/user/profile?userId=1
-     */
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> getProfile(
-            @RequestParam(required = false) Long userId) {
-        // Nếu không có userId, sử dụng mặc định là 1 (test)
-        if (userId == null) {
-            userId = 1L;
-        }
-        return ResponseEntity.ok(userService.getProfile(userId));
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.getProfile(resolveCurrentUsername(userDetails)));
     }
 
-    /**
-     * Cập nhật thông tin profile
-     * PUT /api/user/profile?userId=1
-     */
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponse> updateProfile(
-            @RequestParam(required = false) Long userId,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
-        if (userId == null) {
-            userId = 1L;
-        }
-        return ResponseEntity.ok(userService.updateProfile(userId, request));
+        return ResponseEntity.ok(userService.updateProfile(resolveCurrentUsername(userDetails), request));
     }
 
-    /**
-     * Thay đổi mật khẩu
-     * PUT /api/user/change-password?userId=1
-     */
     @PutMapping("/change-password")
     public ResponseEntity<String> changePassword(
-            @RequestParam(required = false) Long userId,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request) {
-        if (userId == null) {
-            userId = 1L;
-        }
-        userService.changePassword(userId, request);
+        userService.changePassword(resolveCurrentUsername(userDetails), request);
         return ResponseEntity.ok("Password changed successfully");
+    }
+
+    private String resolveCurrentUsername(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+        return userDetails.getUsername();
     }
 }

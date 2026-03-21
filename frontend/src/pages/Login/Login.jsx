@@ -63,12 +63,7 @@ function Login() {
             setError("");
 
             const res = await loginApi(form);
-            const userDataWithPassword = {
-                ...res.data,
-                password: form.password,
-            };
-
-            login(userDataWithPassword);
+            login(res.data);
 
             const roles = res.data.roles || [];
             if (roles.includes("ROLE_ADMIN")) navigate("/admin");
@@ -102,8 +97,11 @@ function Login() {
                         <p>Truy cập vào tài khoản AstraCine của bạn</p>
                     </div>
 
-                    {error && <div className="alert alert-danger fade-in-up">{error}</div>}
+                    <div className="alert fade-in-up" style={{ background: "#eff6ff", color: "#1d4ed8" }}>
+                        Tài khoản staff do admin cấp sẵn. Nếu là nhân viên mới, hãy nhận tài khoản từ admin rồi đăng nhập để hoàn thiện hồ sơ cá nhân.
+                    </div>
 
+                    {error && <div className="alert alert-danger">{error}</div>}
                     <form onSubmit={handleSubmit}>
                         <div className="input-group fade-in-up delay-1">
                             <label>Tài khoản / Email / SĐT</label>
@@ -149,7 +147,7 @@ function Login() {
                     </form>
 
                     <div className="form-footer fade-in-up delay-5">
-                        Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+                        Chưa có tài khoản khách hàng? <Link to="/register">Đăng ký ngay</Link>
                     </div>
                 </div>
             </div>

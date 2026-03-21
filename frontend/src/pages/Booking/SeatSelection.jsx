@@ -25,15 +25,14 @@ function formatCurrencyVND(value) {
  * Sau này thêm TimeSlot multiplier thì chỉ cần sửa hàm getSeatTypePrice()
  * hoặc thay bằng getFinalPrice(seatType, multiplier)
  */
-const PRICE_BY_TYPE = {
-    NORMAL: 50000,
-    VIP: 80000,
-    COUPLE: 120000,
-    PREMIUM: 100000,
-};
+function getSeatDisplayPrice(seat) {
+    const finalPrice = Number(seat?.finalPrice);
+    if (Number.isFinite(finalPrice) && finalPrice > 0) return finalPrice;
 
-function getSeatTypePrice(seatType) {
-    return PRICE_BY_TYPE?.[seatType] ?? PRICE_BY_TYPE.NORMAL;
+    const basePrice = Number(seat?.basePrice);
+    if (Number.isFinite(basePrice) && basePrice > 0) return basePrice;
+
+    return 0;
 }
 
 export default function SeatSelection() {
@@ -158,7 +157,7 @@ export default function SeatSelection() {
         return selectedSeatIds.reduce((sum, id) => {
             const seat = seatById.get(id);
             if (!seat) return sum;
-            return sum + getSeatTypePrice(seat.seatType);
+            return sum + getSeatDisplayPrice(seat);
         }, 0);
     }, [selectedSeatIds, seatById]);
 
@@ -173,7 +172,7 @@ export default function SeatSelection() {
                 seatId: s.seatId,
                 code: `${s.rowLabel}${s.columnNumber}`,
                 seatType: s.seatType,
-                finalPrice: getSeatTypePrice(s.seatType),
+                finalPrice: getSeatDisplayPrice(s),
             }));
     }, [selectedSeatIds, seatById]);
 
@@ -185,17 +184,14 @@ export default function SeatSelection() {
     const seatsForGrid = useMemo(() => {
         return (sortedSeats || []).map((s) => {
             const isSelected = selectedSeatIds.includes(s.seatId);
-
-            // selected ưu tiên hơn HELD để không bị "vàng như người khác"
             const effectiveStatus = isSelected ? "SELECTED" : s.status;
-
-            const typePrice = getSeatTypePrice(s.seatType);
+            const displayPrice = getSeatDisplayPrice(s);
 
             return {
                 ...s,
                 id: s.seatId,
-                basePrice: typePrice,   // ✅ tooltip SeatGrid
-                finalPrice: typePrice,  // ✅ nếu có chỗ nào lỡ dùng finalPrice thì vẫn đúng
+                basePrice: displayPrice,
+                finalPrice: displayPrice,
                 effectiveStatus,
             };
         });
