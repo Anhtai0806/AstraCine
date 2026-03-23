@@ -17,7 +17,7 @@ function MovieSection({ title, type, movies = [] }) {
               age={movie.ageRating}
               posterUrl={movie.posterUrl}
               status={movie.status}
-              onBuy={() => navigate(`/booking/movies/${movie.id}`)}
+              onBuy={() => console.log("Booking:", movie.id)}
               // Make sure navigation works
               onClick={() => navigate(`/movies/${movie.id}`)}
             />
