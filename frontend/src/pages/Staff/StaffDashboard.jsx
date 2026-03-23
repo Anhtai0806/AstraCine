@@ -70,6 +70,7 @@ export default function StaffDashboard() {
                     </p>
                     <button onClick={() => navigate("/staff/ticket-checkin")} disabled={!canCheckin}>
                         Mở màn hình soát vé
+                    </button>
                     <button onClick={() => setShowScanner(!showScanner)}>
                         {showScanner ? "🔽 Đóng soát vé" : "📷 Mở màn hình soát vé"}
                     </button>
