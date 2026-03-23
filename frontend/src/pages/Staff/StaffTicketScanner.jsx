@@ -25,14 +25,22 @@ export default function StaffTicketScanner() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [scanning, setScanning] = useState(false);
-    const [lastScanned, setLastScanned] = useState(""); // prevent rapid duplicate scans
+
+    // 🔥 FIX 2: Thay state bằng useRef để tránh lỗi Closure (Stale State) trong callback của Camera
+    const lastScannedRef = useRef(""); 
 
     const scannerRef = useRef(null);   // Html5Qrcode instance
     const readerRef = useRef(null);    // DOM element ref
+    
+    // 🔥 FIX 1: Ổ khóa chặn Strict Mode gọi bật camera 2 lần
+    const isStartingRef = useRef(false); 
 
     /* ── webcam scanner lifecycle ─────────────────── */
     const startScanner = useCallback(async () => {
-        if (scannerRef.current) return;                // already running
+        // Nếu đã có máy quét HOẶC đang trong quá trình khởi động thì chặn lại ngay
+        if (scannerRef.current || isStartingRef.current) return; 
+        
+        isStartingRef.current = true; // Khóa lại
         const html5Qr = new Html5Qrcode("qr-reader");
         scannerRef.current = html5Qr;
 
@@ -52,6 +60,8 @@ export default function StaffTicketScanner() {
             console.error("Camera error:", err);
             setError("Không thể truy cập webcam. Vui lòng kiểm tra quyền camera.");
             scannerRef.current = null;
+        } finally {
+            isStartingRef.current = false; // Mở khóa
         }
     }, []);
 
@@ -60,7 +70,15 @@ export default function StaffTicketScanner() {
         try {
             await scannerRef.current.stop();
             scannerRef.current.clear();
-        } catch (_) { /* ignore */ }
+        } catch (err) {
+            console.error("Error stopping scanner:", err);
+        }
+
+        // 🔥 FIX 1: Quét sạch thẻ <video> thừa thãi khỏi giao diện
+        if (readerRef.current) {
+            readerRef.current.innerHTML = ""; 
+        }
+
         scannerRef.current = null;
         setScanning(false);
     }, []);
@@ -72,8 +90,10 @@ export default function StaffTicketScanner() {
 
     /* ── core scan handler ────────────────────────── */
     const handleScan = async (qrCode) => {
-        if (!qrCode || qrCode === lastScanned) return;
-        setLastScanned(qrCode);
+        // Dùng current của useRef để luôn lấy được giá trị mới nhất
+        if (!qrCode || qrCode === lastScannedRef.current) return;
+        
+        lastScannedRef.current = qrCode; // Lưu mã vừa quét
         setManualCode(qrCode);
         await doScanTicket(qrCode);
     };
@@ -104,6 +124,7 @@ export default function StaffTicketScanner() {
     /* ── manual lookup ────────────────────────────── */
     const handleManualLookup = () => {
         if (!manualCode.trim()) return;
+        lastScannedRef.current = manualCode.trim(); // Cập nhật luôn cho đồng bộ
         doScanTicket(manualCode.trim());
     };
 
@@ -136,8 +157,8 @@ export default function StaffTicketScanner() {
             setSuccess(msg);
             // refresh ticket list after check-in
             if (manualCode.trim()) {
-                const data = await staffApi.scanTicket(manualCode.trim());
-                setTickets(data);
+                const refreshedData = await staffApi.scanTicket(manualCode.trim());
+                setTickets(refreshedData);
                 setSelected([]);
             }
         } catch (err) {
@@ -168,8 +189,8 @@ export default function StaffTicketScanner() {
 
             // refresh ticket list
             if (manualCode.trim()) {
-                const data = await staffApi.scanTicket(manualCode.trim());
-                setTickets(data);
+                const refreshedData = await staffApi.scanTicket(manualCode.trim());
+                setTickets(refreshedData);
                 setSelectedCombos([]);
             }
         } catch (err) {
@@ -187,7 +208,7 @@ export default function StaffTicketScanner() {
         setError(null);
         setSuccess(null);
         setManualCode("");
-        setLastScanned("");
+        lastScannedRef.current = ""; // Reset ref
     };
 
     /* ── render ────────────────────────────────────── */
