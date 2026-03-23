@@ -151,6 +151,22 @@
     border-color: #cbd5e1;
 }
 
+.btn-danger-soft {
+    background: #fff1f2;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-danger-soft:hover {
+    background: #ffe4e6;
+    border-color: #fda4af;
+}
+
 /* --- 2. TIMELINE VIEW --- */
 .timeline-wrapper {
     flex: 1;

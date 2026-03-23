@@ -175,6 +175,29 @@ const ShowtimeManager = () => {
         }
     };
 
+    const handleDeleteDayShowtimes = async () => {
+        const scheduleDate = formatDateKey(date);
+        const dayShowtimes = showtimes.filter((showtime) => showtime.startTime.startsWith(scheduleDate));
+
+        if (!dayShowtimes.length) {
+            alert('Không có lịch chiếu nào trong ngày được chọn');
+            return;
+        }
+
+        if (!window.confirm(`Bạn có chắc muốn xóa toàn bộ ${dayShowtimes.length} suất chiếu trong ngày ${scheduleDate}?`)) {
+            return;
+        }
+
+        try {
+            await axiosClient.delete('/admin/showtimes', { params: { scheduleDate } });
+            alert('Đã xóa toàn bộ lịch chiếu trong ngày');
+            setModal(null);
+            await loadData();
+        } catch (error) {
+            alert(getErrorMessage(error, 'Không thể xóa toàn bộ lịch chiếu trong ngày'));
+        }
+    };
+
     const openAutoModal = () => {
         setAutoForm({
             scheduleDate: formatDateKey(date),
@@ -362,6 +385,7 @@ const ShowtimeManager = () => {
 
                 <div className="header-actions">
                     <button className="btn-secondary" onClick={openAutoModal}>Tạo Tự Động</button>
+                    <button className="btn-danger-soft" onClick={handleDeleteDayShowtimes}>Xóa Lịch Trong Ngày</button>
                     <button className="btn-create" onClick={() => openCreateModal()}>+ Tạo Mới</button>
                 </div>
             </div>
@@ -540,7 +564,7 @@ const ShowtimeManager = () => {
                                 </div>
 
                                 <div className="info-note">
-                                    Khi tạo tự động, hệ thống sẽ xóa toàn bộ lịch cũ của ngày đang chọn trong các phòng được tick rồi generate lại từ đầu. Thuật toán ưu tiên chia đều phim, giữ 15 phút dọn rạp giữa 2 suất.
+                                    Khi tạo tự động, hệ thống sẽ giữ nguyên các suất đã có và chỉ chèn thêm suất mới vào những khoảng trống phù hợp. Thuật toán ưu tiên chia đều phim, giữ 15 phút dọn rạp giữa 2 suất.
                                 </div>
 
                                 <button type="submit" className="create-form-submit" disabled={!autoForm.movieIds.length || !autoForm.roomIds.length}>

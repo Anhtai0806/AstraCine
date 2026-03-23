@@ -92,6 +92,30 @@ public class ShowtimeService {
         showtimeRepository.delete(showtime);
     }
 
+    public void deleteShowtimesByDate(LocalDate scheduleDate) {
+        LocalDateTime dayStart = scheduleDate.atStartOfDay();
+        LocalDateTime dayEnd = scheduleDate.plusDays(1).atStartOfDay();
+
+        List<Showtime> showtimesToDelete = showtimeRepository.findAll().stream()
+                .filter(showtime -> showtime.getStatus() != ShowtimeStatus.CANCELLED)
+                .filter(showtime -> !showtime.getStartTime().isBefore(dayStart))
+                .filter(showtime -> showtime.getStartTime().isBefore(dayEnd))
+                .sorted(Comparator.comparing(Showtime::getStartTime))
+                .collect(Collectors.toList());
+
+        for (Showtime showtime : showtimesToDelete) {
+            ensureShowtimeEditable(showtime);
+        }
+
+        for (Showtime showtime : showtimesToDelete) {
+            deleteShowtimeSeats(showtime.getId());
+        }
+
+        if (!showtimesToDelete.isEmpty()) {
+            showtimeRepository.deleteAll(showtimesToDelete);
+        }
+    }
+
     public ShowtimeDTO.GenerateResponse generateShowtimes(ShowtimeDTO.GenerateRequest request) {
         LocalDate scheduleDate = request.getScheduleDate();
         LocalDateTime windowStart = scheduleDate.atTime(
@@ -110,8 +134,6 @@ public class ShowtimeService {
         if (rooms.isEmpty()) {
             throw new RuntimeException("Không có phòng hợp lệ để tạo lịch");
         }
-
-        clearExistingScheduleForRooms(rooms, windowStart, windowEnd);
 
         Map<Long, Integer> movieCounts = new HashMap<>();
         Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage = new HashMap<>();
@@ -271,26 +293,6 @@ public class ShowtimeService {
                 0,
                 initialCursor,
                 previousShowtime == null ? null : previousShowtime.getMovieId());
-    }
-
-    private void clearExistingScheduleForRooms(List<Room> rooms,
-                                               LocalDateTime windowStart,
-                                               LocalDateTime windowEnd) {
-        for (Room room : rooms) {
-            List<Showtime> showtimesToDelete = showtimeRepository
-                    .findByRoom_IdAndStatusNotOrderByStartTimeAsc(room.getId(), ShowtimeStatus.CANCELLED)
-                    .stream()
-                    .filter(showtime -> overlapsWindow(showtime, windowStart, windowEnd))
-                    .collect(Collectors.toList());
-
-            for (Showtime showtime : showtimesToDelete) {
-                deleteShowtimeSeats(showtime.getId());
-            }
-
-            if (!showtimesToDelete.isEmpty()) {
-                showtimeRepository.deleteAll(showtimesToDelete);
-            }
-        }
     }
 
     private void advancePastAnchors(RoomGenerationState state, LocalDateTime windowEnd) {
@@ -574,6 +576,10 @@ public class ShowtimeService {
     }
 
     private void ensureShowtimeEditable(Showtime showtime) {
+        if (!showtime.getStartTime().isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("Không thể sửa hoặc xóa suất chiếu đã bắt đầu hoặc đã trôi qua");
+        }
+
         List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtime.getId());
         boolean hasLockedSeat = showtimeSeats.stream()
                 .map(ShowtimeSeat::getStatus)

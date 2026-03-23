@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -40,6 +41,12 @@ public class ShowtimeController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteShowtime(@PathVariable Long id) {
         showtimeService.deleteShowtime(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteShowtimesByDate(@RequestParam LocalDate scheduleDate) {
+        showtimeService.deleteShowtimesByDate(scheduleDate);
         return ResponseEntity.noContent().build();
     }
 

@@ -25,6 +25,11 @@ public class TimeSlotController {
         return ResponseEntity.ok(timeSlotService.createTimeSlot(dto));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<TimeSlotDTO> update(@PathVariable Long id, @RequestBody TimeSlotDTO dto) {
+        return ResponseEntity.ok(timeSlotService.updateTimeSlot(id, dto));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         timeSlotService.deleteTimeSlot(id);
