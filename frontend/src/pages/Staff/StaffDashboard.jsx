@@ -7,6 +7,7 @@ import "./StaffDashboard.css";
 export default function StaffDashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [showScanner, setShowScanner] = useState(false);
 
     const roles = user?.roles || [];
     const position = (user?.staffPosition || "").toUpperCase().trim();
@@ -15,8 +16,9 @@ export default function StaffDashboard() {
     const canCounter = effectivePosition === "COUNTER" || effectivePosition === "MULTI";
     const canCheckin = effectivePosition === "CHECKIN" || effectivePosition === "MULTI";
     const canConcession =
-        effectivePosition === "CONCESSION" || effectivePosition === "MULTI" || effectivePosition === "COUNTER";
-    const [showScanner, setShowScanner] = useState(false);
+        effectivePosition === "CONCESSION" ||
+        effectivePosition === "MULTI" ||
+        effectivePosition === "COUNTER";
 
     return (
         <div className="staff-dashboard-page">
@@ -68,17 +70,36 @@ export default function StaffDashboard() {
                     <p>
                         Quét mã QR hoặc nhập mã vé thủ công để tra cứu và xác nhận check-in cho khách hàng.
                     </p>
+<<<<<<< HEAD
                     <button onClick={() => navigate("/staff/ticket-checkin")} disabled={!canCheckin}>
                         Mở màn hình soát vé
                     </button>
                     <button onClick={() => setShowScanner(!showScanner)}>
                         {showScanner ? "🔽 Đóng soát vé" : "📷 Mở màn hình soát vé"}
                     </button>
+=======
+
+                    <div className="staff-feature-actions">
+                        <button
+                            onClick={() => navigate("/staff/ticket-checkin")}
+                            disabled={!canCheckin}
+                        >
+                            Mở trang soát vé
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowScanner((prev) => !prev)}
+                            disabled={!canCheckin}
+                        >
+                            {showScanner ? "🔽 Đóng soát vé" : "📷 Mở scanner nhanh"}
+                        </button>
+                    </div>
+>>>>>>> origin
                 </div>
             </div>
 
-            {/* Inline QR Scanner */}
-            {showScanner && (
+            {showScanner && canCheckin && (
                 <div className="inline-scanner-container">
                     <StaffTicketScanner />
                 </div>
