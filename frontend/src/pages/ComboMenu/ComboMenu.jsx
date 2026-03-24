@@ -1,155 +1,301 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Card, Button, Row, Col, Spin, Empty, Tag, Slider, message } from 'antd';
-import { SearchOutlined, ShoppingCartOutlined, FilterOutlined } from '@ant-design/icons';
-// Đảm bảo đường dẫn này đúng với cấu trúc thư mục của bạn
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Spin, Empty, message } from 'antd';
 import { comboAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import './ComboMenu.css';
 
-const { Meta } = Card;
+const formatCurrency = (amount) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
 
 const ComboMenu = () => {
-    // --- KHAI BÁO STATE ---
+    const { showtimeId } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const isStaffMode = location.pathname.startsWith("/staff");
+
+    // Kiểm tra authentication
+    useEffect(() => {
+        if (!user) {
+            navigate("/login", {
+                state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` },
+            });
+            return;
+        }
+    }, [user, navigate, showtimeId]);
+
+    // Nhận state từ SeatSelection (hoặc từ InvoiceSummary khi quay lại)
+    const {
+        holdId,
+        seatDetails = [],
+        seatTotal = 0,
+        movieTitle,
+        startTime,
+        endTime,
+        roomName,
+        cartItems: restoredCartItems, // có khi quay lại từ InvoiceSummary
+    } = location.state || {};
+
+    // --- STATE ---
     const [combos, setCombos] = useState([]);
     const [loading, setLoading] = useState(false);
     const [keyword, setKeyword] = useState('');
-    const [priceRange, setPriceRange] = useState([0, 500000]); // Mặc định từ 0đ đến 500k
+    // Khôi phục giỏ hàng nếu quay lại từ InvoiceSummary
+    const [cart, setCart] = useState(() => {
+        if (restoredCartItems?.length) {
+            return Object.fromEntries(restoredCartItems.map(item => [item.id, item.quantity]));
+        }
+        return {};
+    });
 
-    // --- HÀM GỌI API ---
-    const fetchCombos = async () => {
+    // --- API ---
+    const fetchCombos = async (kw = keyword) => {
         setLoading(true);
         try {
-            // Gọi API search với các tham số: keyword, minPrice, maxPrice
-            const response = await comboAPI.search(keyword, priceRange[0], priceRange[1]);
-            setCombos(response.data);
+            const response = await comboAPI.search(kw, 0, 2000000);
+            setCombos(response.data || []);
         } catch (error) {
-            console.error("Lỗi tải danh sách combo:", error);
-            message.error("Không thể tải dữ liệu bắp nước!");
+            console.error('Lỗi tải combo:', error);
+            message.error('Không thể tải danh sách bắp nước!');
         }
         setLoading(false);
     };
 
-    // Chạy 1 lần khi trang vừa load
-    useEffect(() => {
-        fetchCombos();
-    }, []);
+    useEffect(() => { fetchCombos(''); }, []);
 
-    // --- HÀM HỖ TRỢ ---
-    // Format tiền Việt Nam (VD: 50,000 đ)
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    // --- CART LOGIC ---
+    const addToCart = (combo) => {
+        setCart(prev => ({ ...prev, [combo.id]: (prev[combo.id] || 0) + 1 }));
     };
 
-    // Xử lý khi bấm nút "Thêm vào giỏ"
-    const handleAddToCart = (combo) => {
-        message.success(`Đã thêm ${combo.name} vào giỏ hàng!`);
-        // Sau này bạn sẽ code logic lưu vào Context/Redux ở đây
+    const removeFromCart = (comboId) => {
+        setCart(prev => {
+            const next = { ...prev };
+            if ((next[comboId] || 0) <= 1) delete next[comboId];
+            else next[comboId] -= 1;
+            return next;
+        });
+    };
+
+    // --- TÍNH TIỀN ---
+    const cartItems = combos
+        .filter(c => cart[c.id] > 0)
+        .map(c => ({ ...c, quantity: cart[c.id], subtotal: c.price * cart[c.id] }));
+
+    const comboTotal = cartItems.reduce((sum, i) => sum + i.subtotal, 0);
+    const grandTotal = seatTotal + comboTotal;
+
+    // --- FILTERED COMBOS ---
+    const filtered = combos.filter(c =>
+        c.name?.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    // --- NAVIGATION ---
+    const handleGoBack = () => {
+        // Truyền lại thông tin ghế để SeatSelection khôi phục
+        navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`, {
+            state: {
+                movieTitle,
+                startTime,
+                endTime,
+                roomName,
+                restoredHoldId: holdId,
+                restoredSeatIds: seatDetails.map(s => s.seatId),
+            },
+        });
+    };
+
+    const handleContinue = () => {
+        if (!holdId) {
+            message.warning('Phiên đặt vé đã hết hạn, vui lòng chọn ghế lại.');
+            navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`);
+            return;
+        }
+        navigate(isStaffMode ? `/staff/showtimes/${showtimeId}/checkout` : `/booking/showtimes/${showtimeId}/invoice`, {
+            state: {
+                holdId,
+                showtimeId,
+                seatDetails,
+                seatTotal,
+                cartItems,
+                comboTotal,
+                grandTotal,
+                movieTitle,
+                startTime,
+                endTime,
+                roomName,
+            },
+        });
     };
 
     return (
-        <div className="combo-menu-container">
-            {/* --- PHẦN 1: BỘ LỌC TÌM KIẾM --- */}
-            <div className="filter-section">
-                <Row gutter={[16, 16]} align="middle" justify="center">
-                    {/* Ô tìm kiếm */}
-                    <Col xs={24} md={10}>
-                        <Input
-                            size="large"
-                            placeholder="Bạn muốn tìm gì? (VD: Bắp phô mai...)"
-                            prefix={<SearchOutlined />}
-                            value={keyword}
-                            onChange={(e) => setKeyword(e.target.value)}
-                            onPressEnter={fetchCombos} // Bấm Enter để tìm
-                            allowClear
-                        />
-                    </Col>
-
-                    {/* Thanh trượt giá */}
-                    <Col xs={24} md={6}>
-                        <div className="price-label">
-                            Khoảng giá: <span>{formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}</span>
-                        </div>
-                        <Slider
-                            range
-                            step={5000}
-                            min={0}
-                            max={500000}
-                            defaultValue={[0, 500000]}
-                            onChange={(value) => setPriceRange(value)}
-                            trackStyle={[{ backgroundColor: '#e50914' }]} // Màu đỏ rạp phim
-                            handleStyle={[{ borderColor: '#e50914' }, { borderColor: '#e50914' }]}
-                        />
-                    </Col>
-
-                    {/* Nút Lọc */}
-                    <Col xs={24} md={4}>
-                        <Button
-                            type="primary"
-                            danger
-                            icon={<FilterOutlined />}
-                            size="large"
-                            block
-                            onClick={fetchCombos}
-                            className="search-btn"
-                        >
-                            Lọc ngay
-                        </Button>
-                    </Col>
-                </Row>
+        <div className="combo-page">
+            {/* Breadcrumb */}
+            <div className="booking-steps">
+                <span className="step done">1. Chọn ghế</span>
+                <span className="step-arrow">›</span>
+                <span className="step active">2. Chọn bắp nước</span>
+                <span className="step-arrow">›</span>
+                <span className="step">3. Tóm tắt hoá đơn</span>
+                <span className="step-arrow">›</span>
+                <span className="step">4. Thanh toán</span>
             </div>
 
-            {/* --- PHẦN 2: DANH SÁCH SẢN PHẨM --- */}
-            <div className="menu-grid">
-                {loading ? (
-                    <div className="loading-state">
-                        <Spin size="large" tip="Đang chuẩn bị bắp nước thơm ngon..." />
+            <h1 className="combo-page-title">Chọn Bắp Nước</h1>
+
+            <div className="combo-layout">
+                {/* ===== LEFT: Combo List ===== */}
+                <div className="combo-main">
+                    {/* Search bar */}
+                    <div className="combo-search-bar">
+                        <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm combo bắp nước..."
+                            value={keyword}
+                            onChange={(e) => setKeyword(e.target.value)}
+                            className="combo-search-input"
+                        />
+                        {keyword && (
+                            <button className="search-clear" onClick={() => setKeyword('')}>✕</button>
+                        )}
                     </div>
-                ) : combos.length === 0 ? (
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<span className="empty-text">Không tìm thấy combo nào phù hợp :(</span>}
-                    />
-                ) : (
-                    <Row gutter={[24, 24]}>
-                        {combos.map((item) => (
-                            <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
-                                <Card
-                                    hoverable
-                                    className="combo-card"
-                                    cover={
+
+                    {/* Combo grid */}
+                    {loading ? (
+                        <div className="combo-loading">
+                            <Spin size="large" tip="Đang tải..." />
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <Empty description={<span className="empty-text">Không tìm thấy combo phù hợp</span>} />
+                    ) : (
+                        <div className="combo-grid">
+                            {filtered.map((item) => {
+                                const qty = cart[item.id] || 0;
+                                const isActive = item.status === 'ACTIVE';
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className={`combo-card ${qty > 0 ? 'in-cart' : ''} ${!isActive ? 'out-of-stock' : ''}`}
+                                    >
                                         <div className="combo-img-box">
-                                            {/* Ảnh mẫu (do chưa có chức năng upload ảnh) */}
                                             <img
                                                 alt={item.name}
-                                                src="https://media.istockphoto.com/id/506143248/photo/popcorn-and-soda.jpg?s=612x612&w=0&k=20&c=6qHIgYdD6D8B0sZ5Kq7_4QjC4_M2E8_x_k_z_y_x_x_x"
+                                                src="https://images.unsplash.com/photo-1585647347483-22b66260dfff?w=400&auto=format&fit=crop"
                                             />
                                             <span className="price-badge">{formatCurrency(item.price)}</span>
+                                            {!isActive && <span className="sold-out-overlay">Hết hàng</span>}
+                                            {qty > 0 && <span className="cart-qty-badge">{qty}</span>}
                                         </div>
-                                    }
-                                    actions={[
-                                        <Button
-                                            type="primary"
-                                            danger
-                                            shape="round"
-                                            icon={<ShoppingCartOutlined />}
-                                            onClick={() => handleAddToCart(item)}
-                                        >
-                                            Chọn mua
-                                        </Button>
-                                    ]}
-                                >
-                                    <Meta
-                                        title={<div className="card-title" title={item.name}>{item.name}</div>}
-                                        description={
-                                            <Tag color="green" style={{marginTop: 5}}>
-                                                {item.status === 'ACTIVE' ? 'Đang bán' : 'Hết hàng'}
-                                            </Tag>
-                                        }
-                                    />
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
-                )}
+                                        <div className="combo-card-body">
+                                            <h4 className="combo-name">{item.name}</h4>
+                                            <div className="combo-card-actions">
+                                                {qty === 0 ? (
+                                                    <button
+                                                        className="btn-add-to-cart"
+                                                        disabled={!isActive}
+                                                        onClick={() => addToCart(item)}
+                                                    >
+                                                        + Thêm vào giỏ
+                                                    </button>
+                                                ) : (
+                                                    <div className="qty-control">
+                                                        <button onClick={() => removeFromCart(item.id)}>−</button>
+                                                        <span>{qty}</span>
+                                                        <button onClick={() => addToCart(item)}>+</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* ===== RIGHT: Order Summary Sidebar ===== */}
+                <aside className="order-summary">
+                    <h3 className="summary-title">Tóm tắt đơn hàng</h3>
+
+                    {/* Ghế */}
+                    <div className="summary-section">
+                        <div className="summary-section-header">
+                            <span>🎬 Ghế đã chọn</span>
+                            <span
+                                className="summary-edit-link"
+                                onClick={() => navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`)}
+                            >
+                                Đổi ghế
+                            </span>
+                        </div>
+                        {seatDetails.length === 0 ? (
+                            <p className="summary-empty">Chưa có ghế nào</p>
+                        ) : (
+                            <div className="summary-items">
+                                {seatDetails
+                                    .slice()
+                                    .sort((a, b) => a.code.localeCompare(b.code))
+                                    .map(s => (
+                                        <div className="summary-row" key={s.seatId}>
+                                            <span>
+                                                <span className="seat-code-sm">{s.code}</span>
+                                                <span className="seat-type-sm">{s.seatType}</span>
+                                            </span>
+                                            <span className="row-price">{formatCurrency(s.finalPrice)}</span>
+                                        </div>
+                                    ))}
+                                <div className="summary-subtotal">
+                                    <span>Tạm tính ghế</span>
+                                    <span>{formatCurrency(seatTotal)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Combo */}
+                    <div className="summary-section">
+                        <div className="summary-section-header">
+                            <span>🍿 Bắp nước</span>
+                        </div>
+                        {cartItems.length === 0 ? (
+                            <p className="summary-empty">Chưa chọn bắp nước nào</p>
+                        ) : (
+                            <div className="summary-items">
+                                {cartItems.map(item => (
+                                    <div className="summary-row" key={item.id}>
+                                        <span>
+                                            <span className="combo-qty-sm">x{item.quantity}</span>
+                                            {item.name}
+                                        </span>
+                                        <span className="row-price">{formatCurrency(item.subtotal)}</span>
+                                    </div>
+                                ))}
+                                <div className="summary-subtotal">
+                                    <span>Tạm tính bắp nước</span>
+                                    <span>{formatCurrency(comboTotal)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Grand total */}
+                    <div className="summary-grand-total">
+                        <span>Tổng cộng</span>
+                        <span className="grand-total-amount">{formatCurrency(grandTotal)}</span>
+                    </div>
+
+                    <button className="btn-continue" onClick={handleContinue}>
+                        Tiếp tục →
+                    </button>
+
+                    <button className="btn-back" onClick={handleGoBack}>
+                        ← Quay lại
+                    </button>
+                </aside>
             </div>
         </div>
     );

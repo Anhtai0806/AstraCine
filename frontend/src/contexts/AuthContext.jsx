@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext(null);
 
@@ -8,30 +8,37 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const token = localStorage.getItem("accessToken");
+
+    if (storedUser && !token) {
+      localStorage.removeItem("user");
+      setUser(null);
+    } else if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
     setLoading(false);
   }, []);
 
-  const login = (userData) => {
+  const login = useCallback((userData) => {
     const normalizedUser = {
       ...userData,
-      role: userData.roles?.[0] || "CUSTOMER",
+      role: Array.isArray(userData.roles) ? userData.roles[0] || "CUSTOMER" : "CUSTOMER",
     };
 
     setUser(normalizedUser);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
-  };
 
-  const logout = () => {
+    if (userData.token) {
+      localStorage.setItem("accessToken", userData.token);
+    }
+  }, []);
+
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem("user");
-  };
-
-  const hasRole = (role) => {
-    return user?.roles?.includes(role);
-  };
+    localStorage.removeItem("accessToken");
+  }, []);
 
   if (loading) return null;
 

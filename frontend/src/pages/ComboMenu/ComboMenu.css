@@ -1,129 +1,535 @@
-/* --- Tổng thể trang --- */
-.combo-menu-container {
-    background-color: #141414; /* Màu nền đen tối */
+/* ===== BASE ===== */
+* {
+    box-sizing: border-box;
+}
+
+.combo-page {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 28px 24px;
     min-height: 100vh;
-    padding: 40px 5%; /* Căn lề 2 bên */
+    background: #0f0f0f;
     color: #fff;
 }
 
-/* --- Khu vực bộ lọc --- */
-.filter-section {
-    background: #1f1f1f;
-    padding: 25px;
-    border-radius: 12px;
-    margin-bottom: 40px;
-    border: 1px solid #333;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+/* ===== BOOKING STEPS BREADCRUMB ===== */
+.booking-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
 }
 
-.price-label {
-    color: #b3b3b3;
-    margin-bottom: 8px;
+.step {
+    color: #666;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.step.active {
+    color: #e50914;
+    background: rgba(229, 9, 20, 0.12);
+    font-weight: 700;
+}
+
+.step.done {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    font-weight: 600;
+}
+
+.step-arrow {
+    color: #444;
+    font-size: 16px;
+}
+
+/* ===== PAGE TITLE ===== */
+.combo-page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 24px;
+    letter-spacing: -0.3px;
+}
+
+/* ===== 2 COLUMN LAYOUT ===== */
+.combo-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* ===== LEFT: COMBO MAIN ===== */
+.combo-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Search bar */
+.combo-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: border-color 0.2s;
+}
+
+.combo-search-bar:focus-within {
+    border-color: #e50914;
+}
+
+.search-icon {
+    width: 18px;
+    height: 18px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.combo-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
     font-size: 14px;
 }
 
-.price-label span {
-    color: #fff;
-    font-weight: bold;
-    margin-left: 5px;
+.combo-search-input::placeholder {
+    color: #555;
 }
 
-/* Custom nút search */
-.search-btn {
-    background-color: #e50914 !important; /* Đỏ Netflix/Rạp phim */
-    border-color: #e50914 !important;
-    font-weight: bold;
-}
-.search-btn:hover {
-    background-color: #f40612 !important;
+.search-clear {
+    background: none;
+    border: none;
+    color: #555;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.2s;
 }
 
-/* --- Card sản phẩm --- */
+.search-clear:hover {
+    color: #e50914;
+}
+
+/* ===== COMBO GRID ===== */
+.combo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+}
+
+/* ===== COMBO CARD ===== */
 .combo-card {
-    background-color: #1f1f1f !important;
-    border: 1px solid #333 !important;
-    border-radius: 12px !important;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 14px;
     overflow: hidden;
-    transition: all 0.3s ease !important;
+    transition: all 0.25s ease;
 }
 
 .combo-card:hover {
-    transform: translateY(-8px); /* Bay lên nhẹ khi hover */
-    box-shadow: 0 12px 30px rgba(229, 9, 20, 0.3) !important; /* Bóng đỏ */
-    border-color: #e50914 !important;
+    transform: translateY(-5px);
+    border-color: #e50914;
+    box-shadow: 0 10px 28px rgba(229, 9, 20, 0.2);
 }
 
-/* Ảnh sản phẩm */
+.combo-card.in-cart {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3);
+}
+
+.combo-card.out-of-stock {
+    opacity: 0.55;
+}
+
+/* Card image */
 .combo-img-box {
     position: relative;
-    height: 220px;
+    height: 180px;
     overflow: hidden;
-    background: #000;
+    background: #111;
 }
 
 .combo-img-box img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Giữ tỉ lệ ảnh không bị méo */
-    transition: transform 0.5s ease;
+    object-fit: cover;
+    transition: transform 0.4s ease;
 }
 
 .combo-card:hover .combo-img-box img {
-    transform: scale(1.1); /* Phóng to ảnh nhẹ khi hover */
-    opacity: 0.8;
+    transform: scale(1.07);
 }
 
-/* Giá tiền đè lên ảnh */
 .price-badge {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 8px;
+    right: 8px;
     background: rgba(229, 9, 20, 0.9);
-    color: white;
-    font-weight: bold;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    color: #fff;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 13px;
     backdrop-filter: blur(4px);
 }
 
-/* --- Nội dung Card --- */
-.card-title {
-    color: white;
-    font-size: 18px;
+.sold-out-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff6b6b;
     font-weight: 700;
-    white-space: nowrap;
+    font-size: 15px;
+    letter-spacing: 1px;
+}
+
+.cart-qty-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #22c55e;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Card body */
+.combo-card-body {
+    padding: 14px;
+}
+
+.combo-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 14px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* Card action buttons */
+.btn-add-to-cart {
+    width: 100%;
+    padding: 9px;
+    background: rgba(229, 9, 20, 0.1);
+    border: 1px solid rgba(229, 9, 20, 0.35);
+    border-radius: 8px;
+    color: #e50914;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-to-cart:hover:not(:disabled) {
+    background: #e50914;
+    color: #fff;
+    border-color: #e50914;
+}
+
+.btn-add-to-cart:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Quantity control */
+.qty-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
     overflow: hidden;
-    text-overflow: ellipsis; /* Cắt chữ nếu tên quá dài */
 }
 
-/* Custom phần Actions (nút mua) dưới Card */
-.ant-card-actions {
-    background-color: #262626 !important;
-    border-top: 1px solid #333 !important;
+.qty-control button {
+    background: rgba(34, 197, 94, 0.1);
+    border: none;
+    color: #22c55e;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 700;
 }
 
-.ant-card-meta-description {
-    color: #888 !important;
+.qty-control button:hover {
+    background: rgba(34, 197, 94, 0.25);
 }
 
-/* --- Trạng thái --- */
-.loading-state {
+.qty-control span {
+    flex: 1;
+    text-align: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* ===== LOADING / EMPTY ===== */
+.combo-loading {
     text-align: center;
     padding: 80px 0;
-}
-
-.loading-state .ant-spin-dot-item {
-    background-color: #e50914 !important;
-}
-.loading-state .ant-spin-text {
-    color: #e50914 !important;
-    margin-top: 15px;
-    font-size: 16px;
+    color: #555;
 }
 
 .empty-text {
+    color: #555;
+}
+
+/* ===== RIGHT: ORDER SUMMARY SIDEBAR ===== */
+.order-summary {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 22px;
+    position: sticky;
+    top: 24px;
+    animation: fadeInUp 0.4s ease;
+}
+
+.summary-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+/* Section (ghế / combo) */
+.summary-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #1f1f1f;
+}
+
+.summary-section:last-of-type {
+    border-bottom: none;
+}
+
+.summary-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
     color: #999;
-    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.summary-edit-link {
+    color: #e50914;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.summary-edit-link:hover {
+    opacity: 0.7;
+}
+
+.summary-empty {
+    font-size: 12px;
+    color: #444;
+    text-align: center;
+    padding: 8px 0;
+    margin: 0;
+}
+
+.summary-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.seat-code-sm {
+    background: rgba(229, 9, 20, 0.15);
+    color: #e50914;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    margin-right: 6px;
+}
+
+.seat-type-sm {
+    color: #666;
+    font-size: 11px;
+}
+
+.combo-qty-sm {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    margin-right: 8px;
+}
+
+.row-price {
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-left: 8px;
+}
+
+.summary-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #2a2a2a;
+}
+
+/* Grand total */
+.summary-grand-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 14px;
+    border-top: 2px solid #2a2a2a;
+    margin-top: 4px;
+    font-size: 14px;
+    color: #aaa;
+}
+
+.grand-total-amount {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e50914;
+}
+
+/* Action buttons */
+.btn-continue {
+    width: 100%;
+    padding: 14px;
+    background: #e50914;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+}
+
+.btn-continue:hover {
+    background: #f40612;
+    box-shadow: 0 6px 20px rgba(229, 9, 20, 0.45);
+    transform: translateY(-1px);
+}
+
+.btn-back {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-back:hover {
+    border-color: #555;
+    color: #ccc;
+    background: rgba(255,255,255,0.04);
+}
+
+/* ===== ANT DESIGN OVERRIDES ===== */
+.ant-spin-dot-item {
+    background-color: #e50914 !important;
+}
+
+.ant-spin-text {
+    color: #e50914 !important;
+}
+
+.ant-empty-description {
+    color: #555 !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .combo-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .order-summary {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .combo-page {
+        padding: 16px;
+    }
+
+    .combo-page-title {
+        font-size: 22px;
+    }
+
+    .combo-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 14px;
+    }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.combo-main,
+.order-summary {
+    animation: fadeInUp 0.4s ease;
 }

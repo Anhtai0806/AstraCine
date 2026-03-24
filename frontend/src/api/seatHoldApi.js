@@ -50,8 +50,15 @@ async function request(path, options = {}) {
     const auth = getAuthHeader();
     const token = getBearerToken();
 
+    // Đọc username từ localStorage nếu có (ưu tiên hơn random guestId)
+    let username = null;
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user && user.username) username = user.username;
+    } catch (_) { }
+
     // ✅ chỉ gửi X-User-Id khi KHÔNG login (guest mode)
-    const guestHeader = token ? {} : { "X-User-Id": getGuestId() };
+    const guestHeader = token ? {} : { "X-User-Id": username || getGuestId() };
 
     const headers = {
         "Content-Type": "application/json",

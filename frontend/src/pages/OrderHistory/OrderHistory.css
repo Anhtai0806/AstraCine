@@ -1,0 +1,366 @@
+/* ===== ORDER HISTORY PAGE ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.oh-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0e1a 0%, #0d1b2a 50%, #0a0e1a 100%);
+    font-family: 'Inter', sans-serif;
+    padding: 48px 20px 80px;
+    color: #e0e6f0;
+}
+
+.oh-container {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+/* ─── HEADER ─── */
+.oh-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 36px;
+}
+
+.oh-header-icon {
+    font-size: 32px;
+}
+
+.oh-title {
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.oh-subtitle {
+    font-size: 13px;
+    color: #6b7a99;
+    margin: 2px 0 0;
+}
+
+/* ─── EMPTY STATE ─── */
+.oh-empty {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.oh-empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.oh-empty p {
+    color: #6b7a99;
+    font-size: 15px;
+}
+
+.oh-btn-browse {
+    margin-top: 18px;
+    padding: 10px 28px;
+    background: linear-gradient(135deg, #a78bfa, #4161ff);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.oh-btn-browse:hover {
+    opacity: 0.88;
+}
+
+/* ─── LOADING ─── */
+.oh-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 80px 0;
+    color: #6b7a99;
+}
+
+.oh-spinner {
+    width: 38px;
+    height: 38px;
+    border: 3px solid rgba(167, 139, 250, 0.2);
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ─── CARD ─── */
+.oh-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.oh-card:hover {
+    border-color: rgba(167, 139, 250, 0.3);
+    transform: translateY(-2px);
+}
+
+/* ─── CARD HEADER ─── */
+.oh-card-header {
+    display: flex;
+    gap: 16px;
+    padding: 18px 20px;
+    cursor: pointer;
+    align-items: flex-start;
+    user-select: none;
+}
+
+.oh-poster-wrap {
+    flex-shrink: 0;
+}
+
+.oh-poster {
+    width: 64px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #1a2035;
+}
+
+.oh-poster-placeholder {
+    width: 64px;
+    height: 90px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1e2d4a, #0d1b2a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #4a5568;
+}
+
+.oh-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.oh-movie-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #e8edf5;
+    margin: 0 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.oh-meta {
+    font-size: 12.5px;
+    color: #7a8ba8;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-bottom: 10px;
+}
+
+.oh-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.oh-card-right {
+    flex-shrink: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.oh-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #a78bfa;
+}
+
+.oh-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.oh-status.paid {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+}
+
+.oh-status.other {
+    background: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+}
+
+.oh-expand-icon {
+    font-size: 11px;
+    color: #4a5568;
+    margin-top: auto;
+    transition: transform 0.2s;
+}
+
+.oh-expand-icon.open {
+    transform: rotate(180deg);
+}
+
+/* ─── CARD DETAIL ─── */
+.oh-card-detail {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 16px 20px 20px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.oh-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a6080;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 0 10px;
+}
+
+.oh-seats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.oh-seat-tag {
+    background: rgba(167, 139, 250, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.oh-seat-code {
+    font-weight: 700;
+    color: #c4b5fd;
+}
+
+.oh-seat-type {
+    font-size: 10px;
+    color: #7a8ba8;
+    text-transform: capitalize;
+}
+
+.oh-seat-price {
+    font-size: 11px;
+    color: #a78bfa;
+}
+
+.oh-combos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.oh-combo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #c0cce0;
+}
+
+.oh-combo-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.oh-combo-qty {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.oh-combo-price {
+    color: #7a8ba8;
+    font-size: 12px;
+}
+
+.oh-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 14px 0;
+}
+
+.oh-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.oh-total-label {
+    color: #7a8ba8;
+}
+
+.oh-total-amount {
+    color: #a78bfa;
+}
+
+/* ─── ERROR ─── */
+.oh-error {
+    text-align: center;
+    padding: 60px 20px;
+    color: #f87171;
+}
+
+/* Nút Xem Vé Điện Tử */
+.oh-btn-view-ticket {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.oh-btn-view-ticket:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+}
+
+.oh-btn-view-ticket:active {
+    transform: translateY(0);
+}

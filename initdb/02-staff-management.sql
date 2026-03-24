@@ -1,0 +1,5 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS desired_position VARCHAR(255) NULL,
+    ADD COLUMN IF NOT EXISTS staff_application_status VARCHAR(50) NULL DEFAULT 'NONE';
+
+INSERT IGNORE INTO roles (name) VALUES ('ROLE_STAFF');

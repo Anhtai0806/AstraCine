@@ -14,8 +14,8 @@ export const roomService = {
 
     // Update loại ghế (Admin click đổi màu)
     // Backend cần API: PUT /seats/{id}/type?type=VIP
-    updateSeatType: (seatId, newType) => 
-        axiosClient.put(`/seats/${seatId}/type`, null, { 
-            params: { type: newType } 
+    updateSeatType: (seatId, newType) =>
+        axiosClient.put(`/seats/${seatId}/type`, null, {
+            params: { type: newType }
         }),
 };

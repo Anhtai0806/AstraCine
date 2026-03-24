@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { seatHoldApi } from "../../api/seatHoldApi.js";
 import { connectSeatSocket } from "/src/services/seatHoldSocket.js";
-import PaymentQrModal from "./PaymentQrModal.jsx";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 import SeatGrid from "../../components/admin/SeatGrid.jsx";
 import "../../components/admin/SeatGrid.css";
@@ -25,29 +25,34 @@ function formatCurrencyVND(value) {
  * Sau này thêm TimeSlot multiplier thì chỉ cần sửa hàm getSeatTypePrice()
  * hoặc thay bằng getFinalPrice(seatType, multiplier)
  */
-const PRICE_BY_TYPE = {
-    NORMAL: 50000,
-    VIP: 80000,
-    COUPLE: 120000,
-    PREMIUM: 100000,
-};
+function getSeatDisplayPrice(seat) {
+    const finalPrice = Number(seat?.finalPrice);
+    if (Number.isFinite(finalPrice) && finalPrice > 0) return finalPrice;
 
-function getSeatTypePrice(seatType) {
-    return PRICE_BY_TYPE?.[seatType] ?? PRICE_BY_TYPE.NORMAL;
+    const basePrice = Number(seat?.basePrice);
+    if (Number.isFinite(basePrice) && basePrice > 0) return basePrice;
+
+    return 0;
 }
 
 export default function SeatSelection() {
     const { showtimeId } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { user } = useAuth();
     const sid = useMemo(() => Number(showtimeId), [showtimeId]);
 
-    const [seats, setSeats] = useState([]); // SeatStateDto[]
-    const [hold, setHold] = useState(null);
-    const [selectedSeatIds, setSelectedSeatIds] = useState([]);
-    const [error, setError] = useState(null);
+    // Thông tin phim/suất chiếu được truyền từ ShowtimeBrowser
+    const { movieTitle, startTime, endTime, roomName, restoredHoldId, restoredSeatIds } = location.state || {};
+    const isStaffMode = location.pathname.startsWith("/staff");
 
-    const [payment, setPayment] = useState(null);
-    const [paymentOpen, setPaymentOpen] = useState(false);
-    const [paymentBusy, setPaymentBusy] = useState(false);
+    const [seats, setSeats] = useState([]); // SeatStateDto[]
+    // Khôi phục hold & ghế đã chọn nếu quay lại từ ComboMenu
+    const [hold, setHold] = useState(() =>
+        restoredHoldId ? { holdId: restoredHoldId, expiresAt: null } : null
+    );
+    const [selectedSeatIds, setSelectedSeatIds] = useState(() => restoredSeatIds || []);
+    const [error, setError] = useState(null);
 
     const disconnectRef = useRef(null);
     const renewTimerRef = useRef(null);
@@ -74,7 +79,7 @@ export default function SeatSelection() {
         return () => {
             try {
                 disconnectRef.current?.();
-            } catch (_) {}
+            } catch (_) { }
             disconnectRef.current = null;
 
             if (renewTimerRef.current) clearInterval(renewTimerRef.current);
@@ -103,9 +108,26 @@ export default function SeatSelection() {
         };
     }, [hold?.holdId]);
 
-    const remainingSeconds = useMemo(() => {
-        if (!hold?.expiresAt) return null;
-        return Math.max(0, Math.floor((hold.expiresAt - nowMs()) / 1000));
+    const [remainingSeconds, setRemainingSeconds] = useState(null);
+
+    useEffect(() => {
+        if (!hold?.expiresAt) {
+            setRemainingSeconds(null);
+            return;
+        }
+
+        // Tính ngay lập tức
+        const calc = () => Math.max(0, Math.floor((hold.expiresAt - Date.now()) / 1000));
+        setRemainingSeconds(calc());
+
+        // Cập nhật mỗi 1 giây
+        const timer = setInterval(() => {
+            const secs = calc();
+            setRemainingSeconds(secs);
+            if (secs <= 0) clearInterval(timer);
+        }, 1000);
+
+        return () => clearInterval(timer);
     }, [hold?.expiresAt]);
 
     // sort seats
@@ -135,7 +157,7 @@ export default function SeatSelection() {
         return selectedSeatIds.reduce((sum, id) => {
             const seat = seatById.get(id);
             if (!seat) return sum;
-            return sum + getSeatTypePrice(seat.seatType);
+            return sum + getSeatDisplayPrice(seat);
         }, 0);
     }, [selectedSeatIds, seatById]);
 
@@ -150,7 +172,7 @@ export default function SeatSelection() {
                 seatId: s.seatId,
                 code: `${s.rowLabel}${s.columnNumber}`,
                 seatType: s.seatType,
-                finalPrice: getSeatTypePrice(s.seatType),
+                finalPrice: getSeatDisplayPrice(s),
             }));
     }, [selectedSeatIds, seatById]);
 
@@ -162,23 +184,28 @@ export default function SeatSelection() {
     const seatsForGrid = useMemo(() => {
         return (sortedSeats || []).map((s) => {
             const isSelected = selectedSeatIds.includes(s.seatId);
-
-            // selected ưu tiên hơn HELD để không bị "vàng như người khác"
             const effectiveStatus = isSelected ? "SELECTED" : s.status;
-
-            const typePrice = getSeatTypePrice(s.seatType);
+            const displayPrice = getSeatDisplayPrice(s);
 
             return {
                 ...s,
                 id: s.seatId,
-                basePrice: typePrice,   // ✅ tooltip SeatGrid
-                finalPrice: typePrice,  // ✅ nếu có chỗ nào lỡ dùng finalPrice thì vẫn đúng
+                basePrice: displayPrice,
+                finalPrice: displayPrice,
                 effectiveStatus,
             };
         });
     }, [sortedSeats, selectedSeatIds]);
 
     async function toggleSeat(seatId) {
+        // Kiểm tra đăng nhập trước khi cho phép chọn ghế
+        if (!user) {
+            navigate("/login", {
+                state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` },
+            });
+            return;
+        }
+
         setError(null);
 
         const seat = seatById.get(seatId);
@@ -234,81 +261,107 @@ export default function SeatSelection() {
         }
     }
 
-    async function confirm() {
-        setError(null);
-        if (!hold?.holdId) return;
-        try {
-            const p = await seatHoldApi.createMockPayment(hold.holdId);
-            setPayment(p);
-            setPaymentOpen(true);
-        } catch (e) {
-            console.error("confirm failed", e);
-            setError(e);
-        }
-    }
-
-    async function confirmPaid() {
-        if (!payment?.paymentSessionId || !hold?.holdId) return;
-        setError(null);
-        setPaymentBusy(true);
-        try {
-            await seatHoldApi.confirmMockPayment(payment.paymentSessionId);
-            await seatHoldApi.confirmHold(hold.holdId, payment.paymentSessionId);
-
-            setPaymentOpen(false);
-            setPayment(null);
-            setHold(null);
-            setSelectedSeatIds([]);
-            await load();
-        } catch (e) {
-            console.error("payment confirm failed", e);
-            setError(e);
-        } finally {
-            setPaymentBusy(false);
-        }
+    function goToCombo() {
+        if (!hold?.holdId || selectedSeatIds.length === 0) return;
+        navigate(isStaffMode ? `/staff/showtimes/${sid}/combo` : `/booking/showtimes/${sid}/combo`, {
+            state: {
+                holdId: hold.holdId,
+                showtimeId: sid,
+                seatDetails: selectedSeatDetails,
+                seatTotal: selectedTotal,
+                // movie info forwarded for invoice page
+                movieTitle,
+                startTime,
+                endTime,
+                roomName: roomName || null,
+            },
+        });
     }
 
     return (
         <div className="seat-page">
-            <h2>Chọn ghế (showtimeId: {sid})</h2>
-
-            <div className="seat-toolbar">
-                <div className="hold-info">
-                    {hold?.holdId ? (
-                        <>
-                            Đang giữ: <code>{hold.holdId.slice(0, 8)}...</code> · Còn lại: {remainingSeconds}s
-                        </>
-                    ) : (
-                        <>Chọn ghế để giữ</>
-                    )}
-                    <span className="total"> · Tổng: {formatCurrencyVND(selectedTotal)}</span>
-                </div>
-
-                <div className="actions">
-                    {hold?.holdId ? (
-                        <>
-                            <button className="btn" onClick={release}>
-                                Hủy giữ
-                            </button>
-                            <button className="btn primary" onClick={confirm}>
-                                Xác nhận (SOLD)
-                            </button>
-                        </>
-                    ) : null}
-                </div>
+            {/* Breadcrumb */}
+            <div className="booking-steps">
+                <span className="step active">1. Chọn ghế</span>
+                <span className="step-arrow">›</span>
+                <span className="step">2. Chọn bắp nước</span>
+                <span className="step-arrow">›</span>
+                <span className="step">3. Thanh toán</span>
             </div>
+
+            <h2 className="page-title">Chọn ghế</h2>
+
+            {/* Movie info banner */}
+            {movieTitle && (
+                <div className="movie-info-banner">
+                    <span className="movie-info-icon">🎬</span>
+                    <div className="movie-info-text">
+                        <span className="movie-info-title">{movieTitle}</span>
+                        {startTime && (
+                            <span className="movie-info-time">
+                                ⏰ {new Date(startTime).toLocaleString("vi-VN", {
+                                    weekday: "short",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
+                                {endTime && (
+                                    <> → {new Date(endTime).toLocaleTimeString("vi-VN", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}</>
+                                )}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Login notice for unauthenticated users */}
+            {!user && (
+                <div className="login-notice">
+                    <span className="notice-icon">🔐</span>
+                    <span>Vui lòng <button 
+                        className="login-link" 
+                        onClick={() => navigate("/login", { state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` } })}
+                    >
+                        đăng nhập
+                    </button> để chọn ghế và đặt vé.</span>
+                </div>
+            )}
+
+            {/* Hold timer bar */}
+            {hold?.holdId && (
+                <div className="hold-timer-bar">
+                    <span className="hold-timer-icon">⏱</span>
+                    <span>Đang giữ ghế · Còn lại: <strong>{remainingSeconds}s</strong></span>
+                    <code className="hold-id">{hold.holdId.slice(0, 8)}...</code>
+                </div>
+            )}
 
             {error ? <pre className="error">{JSON.stringify(error, null, 2)}</pre> : null}
 
             <div className="seat-content">
+                {/* Seat map */}
                 <div className="seat-map booking-seat-map">
+                    <div className="screen-label">MÀN HÌNH</div>
                     <SeatGrid
                         seats={seatsForGrid}
                         totalColumns={totalColumns}
                         onSeatClick={(seat) => toggleSeat(seat.id)}
                     />
+                    {/* Legend */}
+                    <div className="seat-legend">
+
+                        <span className="legend-item"><span className="legend-dot selected"></span>Đang chọn</span>
+                        <span className="legend-item"><span className="legend-dot held"></span>Đang giữ</span>
+                        <span className="legend-item"><span className="legend-dot sold"></span>Đã bán</span>
+                    </div>
                 </div>
 
+                {/* Summary sidebar */}
                 <div className="seat-summary">
                     <h3>Ghế đã chọn</h3>
                     {selectedSeatDetails.length === 0 ? (
@@ -316,44 +369,46 @@ export default function SeatSelection() {
                     ) : (
                         <table className="summary-table">
                             <thead>
-                            <tr>
-                                <th>Ghế</th>
-                                <th>Loại</th>
-                                <th style={{ textAlign: "right" }}>Giá</th>
-                            </tr>
+                                <tr>
+                                    <th>Ghế</th>
+                                    <th>Loại</th>
+                                    <th style={{ textAlign: "right" }}>Giá</th>
+                                </tr>
                             </thead>
                             <tbody>
-                            {selectedSeatDetails
-                                .slice()
-                                .sort((a, b) => a.code.localeCompare(b.code))
-                                .map((s) => (
-                                    <tr key={s.seatId}>
-                                        <td>{s.code}</td>
-                                        <td>{s.seatType}</td>
-                                        <td style={{ textAlign: "right" }}>{formatCurrencyVND(s.finalPrice)}</td>
-                                    </tr>
-                                ))}
+                                {selectedSeatDetails
+                                    .slice()
+                                    .sort((a, b) => a.code.localeCompare(b.code))
+                                    .map((s) => (
+                                        <tr key={s.seatId}>
+                                            <td><span className="seat-code">{s.code}</span></td>
+                                            <td><span className="seat-type-badge">{s.seatType}</span></td>
+                                            <td style={{ textAlign: "right" }} className="price-cell">{formatCurrencyVND(s.finalPrice)}</td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                     )}
 
                     <div className="summary-total">
-                        Tổng: <strong>{formatCurrencyVND(selectedTotal)}</strong>
+                        <span>Tạm tính</span>
+                        <strong>{formatCurrencyVND(selectedTotal)}</strong>
+                    </div>
+
+                    <div className="summary-actions">
+                        {hold?.holdId && (
+                            <button className="btn-cancel" onClick={release}>Hủy ghế</button>
+                        )}
+                        <button
+                            className="btn-continue"
+                            disabled={!hold?.holdId || selectedSeatIds.length === 0}
+                            onClick={goToCombo}
+                        >
+                            Tiếp tục →
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <PaymentQrModal
-                open={paymentOpen}
-                payment={payment}
-                remainingSeconds={remainingSeconds}
-                busy={paymentBusy}
-                onClose={() => {
-                    if (paymentBusy) return;
-                    setPaymentOpen(false);
-                }}
-                onConfirmPaid={confirmPaid}
-            />
         </div>
     );
 }

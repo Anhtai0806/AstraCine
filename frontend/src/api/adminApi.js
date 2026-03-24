@@ -10,12 +10,9 @@ const adminApi = axios.create({
 // Add request interceptor to include JWT token
 adminApi.interceptors.request.use(
     (config) => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            if (user.token) {
-                config.headers.Authorization = `Bearer ${user.token}`;
-            }
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
@@ -62,6 +59,17 @@ export const promotionAPI = {
     update: (id, data) => adminApi.put(`/promotions/${id}`, data),
     delete: (id) => adminApi.delete(`/promotions/${id}`),
     validate: (code) => adminApi.get(`/promotions/validate/${code}`),
+};
+
+export const staffApplicationAPI = {
+    getAll: (keyword) => adminApi.get("/staff-applications", { params: keyword ? { keyword } : {} }),
+    handle: (applicationId, payload) => adminApi.put(`/staff-applications/${applicationId}`, payload),
+};
+
+export const userManagementAPI = {
+    getAll: (keyword) => adminApi.get("/users", { params: keyword ? { keyword } : {} }),
+    createAutoStaffAccount: () => adminApi.post("/users/staff-accounts"),
+    updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
 };
 
 export default adminApi;

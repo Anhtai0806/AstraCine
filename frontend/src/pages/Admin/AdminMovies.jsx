@@ -1,8 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import {
-    Container, Table, Button, Modal, Form,
-    Alert, Spinner, Row, Col, Badge
-} from 'react-bootstrap';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { movieAPI, genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa';
 import './AdminMovies.css';
@@ -15,9 +11,30 @@ const emptyMovie = {
     endDate: '',
     ageRating: 'ALL_AGE',
     status: 'NOW_SHOWING',
-    genreId: '',
+    genreIds: [],
     poster: null,
     trailer: null
+};
+
+const getTodayDateString = () => {
+    const now = new Date();
+    const offsetMs = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+};
+
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_POSTER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const ALLOWED_TRAILER_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi'];
+
+const getFileNameFromUrl = (url) => {
+    if (!url) return '';
+
+    try {
+        const cleanedUrl = url.split('?')[0].split('#')[0];
+        return decodeURIComponent(cleanedUrl.substring(cleanedUrl.lastIndexOf('/') + 1)) || cleanedUrl;
+    } catch {
+        return url;
+    }
 };
 
 const AdminMovies = () => {
@@ -29,12 +46,23 @@ const AdminMovies = () => {
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentMovie, setCurrentMovie] = useState(emptyMovie);
+    const [fileErrors, setFileErrors] = useState({ poster: '', trailer: '' });
     const [searchTerm, setSearchTerm] = useState('');
+    const genreRequiredRef = useRef(null);
+    const posterInputRef = useRef(null);
+    const trailerInputRef = useRef(null);
+    const today = getTodayDateString();
 
     useEffect(() => {
         fetchMovies();
         fetchGenres();
     }, []);
+
+    useEffect(() => {
+        if (genreRequiredRef.current) {
+            genreRequiredRef.current.setCustomValidity('');
+        }
+    }, [currentMovie.genreIds]);
 
     const fetchMovies = async () => {
         try {
@@ -42,7 +70,7 @@ const AdminMovies = () => {
             const res = await movieAPI.getAll();
             setMovies(res.data);
         } catch {
-            setError('Failed to fetch movies');
+            setError('Không thể tải danh sách phim.');
         } finally {
             setLoading(false);
         }
@@ -66,7 +94,7 @@ const AdminMovies = () => {
             const res = await movieAPI.search(searchTerm);
             setMovies(res.data);
         } catch {
-            setError('Search failed');
+            setError('Tìm kiếm thất bại.');
         } finally {
             setLoading(false);
         }
@@ -80,13 +108,15 @@ const AdminMovies = () => {
                 releaseDate: movie.releaseDate?.slice(0, 10) || '',
                 endDate: movie.endDate?.slice(0, 10) || '',
                 ageRating: movie.ageRating || 'ALL_AGE',
-                genreId: movie.genres?.[0]?.id || '',
+                genreIds: (movie.genres || []).map((g) => String(g.id)),
                 poster: null,
                 trailer: null
             });
+            setFileErrors({ poster: '', trailer: '' });
             setIsEditing(true);
         } else {
             setCurrentMovie(emptyMovie);
+            setFileErrors({ poster: '', trailer: '' });
             setIsEditing(false);
         }
         setShowModal(true);
@@ -95,41 +125,101 @@ const AdminMovies = () => {
     const closeModal = () => {
         setShowModal(false);
         setCurrentMovie(emptyMovie);
+        setFileErrors({ poster: '', trailer: '' });
         setError(null);
     };
 
     const calculateStatus = (release, end) => {
         if (!release) return 'COMING_SOON';
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const releaseDate = new Date(release);
-        const endDate = end ? new Date(end) : null;
+        const todayDate = getTodayDateString();
 
-        if (now < releaseDate) return 'COMING_SOON';
-        if (endDate && now > endDate) return 'STOPPED';
+        if (release > todayDate) return 'COMING_SOON';
+        if (end && end < todayDate) return 'STOPPED';
         return 'NOW_SHOWING';
+    };
+
+    const toggleGenre = (genreId) => {
+        const genreIdStr = String(genreId);
+        setCurrentMovie((prev) => {
+            const hasGenre = prev.genreIds.includes(genreIdStr);
+            return {
+                ...prev,
+                genreIds: hasGenre
+                    ? prev.genreIds.filter((id) => id !== genreIdStr)
+                    : [...prev.genreIds, genreIdStr]
+            };
+        });
+    };
+
+    const selectAllGenres = () => {
+        setCurrentMovie((prev) => ({
+            ...prev,
+            genreIds: genres.map((g) => String(g.id))
+        }));
+    };
+
+    const clearAllGenres = () => {
+        setCurrentMovie((prev) => ({
+            ...prev,
+            genreIds: []
+        }));
     };
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
 
-        setCurrentMovie(prev => {
-            let updated = { ...prev, [name]: files ? files[0] : value };
+        if (files) {
+            const selectedFile = files[0];
+            const allowedExtensions = name === 'poster' ? ALLOWED_POSTER_EXTENSIONS : ALLOWED_TRAILER_EXTENSIONS;
+            const inputRef = name === 'poster' ? posterInputRef : trailerInputRef;
+
+            if (!selectedFile) {
+                setFileErrors((prev) => ({ ...prev, [name]: '' }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            const fileName = selectedFile.name || '';
+            const fileExtension = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (inputRef.current) {
+                    inputRef.current.value = '';
+                }
+                setFileErrors((prev) => ({
+                    ...prev,
+                    [name]: `Định dạng tệp không hợp lệ. Chỉ chấp nhận: ${allowedExtensions.join(', ')}`
+                }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+                if (inputRef.current) {
+                    inputRef.current.value = '';
+                }
+                setFileErrors((prev) => ({ ...prev, [name]: 'Kích thước tệp vượt quá 10MB.' }));
+                setCurrentMovie((prev) => ({ ...prev, [name]: null }));
+                return;
+            }
+
+            setFileErrors((prev) => ({ ...prev, [name]: '' }));
+        }
+
+        setCurrentMovie((prev) => {
+            const updated = { ...prev, [name]: files ? files[0] : value };
 
             if (name === 'releaseDate' && value) {
-                // Determine next day for endDate default/min
                 const releaseDate = new Date(value);
                 const nextDay = new Date(releaseDate);
                 nextDay.setDate(releaseDate.getDate() + 1);
                 const nextDayStr = nextDay.toISOString().split('T')[0];
 
-                // Auto-set endDate if empty or invalid (<= releaseDate)
                 if (!updated.endDate || updated.endDate <= value) {
                     updated.endDate = nextDayStr;
                 }
             }
 
-            // Auto-update status based on dates
             if (name === 'releaseDate' || name === 'endDate') {
                 updated.status = calculateStatus(updated.releaseDate, updated.endDate);
             }
@@ -138,15 +228,39 @@ const AdminMovies = () => {
         });
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('vi-VN');
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
 
-        // VALIDATION
-        if (currentMovie.releaseDate && currentMovie.endDate) {
-            if (new Date(currentMovie.endDate) <= new Date(currentMovie.releaseDate)) {
-                setError('End Date must be greater than Release Date');
-                return;
+        if (!currentMovie.releaseDate || !currentMovie.endDate) {
+            setError('Ngay khoi chieu va ngay ket thuc la bat buoc');
+            return;
+        }
+
+        if (!isEditing && currentMovie.releaseDate < today) {
+            setError('Ngay khoi chieu khong duoc nho hon ngay hien tai');
+            return;
+        }
+
+        if (new Date(currentMovie.endDate) <= new Date(currentMovie.releaseDate)) {
+            setError('Ngay ket thuc phai lon hon ngay khoi chieu');
+            return;
+        }
+
+        if (!currentMovie.genreIds.length) {
+            if (genreRequiredRef.current) {
+                genreRequiredRef.current.setCustomValidity('Vui lòng chọn thể loại.');
+                genreRequiredRef.current.reportValidity();
             }
+            return;
+        }
+
+        if (genreRequiredRef.current) {
+            genreRequiredRef.current.setCustomValidity('');
         }
 
         const formData = new FormData();
@@ -157,108 +271,110 @@ const AdminMovies = () => {
         formData.append('endDate', currentMovie.endDate);
         formData.append('ageRating', currentMovie.ageRating);
         formData.append('status', currentMovie.status);
-        formData.append('genreIds', currentMovie.genreId);
+        currentMovie.genreIds.forEach((genreId) => formData.append('genreIds', genreId));
 
         if (currentMovie.poster) formData.append('poster', currentMovie.poster);
         if (currentMovie.trailer) formData.append('trailer', currentMovie.trailer);
 
         try {
             setLoading(true);
-            isEditing
-                ? await movieAPI.update(currentMovie.id, formData)
-                : await movieAPI.create(formData);
+            if (isEditing) {
+                await movieAPI.update(currentMovie.id, formData);
+            } else {
+                await movieAPI.create(formData);
+            }
 
             closeModal();
             fetchMovies();
         } catch {
-            setError('Failed to save movie');
+            setError('không thể lưu phim');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this movie?')) return;
+        if (!window.confirm('Bạn có chắc muốn xóa phim này không?')) return;
         try {
             await movieAPI.delete(id);
             fetchMovies();
         } catch {
-            setError('Delete failed');
+            setError('Xoá phim thất bại.');
         }
     };
 
     if (loading && !movies.length) {
         return (
-            <div className="loading-spinner">
-                <Spinner animation="border" />
+            <div className="admin-movies-page">
+                <div className="loading-spinner">
+                    <div className="spinner-border"></div>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="admin-movies-page">
-            <Container className="admin-movies-container">
-
-                {/* HEADER */}
+            <div className="admin-movies-container">
                 <div className="admin-movies-header">
-                    <h2>Manage Movies</h2>
-                    <Button className="btn-add-movie" onClick={() => openModal()}>
-                        <FaPlus /> Add Movie
-                    </Button>
+                    <h2>Quản Lý Phim</h2>
+                    <button className="btn-custom btn-primary btn-add-movie" onClick={() => openModal()}>
+                        <FaPlus className="me-2" /> Thêm phim
+                    </button>
                 </div>
 
-                {/* SEARCH */}
-                <Form onSubmit={handleSearch} className="search-section">
-                    <Row className="g-2">
-                        <Col md={8}>
-                            <Form.Control
-                                placeholder="Search by title..."
+                <form onSubmit={handleSearch} className="search-section">
+                    <div className="form-row align-items-center mb-0">
+                        <div className="form-col" style={{ flex: 2 }}>
+                            <input
+                                className="form-control-custom"
+                                placeholder="Tìm theo tên phim..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
-                        </Col>
-                        <Col md={4}>
-                            <Button type="submit" className="btn-search w-100">
-                                <FaSearch /> Search
-                            </Button>
-                        </Col>
-                    </Row>
-                </Form>
+                        </div>
+                        <div className="form-col">
+                            <button type="submit" className="btn-custom btn-primary btn-search w-100">
+                                <FaSearch className="me-2" /> Tìm Kiếm
+                            </button>
+                        </div>
+                    </div>
+                </form>
 
                 {error && (
-                    <Alert variant="danger" onClose={() => setError(null)} dismissible>
-                        {error}
-                    </Alert>
+                    <div className="alert-custom alert-danger">
+                        <span>{error}</span>
+                        <button className="alert-close" onClick={() => setError(null)}>x</button>
+                    </div>
                 )}
 
-                {/* TABLE */}
-                <div className="movies-table">
-                    <Table hover bordered>
+                <div className="movies-table table-responsive">
+                    <table className="custom-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>Poster</th>
-                                <th>Title</th>
-                                <th>Genre</th>
-                                <th>Duration</th>
-                                <th>Age</th>
-                                <th>Status</th>
-                                <th>Release</th>
-                                <th>End</th>
+                                <th>Tên phim</th>
+                                <th>Thể loại</th>
+                                <th>Thời lượng</th>
+                                <th>Độ tuổi</th>
+                                <th>Trạng thái</th>
+                                <th>Khởi chiếu</th>
+                                <th>Kết thúc</th>
                                 <th>Trailer</th>
-                                <th>Actions</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             {movies.length === 0 && (
                                 <tr>
-                                    <td colSpan="11" className="text-center text-muted">
-                                        No movies found 🎬
+                                    <td colSpan="11" className="text-center text-muted no-data-message">
+                                        Không có phim nào
                                     </td>
                                 </tr>
                             )}
 
-                            {movies.map(movie => (
+                            {movies.map((movie) => (
                                 <tr key={movie.id}>
                                     <td>{movie.id}</td>
                                     <td>
@@ -271,150 +387,235 @@ const AdminMovies = () => {
                                         )}
                                     </td>
                                     <td className="movie-title">{movie.title}</td>
-                                    <td>{movie.genres?.map(g => g.name).join(', ') || 'N/A'}</td>
-                                    <td>{movie.durationMinutes}</td>
+                                    <td>{movie.genres?.map((g) => g.name).join(', ')}</td>
+                                    <td>{movie.durationMinutes} phút</td>
                                     <td>{movie.ageRating}</td>
                                     <td>
-                                        <Badge bg={movie.status === 'NOW_SHOWING' ? 'success' : 'secondary'}>
-                                            {movie.status}
-                                        </Badge>
+                                        <span className={`badge-custom ${movie.status === 'NOW_SHOWING' ? 'badge-success' : movie.status === 'COMING_SOON' ? 'badge-warning' : 'badge-secondary'}`}>
+                                            {movie.status === 'NOW_SHOWING' ? 'Đang chiếu' : movie.status === 'COMING_SOON' ? 'Sắp chiếu' : 'Ngừng chiếu'}
+                                        </span>
                                     </td>
-                                    <td>{movie.releaseDate}</td>
-                                    <td>{movie.endDate || 'N/A'}</td>
+                                    <td>{formatDate(movie.releaseDate)}</td>
+                                    <td>{formatDate(movie.endDate)}</td>
                                     <td>
                                         {movie.trailerUrl
-                                            ? <a href={movie.trailerUrl} target="_blank" rel="noreferrer">View</a>
-                                            : 'N/A'}
+                                            ? <a href={movie.trailerUrl} target="_blank" rel="noreferrer" className="trailer-link">Xem</a>
+                                            : 'Chưa có'}
                                     </td>
                                     <td className="movie-actions">
-                                        <Button size="sm" onClick={() => openModal(movie)}>
+                                        <button className="btn-custom btn-warning btn-sm" onClick={() => openModal(movie)}>
                                             <FaEdit />
-                                        </Button>
-                                        <Button size="sm" variant="danger" onClick={() => handleDelete(movie.id)}>
+                                        </button>
+                                        <button className="btn-custom btn-danger btn-sm" onClick={() => handleDelete(movie.id)}>
                                             <FaTrash />
-                                        </Button>
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
-                    </Table>
+                    </table>
                 </div>
 
-                {/* MODAL */}
-                <Modal
-                    show={showModal}
-                    onHide={closeModal}
-                    centered
-                    size="xl"
-                    className="movie-modal"
-                    backdrop="static"
-                    enforceFocus={false}
-                >
-                    <Form onSubmit={handleSave}>
-                        <Modal.Header closeButton>
-                            <Modal.Title>{isEditing ? 'Edit Movie' : 'Add Movie'}</Modal.Title>
-                        </Modal.Header>
+                {showModal && (
+                    <div className="custom-modal-backdrop" onClick={closeModal}>
+                        <div className="custom-modal-panel movie-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="custom-modal-header">
+                                <h3>{isEditing ? 'Chỉnh sửa phim' : 'Thêm phim'}</h3>
+                                <button className="modal-close-btn" type="button" onClick={closeModal}>x</button>
+                            </div>
 
-                        <Modal.Body>
-                            <Row className="g-3">
-                                <Col md={8}>
-                                    <Form.Group>
-                                        <Form.Label>Title</Form.Label>
-                                        <Form.Control name="title" value={currentMovie.title} onChange={handleChange} required />
-                                    </Form.Group>
-                                </Col>
+                            <form onSubmit={handleSave}>
+                                <div className="custom-modal-body">
+                                    <div className="form-row">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Tên phim</label>
+                                                <input className="form-control-custom" name="title" value={currentMovie.title} onChange={handleChange} required />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Genre</Form.Label>
-                                        <Form.Select name="genreId" value={currentMovie.genreId} onChange={handleChange} required>
-                                            <option value="">Select</option>
-                                            {genres.map(g => (
-                                                <option key={g.id} value={g.id}>{g.name}</option>
-                                            ))}
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-group-custom mt-3 genre-field-wrapper">
+                                        <div className="genre-header">
+                                            <label>Thể loại ({currentMovie.genreIds.length} đã chọn)</label>
+                                            <div className="genre-actions-inline">
+                                                <button type="button" className="btn-link-inline" onClick={selectAllGenres}>Chọn tất cả</button>
+                                                <button type="button" className="btn-link-inline" onClick={clearAllGenres}>Bỏ chọn</button>
+                                            </div>
+                                        </div>
+                                        <div className="genre-checkbox-list">
+                                            <input
+                                                ref={genreRequiredRef}
+                                                className="genre-validation-proxy"
+                                                tabIndex={-1}
+                                                value={currentMovie.genreIds.join(',')}
+                                                onChange={() => { }}
+                                                onInvalid={(e) => e.target.setCustomValidity('Vui lòng chọn thể loại.')}
+                                                required
+                                            />
+                                            {genres.map((g) => {
+                                                const checked = currentMovie.genreIds.includes(String(g.id));
+                                                return (
+                                                    <label key={g.id} className={`genre-chip ${checked ? 'active' : ''}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => toggleGenre(g.id)}
+                                                        />
+                                                        <span>{g.name}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
 
-                                <Col md={12}>
-                                    <Form.Group>
-                                        <Form.Label>Description</Form.Label>
-                                        <Form.Control
-                                            as="textarea"
-                                            rows={3}
+                                    <div className="form-group-custom mt-3">
+                                        <label>Mô tả</label>
+                                        <textarea
+                                            className="form-control-custom"
+                                            rows="3"
                                             name="description"
                                             value={currentMovie.description}
                                             onChange={handleChange}
-                                        />
-                                    </Form.Group>
-                                </Col>
+                                        ></textarea>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Duration (min)</Form.Label>
-                                        <Form.Control type="number" name="duration" value={currentMovie.duration} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Thời lượng (phút)</label>
+                                                <input className="form-control-custom" type="number" name="duration" value={currentMovie.duration} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Độ tuổi</label>
+                                                <select className="form-control-custom" name="ageRating" value={currentMovie.ageRating} onChange={handleChange}>
+                                                    <option value="ALL_AGE">ALL_AGE</option>
+                                                    <option value="16+">16+</option>
+                                                    <option value="18+">18+</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Age Rating</Form.Label>
-                                        <Form.Select name="ageRating" value={currentMovie.ageRating} onChange={handleChange}>
-                                            <option value="ALL_AGE">All Age</option>
-                                            <option value="16+">16+</option>
-                                            <option value="18+">18+</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Ngày khởi chiếu</label>
+                                                <input
+                                                    className="form-control-custom"
+                                                    type="date"
+                                                    name="releaseDate"
+                                                    value={currentMovie.releaseDate}
+                                                    onChange={handleChange}
+                                                    min={isEditing ? '' : today}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Ngày kết thúc</label>
+                                                <input
+                                                    className="form-control-custom"
+                                                    type="date"
+                                                    name="endDate"
+                                                    value={currentMovie.endDate}
+                                                    onChange={handleChange}
+                                                    min={currentMovie.releaseDate ? new Date(new Date(currentMovie.releaseDate).getTime() + 86400000).toISOString().split('T')[0] : ''}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>Release Date</Form.Label>
-                                        <Form.Control type="date" name="releaseDate" value={currentMovie.releaseDate} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
+                                    <div className="form-row mt-3">
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Poster</label>
+                                                <input
+                                                    ref={posterInputRef}
+                                                    className="form-control-custom"
+                                                    type="file"
+                                                    name="poster"
+                                                    accept=".jpg,.jpeg,.png,.webp,image/*"
+                                                    onChange={handleChange}
+                                                />
+                                                {fileErrors.poster && (
+                                                    <small className="field-error-text">{fileErrors.poster}</small>
+                                                )}
+                                                {currentMovie.poster ? (
+                                                    <small className="current-file-note">
+                                                        File mới: {currentMovie.poster.name}
+                                                    </small>
+                                                ) : (
+                                                    isEditing && currentMovie.posterUrl && (
+                                                        <div className="existing-file-wrapper">
+                                                            <small className="current-file-note">
+                                                                Poster hiện tại: {getFileNameFromUrl(currentMovie.posterUrl)}
+                                                            </small>
+                                                            <img
+                                                                src={currentMovie.posterUrl}
+                                                                alt="Poster hiện tại"
+                                                                className="current-poster-preview"
+                                                            />
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
+                                                <label>Trailer</label>
+                                                <input
+                                                    ref={trailerInputRef}
+                                                    className="form-control-custom"
+                                                    type="file"
+                                                    name="trailer"
+                                                    accept=".mp4,.webm,.mov,.avi,video/*"
+                                                    onChange={handleChange}
+                                                />
+                                                {fileErrors.trailer && (
+                                                    <small className="field-error-text">{fileErrors.trailer}</small>
+                                                )}
+                                                {currentMovie.trailer ? (
+                                                    <small className="current-file-note">
+                                                        File mới: {currentMovie.trailer.name}
+                                                    </small>
+                                                ) : (
+                                                    isEditing && currentMovie.trailerUrl && (
+                                                        <small className="current-file-note">
+                                                            Trailer hiện tại: {getFileNameFromUrl(currentMovie.trailerUrl)} (
+                                                            <a href={currentMovie.trailerUrl} target="_blank" rel="noreferrer">
+                                                                mở file
+                                                            </a>
+                                                            )
+                                                        </small>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                <Col md={4}>
-                                    <Form.Group>
-                                        <Form.Label>End Date</Form.Label>
-                                        <Form.Control
-                                            type="date"
-                                            name="endDate"
-                                            value={currentMovie.endDate}
-                                            onChange={handleChange}
-                                            min={currentMovie.releaseDate ? new Date(new Date(currentMovie.releaseDate).getTime() + 86400000).toISOString().split('T')[0] : ''}
-                                        />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label>Poster</Form.Label>
-                                        <Form.Control type="file" name="poster" accept="image/*" onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label>Trailer</Form.Label>
-                                        <Form.Control type="file" name="trailer" accept="video/*" onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                        </Modal.Body>
-
-                        <Modal.Footer>
-                            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-                            <Button type="submit" disabled={loading}>
-                                {isEditing ? 'Update' : 'Create'}
-                            </Button>
-                        </Modal.Footer>
-                    </Form>
-                </Modal>
-
-            </Container>
+                                <div className="custom-modal-footer">
+                                    <button type="button" className="btn-custom btn-secondary" onClick={closeModal}>Hủy</button>
+                                    <button type="submit" className="btn-custom btn-primary" disabled={loading}>
+                                        {isEditing ? 'Cập nhật phim' : 'Tạo phim'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
 
 export default AdminMovies;
+
+
+
+

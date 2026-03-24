@@ -22,8 +22,36 @@ function ProfilePage() {
         newPassword: "",
         confirmPassword: "",
     });
-
+    const [passwordSubmitAttempted, setPasswordSubmitAttempted] = useState(false);
+    const [isCurrentPasswordVerified, setIsCurrentPasswordVerified] = useState(false);
     const [activeTab, setActiveTab] = useState("profile");
+
+    const passwordRequirements = [
+        {
+            id: "length",
+            message: "M\u1eadt kh\u1ea9u ph\u1ea3i c\u00f3 \u00edt nh\u1ea5t 8 k\u00fd t\u1ef1",
+            isValid: passwordData.newPassword.length >= 8,
+        },
+        {
+            id: "uppercase",
+            message: "M\u1eadt kh\u1ea9u ph\u1ea3i ch\u1ee9a \u00edt nh\u1ea5t m\u1ed9t ch\u1eef c\u00e1i vi\u1ebft hoa",
+            isValid: /[A-Z]/.test(passwordData.newPassword),
+        },
+        {
+            id: "special",
+            message: "M\u1eadt kh\u1ea9u ph\u1ea3i ch\u1ee9a \u00edt nh\u1ea5t m\u1ed9t k\u00fd t\u1ef1 \u0111\u1eb7c bi\u1ec7t",
+            isValid: /[!@#$%^&*(),.?\":{}|<>]/.test(passwordData.newPassword),
+        },
+    ];
+    const missingPasswordRequirements = passwordRequirements.filter((rule) => !rule.isValid);
+    const showPasswordRequirementsAlert =
+        activeTab === "security" &&
+        passwordSubmitAttempted &&
+        isCurrentPasswordVerified &&
+        passwordData.newPassword.length > 0 &&
+        missingPasswordRequirements.length > 0;
+    const isRequirementError =
+        !!error && missingPasswordRequirements.some((rule) => rule.message === error);
 
     // Load profile data
     useEffect(() => {
@@ -50,6 +78,11 @@ function ProfilePage() {
 
     const handlePasswordChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === "currentPassword") {
+            setIsCurrentPasswordVerified(false);
+        }
+
         setPasswordData((prev) => ({
             ...prev,
             [name]: value,
@@ -72,8 +105,7 @@ function ProfilePage() {
             console.log("Sending normalized profileData:", normalizedData);
             console.log("Current user email:", user.email);
 
-            const userId = user.userId || user.id;
-            const response = await userApi.updateProfile(normalizedData, userId);
+            const response = await userApi.updateProfile(normalizedData);
 
             // Cập nhật user context với dữ liệu mới
             login({
@@ -81,6 +113,7 @@ function ProfilePage() {
                 fullName: response.data.fullName,
                 email: response.data.email,
                 phone: response.data.phone,
+                staffApplicationStatus: response.data.staffApplicationStatus,
             });
 
             setSuccessMessage("Cập nhật thông tin thành công!");
@@ -95,33 +128,15 @@ function ProfilePage() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setError("Mật khẩu mới và xác nhận không khớp");
-            return;
-        }
-
-        if (passwordData.newPassword.length < 8) {
-            setError("Mật khẩu mới phải có ít nhất 8 ký tự");
-            return;
-        }
-
-        if (!/[A-Z]/.test(passwordData.newPassword)) {
-            setError("Mật khẩu mới phải chứa ít nhất một chữ cái viết hoa");
-            return;
-        }
-
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword)) {
-            setError("Mật khẩu mới phải chứa ít nhất một ký tự đặc biệt");
-            return;
-        }
+        setPasswordSubmitAttempted(true);
 
         try {
             setLoading(true);
             setError("");
-            const userId = user.userId || user.id;
-            await userApi.changePassword(passwordData, userId);
+            await userApi.changePassword(passwordData);
             setSuccessMessage("Đổi mật khẩu thành công!");
+            setPasswordSubmitAttempted(false);
+            setIsCurrentPasswordVerified(false);
             setPasswordData({
                 currentPassword: "",
                 newPassword: "",
@@ -130,7 +145,10 @@ function ProfilePage() {
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
             console.error("Error changing password:", err);
-            setError(err.response?.data?.message || "Đổi mật khẩu thất bại");
+            const message = err.response?.data?.message || "Đổi mật khẩu thất bại";
+            setError(message);
+            const isCurrentPasswordError = /mật khẩu hiện tại|current password/i.test(message);
+            setIsCurrentPasswordVerified(!isCurrentPasswordError);
         } finally {
             setLoading(false);
         }
@@ -166,7 +184,18 @@ function ProfilePage() {
                     </div>
 
                     {/* Messages */}
-                    {error && <div className="alert alert-error">{error}</div>}
+                    {(error || showPasswordRequirementsAlert) && (
+                        <div className="alert alert-error">
+                            {error && !isRequirementError && <div>{error}</div>}
+                            {showPasswordRequirementsAlert && (
+                                <ul className="alert-list">
+                                    {missingPasswordRequirements.map((rule) => (
+                                        <li key={rule.id}>{rule.message}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
                     {successMessage && (
                         <div className="alert alert-success">{successMessage}</div>
                     )}
@@ -262,7 +291,6 @@ function ProfilePage() {
                                         className="form-control"
                                         required
                                     />
-                                    <small>Phải có ít nhất 8 ký tự, 1 chữ hoa, 1 ký tự đặc biệt</small>
                                 </div>
 
                                 <div className="form-group">

@@ -1,0 +1,595 @@
+/* ===== BASE ===== */
+* {
+    box-sizing: border-box;
+}
+
+.invoice-page {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+    min-height: 100vh;
+    background: #0f0f0f;
+    color: #fff;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* ===== BREADCRUMB (reuse from ComboMenu) ===== */
+.booking-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    flex-wrap: wrap;
+}
+
+.step {
+    color: #666;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.step.active {
+    color: #e50914;
+    background: rgba(229, 9, 20, 0.12);
+    font-weight: 700;
+}
+
+.step.done {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    font-weight: 600;
+}
+
+.step-arrow {
+    color: #444;
+    font-size: 16px;
+}
+
+/* ===== PAGE TITLE ===== */
+.invoice-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 28px;
+    letter-spacing: -0.5px;
+}
+
+/* ===== LAYOUT ===== */
+.invoice-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* ===== LEFT COLUMN ===== */
+.invoice-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ===== CARDS ===== */
+.invoice-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 24px;
+    animation: fadeInUp 0.35s ease;
+}
+
+.invoice-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #252525;
+}
+
+.card-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+/* ===== INFO GRID ===== */
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.info-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    font-size: 14px;
+}
+
+.info-label {
+    min-width: 120px;
+    color: #777;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.info-value {
+    color: #e0e0e0;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.info-value.highlight {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+/* Seat list */
+.seat-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.seat-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(229, 9, 20, 0.12);
+    border: 1px solid rgba(229, 9, 20, 0.3);
+    color: #e50914;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.seat-tag-type {
+    color: #a0a0a0;
+    font-weight: 400;
+    font-size: 11px;
+}
+
+/* Notice */
+.invoice-notice {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+.link-text {
+    color: #e50914;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.link-text:hover {
+    opacity: 0.8;
+}
+
+/* ===== DISCOUNT CODES ===== */
+.discount-hint {
+    font-size: 13px;
+    color: #777;
+    margin: 0 0 14px;
+}
+
+.discount-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.discount-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    background: #111;
+    border: 1.5px dashed #333;
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    text-align: left;
+    min-width: 140px;
+}
+
+.discount-chip:hover {
+    border-color: #e50914;
+    background: rgba(229, 9, 20, 0.06);
+}
+
+.discount-chip.selected {
+    border-color: #22c55e;
+    border-style: solid;
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.chip-code {
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+    font-family: 'Courier New', monospace;
+}
+
+.discount-chip.selected .chip-code {
+    color: #22c55e;
+}
+
+.chip-label {
+    font-size: 11px;
+    color: #777;
+    font-weight: 400;
+}
+
+.discount-chip.selected .chip-label {
+    color: #5edc7e;
+}
+
+.chip-check {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    color: #22c55e;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Applied discount banner */
+.discount-applied {
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #5edc7e;
+}
+
+.discount-saving {
+    font-weight: 700;
+    color: #22c55e;
+    font-size: 14px;
+}
+
+/* Saving preview on chips */
+.chip-saving {
+    font-size: 11px;
+    color: #22c55e;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* Remove promo button */
+.btn-remove-promo {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.btn-remove-promo:hover {
+    opacity: 1;
+}
+
+/* Manual code input row */
+.promo-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.promo-input {
+    flex: 1;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.promo-input::placeholder {
+    color: #444;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.promo-input:focus {
+    border-color: #e50914;
+}
+
+.btn-apply-code {
+    background: #e50914;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.btn-apply-code:hover:not(:disabled) {
+    background: #c7000d;
+}
+
+.btn-apply-code:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Code validation error */
+.code-error {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #f87171;
+    line-height: 1.5;
+}
+
+/* ===== RIGHT COLUMN: PAYMENT CARD ===== */
+.invoice-right {
+    position: sticky;
+    top: 24px;
+}
+
+.payment-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 24px;
+    animation: fadeInUp 0.4s ease;
+}
+
+.payment-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #252525;
+}
+
+/* Payment rows */
+.payment-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.payment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.payment-row.combo-row {
+    color: #aaa;
+    font-size: 12px;
+    padding-left: 8px;
+}
+
+.combo-qty-badge {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 6px;
+}
+
+.payment-row.subtotal-row {
+    font-size: 12px;
+    color: #666;
+    padding-top: 4px;
+    border-top: 1px dashed #222;
+}
+
+.payment-row.total-before-row {
+    font-size: 13px;
+    color: #aaa;
+}
+
+.payment-row.muted-row {
+    font-size: 13px;
+    color: #555;
+}
+
+.payment-row.discount-row {
+    color: #22c55e;
+    font-size: 13px;
+}
+
+.discount-value {
+    font-weight: 700;
+}
+
+.payment-divider {
+    height: 1px;
+    background: #222;
+    margin: 4px 0;
+}
+
+/* Grand total */
+.payment-grand-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 14px;
+    border-top: 2px solid #2a2a2a;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #aaa;
+}
+
+.grand-amount {
+    font-size: 24px;
+    font-weight: 800;
+    color: #e50914;
+    letter-spacing: -0.5px;
+}
+
+/* Action buttons */
+.btn-pay {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #e50914 0%, #c7000d 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
+    letter-spacing: 0.3px;
+}
+
+.btn-pay:hover:not(:disabled) {
+    box-shadow: 0 8px 24px rgba(229, 9, 20, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-pay:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-pay:disabled,
+.btn-pay--loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Spinner inside button */
+.pay-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spinBtn 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spinBtn {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Inline payment error */
+.pay-error-box {
+    margin-top: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #f87171;
+    line-height: 1.5;
+    animation: fadeInUp 0.25s ease;
+}
+
+.btn-invoice-back {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-invoice-back:hover {
+    border-color: #555;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .invoice-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .invoice-right {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .invoice-page {
+        padding: 16px 16px 48px;
+    }
+
+    .invoice-title {
+        font-size: 22px;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        min-width: unset;
+        font-size: 12px;
+    }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

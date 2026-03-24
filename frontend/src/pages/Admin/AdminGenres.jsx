@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form, Alert, Spinner } from 'react-bootstrap';
 import { genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import './AdminGenres.css';
@@ -23,7 +22,7 @@ const AdminGenres = () => {
             setGenres(response.data);
             setError(null);
         } catch (err) {
-            setError('Failed to fetch genres. Please try again.');
+            setError('Khong the tai danh sach the loai. Vui long thu lai.');
             console.error(err);
         } finally {
             setLoading(false);
@@ -58,111 +57,120 @@ const AdminGenres = () => {
             fetchGenres();
             handleCloseModal();
         } catch (err) {
-            setError('Failed to save genre. Please try again.');
+            setError('Khong the luu the loai. Vui long thu lai.');
             console.error(err);
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this genre?')) {
+        if (window.confirm('Ban co chac muon xoa the loai nay khong?')) {
             try {
                 await genreAPI.delete(id);
                 fetchGenres();
             } catch (err) {
-                setError('Failed to delete genre. It might be in use.');
+                setError('Khong the xoa the loai. The loai co the dang duoc su dung.');
                 console.error(err);
             }
         }
     };
 
-    if (loading) return (
-        <div className="admin-genres-page">
-            <div className="loading-spinner">
-                <Spinner animation="border" />
+    if (loading) {
+        return (
+            <div className="admin-genres-page">
+                <div className="loading-spinner">
+                    <div className="spinner-border"></div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="admin-genres-page">
-            <Container className="admin-genres-container">
+            <div className="admin-genres-container">
                 <div className="admin-genres-header">
-                    <h2>Manage Genres</h2>
-                    <Button variant="primary" className="btn-add-genre" onClick={() => handleShowModal()}>
-                        <FaPlus className="me-2" /> Add Genre
-                    </Button>
+                    <h2>Quản Lý Thể Loại</h2>
+                    <button className="btn-custom btn-primary btn-add-genre" onClick={() => handleShowModal()}>
+                        <FaPlus className="me-2" /> Thêm thể loại
+                    </button>
                 </div>
 
-                {error && <Alert variant="danger" className="alert-custom" dismissible onClose={() => setError(null)}>{error}</Alert>}
+                {error && (
+                    <div className="alert-custom alert-danger">
+                        <span>{error}</span>
+                        <button className="alert-close" onClick={() => setError(null)}>x</button>
+                    </div>
+                )}
 
-                <Table striped bordered hover responsive className="genres-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {genres.length > 0 ? (
-                            genres.map((genre) => (
-                                <tr key={genre.id}>
-                                    <td className="genre-id">{genre.id}</td>
-                                    <td className="genre-name">{genre.name}</td>
-                                    <td>
-                                        <div className="genre-actions">
-                                            <Button variant="warning" size="sm" className="btn-edit-genre" onClick={() => handleShowModal(genre)}>
-                                                <FaEdit />
-                                            </Button>
-                                            <Button variant="danger" size="sm" className="btn-delete-genre" onClick={() => handleDelete(genre.id)}>
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="table-responsive">
+                    <table className="genres-table custom-table">
+                        <thead>
                             <tr>
-                                <td colSpan="3" className="no-data-message">No genres found.</td>
+                                <th>ID</th>
+                                <th>Tên thể loại</th>
+                                <th>Thao tác</th>
                             </tr>
-                        )}
-                    </tbody>
-                </Table>
+                        </thead>
+                        <tbody>
+                            {genres.length > 0 ? (
+                                genres.map((genre) => (
+                                    <tr key={genre.id}>
+                                        <td className="genre-id">{genre.id}</td>
+                                        <td className="genre-name">{genre.name}</td>
+                                        <td>
+                                            <div className="genre-actions">
+                                                <button className="btn-custom btn-warning btn-sm btn-edit-genre" onClick={() => handleShowModal(genre)}>
+                                                    <FaEdit />
+                                                </button>
+                                                <button className="btn-custom btn-danger btn-sm btn-delete-genre" onClick={() => handleDelete(genre.id)}>
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="3" className="no-data-message">Khong co the loai nao.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                <Modal
-                    show={showModal}
-                    onHide={handleCloseModal}
-                    className="genre-modal"
-                    backdrop="static"
-                    enforceFocus={false}
-                >
-                    <Modal.Header closeButton>
-                        <Modal.Title>{isEditing ? 'Edit Genre' : 'Add New Genre'}</Modal.Title>
-                    </Modal.Header>
-                    <Form onSubmit={handleSave}>
-                        <Modal.Body>
-                            <Form.Group controlId="genreName">
-                                <Form.Label>Genre Name</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Enter genre name"
-                                    value={currentGenre.name}
-                                    onChange={(e) => setCurrentGenre({ ...currentGenre, name: e.target.value })}
-                                    required
-                                />
-                            </Form.Group>
-                        </Modal.Body>
-                        <Modal.Footer>
-                            <Button variant="secondary" onClick={handleCloseModal}>
-                                Cancel
-                            </Button>
-                            <Button variant="primary" type="submit">
-                                {isEditing ? 'Update' : 'Create'}
-                            </Button>
-                        </Modal.Footer>
-                    </Form>
-                </Modal>
-            </Container>
+                {showModal && (
+                    <div className="custom-modal-backdrop" onClick={handleCloseModal}>
+                        <div className="custom-modal-panel genre-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="custom-modal-header">
+                                <h3>{isEditing ? 'Chinh sua the loai' : 'Them the loai moi'}</h3>
+                                <button className="modal-close-btn" onClick={handleCloseModal}>x</button>
+                            </div>
+                            <form onSubmit={handleSave}>
+                                <div className="custom-modal-body">
+                                    <div className="form-group-custom">
+                                        <label>Tên thể loại</label>
+                                        <input
+                                            type="text"
+                                            className="form-control-custom"
+                                            placeholder="Nhập tên thể loại"
+                                            value={currentGenre.name}
+                                            onChange={(e) => setCurrentGenre({ ...currentGenre, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="custom-modal-footer">
+                                    <button type="button" className="btn-custom btn-secondary" onClick={handleCloseModal}>
+                                        Huỷ
+                                    </button>
+                                    <button type="submit" className="btn-custom btn-primary">
+                                        {isEditing ? 'Cap nhat' : 'Tao moi'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
