@@ -32,7 +32,7 @@ public class ComboController {
 
     // GET: Lấy chi tiết theo ID
     @GetMapping("/{id}")
-    public ResponseEntity<Combo> getById(@PathVariable Long id) {
+    public ResponseEntity<Combo> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(comboService.getComboById(id));
     }
 
@@ -44,23 +44,23 @@ public class ComboController {
 
     // PUT: Cập nhật
     @PutMapping("/{id}")
-    public ResponseEntity<Combo> update(@PathVariable Long id, @Valid @RequestBody ComboDTO dto) {
+    public ResponseEntity<Combo> update(@PathVariable("id") Long id, @Valid @RequestBody ComboDTO dto) {
         return ResponseEntity.ok(comboService.updateCombo(id, dto));
     }
 
     // DELETE: Xóa mềm (Chuyển sang INACTIVE)
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
+    public ResponseEntity<String> delete(@PathVariable("id") Long id) {
         comboService.deleteCombo(id);
         return ResponseEntity.ok("Đã ngừng kinh doanh Combo có ID: " + id);
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<Combo>> search(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice) {
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "minPrice", required = false) Double minPrice,
+            @RequestParam(name = "maxPrice", required = false) Double maxPrice) {
         return ResponseEntity.ok(comboService.searchAndFilterCombos(keyword, status, minPrice, maxPrice));
     }
 }

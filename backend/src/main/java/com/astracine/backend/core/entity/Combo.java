@@ -28,6 +28,9 @@ public class Combo {
     @Column(length = 20)
     private String status = "ACTIVE";
 
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity = 0;
+
     public Combo(String name, BigDecimal price, String status) {
         this.name = name;
         this.price = price;

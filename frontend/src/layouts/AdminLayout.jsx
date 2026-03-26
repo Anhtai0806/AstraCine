@@ -80,6 +80,13 @@ const AdminLayout = () => {
                     >
                         👥 Quản lý Staff
                     </NavLink>
+
+                    <NavLink
+                        to="/admin/combos"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🍿 Bắp &amp; Nước
+                    </NavLink>
                 </nav>
             </aside>
 

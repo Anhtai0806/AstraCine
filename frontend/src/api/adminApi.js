@@ -21,6 +21,21 @@ adminApi.interceptors.request.use(
     }
 );
 
+// Separate instance for /api/combos (not under /api/admin)
+const comboApi = axios.create({
+    baseURL: "http://localhost:8080/api/combos",
+    headers: { "Content-Type": "application/json" },
+});
+
+comboApi.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 // Genre APIs
 export const genreAPI = {
     getAll: () => adminApi.get('/genres'),
@@ -70,6 +85,16 @@ export const userManagementAPI = {
     getAll: (keyword) => adminApi.get("/users", { params: keyword ? { keyword } : {} }),
     createAutoStaffAccount: () => adminApi.post("/users/staff-accounts"),
     updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
+};
+
+// Combo APIs (bắp nước)
+export const comboAPI = {
+    getAll: () => comboApi.get(''),
+    getById: (id) => comboApi.get(`/${id}`),
+    create: (data) => comboApi.post('', data),
+    update: (id, data) => comboApi.put(`/${id}`, data),
+    delete: (id) => comboApi.delete(`/${id}`),
+    search: (params) => comboApi.get('/search', { params }),
 };
 
 export default adminApi;

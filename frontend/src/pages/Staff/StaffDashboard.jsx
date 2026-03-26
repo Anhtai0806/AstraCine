@@ -70,15 +70,6 @@ export default function StaffDashboard() {
                     <p>
                         Quét mã QR hoặc nhập mã vé thủ công để tra cứu và xác nhận check-in cho khách hàng.
                     </p>
-<<<<<<< HEAD
-                    <button onClick={() => navigate("/staff/ticket-checkin")} disabled={!canCheckin}>
-                        Mở màn hình soát vé
-                    </button>
-                    <button onClick={() => setShowScanner(!showScanner)}>
-                        {showScanner ? "🔽 Đóng soát vé" : "📷 Mở màn hình soát vé"}
-                    </button>
-=======
-
                     <div className="staff-feature-actions">
                         <button
                             onClick={() => navigate("/staff/ticket-checkin")}
@@ -95,7 +86,6 @@ export default function StaffDashboard() {
                             {showScanner ? "🔽 Đóng soát vé" : "📷 Mở scanner nhanh"}
                         </button>
                     </div>
->>>>>>> origin
                 </div>
             </div>
 

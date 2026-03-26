@@ -37,6 +37,7 @@ public class ComboService {
         combo.setName(dto.getName());
         combo.setPrice(dto.getPrice());
         combo.setStatus(dto.getStatus());
+        combo.setStockQuantity(dto.getStockQuantity() != null ? dto.getStockQuantity() : 0);
         return comboRepository.save(combo);
     }
 
@@ -48,6 +49,9 @@ public class ComboService {
         // Chỉ cập nhật status nếu user có gửi lên, nếu không giữ nguyên
         if (dto.getStatus() != null && !dto.getStatus().isEmpty()) {
             existingCombo.setStatus(dto.getStatus());
+        }
+        if (dto.getStockQuantity() != null) {
+            existingCombo.setStockQuantity(dto.getStockQuantity());
         }
         return comboRepository.save(existingCombo);
     }
