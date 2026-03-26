@@ -1,6 +1,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./StaffLayout.css";
+import { BiHomeAlt } from "react-icons/bi";
+import { ImProfile } from "react-icons/im";
+import { HiOutlineTicket } from "react-icons/hi2";
+import { LuPopcorn } from "react-icons/lu";
+import { LuTicketCheck } from "react-icons/lu";
+
 
 const positionLabels = {
     COUNTER: "Nhân viên quầy vé",
@@ -52,7 +58,7 @@ export default function StaffLayout() {
                             isActive ? "staff-nav-link active" : "staff-nav-link"
                         }
                     >
-                        🏠 Tổng quan
+                        <BiHomeAlt className="staff-icon" /> Tổng quan
                     </NavLink>
 
                     <NavLink
@@ -61,7 +67,7 @@ export default function StaffLayout() {
                             isActive ? "staff-nav-link active" : "staff-nav-link"
                         }
                     >
-                        👤 Thông tin cá nhân
+                        <ImProfile className="staff-icon" /> Thông tin cá nhân
                     </NavLink>
 
                     {hasAssignedPosition && canCounter && (
@@ -71,7 +77,7 @@ export default function StaffLayout() {
                                 isActive ? "staff-nav-link active" : "staff-nav-link"
                             }
                         >
-                            🎟️ Bán vé tại quầy
+                            <HiOutlineTicket className="staff-icon" /> Bán vé tại quầy
                         </NavLink>
                     )}
 
@@ -82,7 +88,7 @@ export default function StaffLayout() {
                                 isActive ? "staff-nav-link active" : "staff-nav-link"
                             }
                         >
-                            🍿 Bán combo riêng
+                            <LuPopcorn className="staff-icon" /> Bán combo riêng
                         </NavLink>
                     )}
 
@@ -93,7 +99,7 @@ export default function StaffLayout() {
                                 isActive ? "staff-nav-link active" : "staff-nav-link"
                             }
                         >
-                            ✅ Soát vé QR
+                            <LuTicketCheck className="staff-icon" /> Soát vé QR
                         </NavLink>
                     )}
 
