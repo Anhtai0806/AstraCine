@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { promotionAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaTicketAlt } from 'react-icons/fa';
 import './AdminPromotions.css';
@@ -20,10 +20,44 @@ const AdminPromotions = () => {
         minOrderAmount: '0'
     });
     const [isEditing, setIsEditing] = useState(false);
+    const codeRef = useRef(null);
+    const discountValueRef = useRef(null);
+    const startDateRef = useRef(null);
+    const endDateRef = useRef(null);
+    const maxUsageRef = useRef(null);
+    const minOrderAmountRef = useRef(null);
 
     useEffect(() => {
         fetchPromotions();
     }, []);
+
+    const getTodayDateString = () => {
+        const now = new Date();
+        const offsetMs = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+    };
+
+    const clearFieldValidity = (ref) => {
+        if (ref?.current) {
+            ref.current.setCustomValidity('');
+        }
+    };
+
+    const showFieldError = (ref, message) => {
+        if (!ref?.current) return false;
+        ref.current.setCustomValidity(message);
+        ref.current.reportValidity();
+        return true;
+    };
+
+    const fieldRefMap = {
+        code: codeRef,
+        discountValue: discountValueRef,
+        startDate: startDateRef,
+        endDate: endDateRef,
+        maxUsage: maxUsageRef,
+        minOrderAmount: minOrderAmountRef,
+    };
 
     const fetchPromotions = async () => {
         try {
@@ -78,27 +112,88 @@ const AdminPromotions = () => {
             minOrderAmount: '0'
         });
         setError(null);
+        [
+            codeRef,
+            discountValueRef,
+            startDateRef,
+            endDateRef,
+            maxUsageRef,
+            minOrderAmountRef,
+        ].forEach(clearFieldValidity);
     };
 
     const handleSave = async (e) => {
         e.preventDefault();
 
+        [
+            codeRef,
+            discountValueRef,
+            startDateRef,
+            endDateRef,
+            maxUsageRef,
+            minOrderAmountRef,
+        ].forEach(clearFieldValidity);
+
+        const normalizedCode = (currentPromotion.code || '').trim().toUpperCase();
+
+        if (!normalizedCode) {
+            showFieldError(codeRef, 'Vui lòng nhập mã khuyến mãi.');
+            return;
+        }
+
+        if (!/^[A-Z0-9_-]+$/.test(normalizedCode)) {
+            showFieldError(codeRef, 'Mã chỉ được chứa chữ in hoa, số, gạch dưới và gạch ngang.');
+            return;
+        }
+
+        if (!currentPromotion.discountValue || parseFloat(currentPromotion.discountValue) <= 0) {
+            showFieldError(discountValueRef, 'Giá trị giảm phải lớn hơn 0.');
+            return;
+        }
+
         // Client-side validation
         if (currentPromotion.discountType === 'PERCENTAGE' &&
             (parseFloat(currentPromotion.discountValue) <= 0 || parseFloat(currentPromotion.discountValue) > 100)) {
-            setError('Percentage discount must be between 0 and 100');
+            showFieldError(discountValueRef, 'Giá trị phần trăm phải nằm trong khoảng từ 1 đến 100.');
+            return;
+        }
+
+        if (!currentPromotion.startDate) {
+            showFieldError(startDateRef, 'Vui lòng chọn ngày bắt đầu.');
+            return;
+        }
+
+        if (!isEditing && currentPromotion.startDate < getTodayDateString()) {
+            showFieldError(startDateRef, 'Ngày bắt đầu không được nhỏ hơn ngày hiện tại.');
+            return;
+        }
+
+        if (!currentPromotion.endDate) {
+            showFieldError(endDateRef, 'Vui lòng chọn ngày kết thúc.');
             return;
         }
 
         if (new Date(currentPromotion.endDate) < new Date(currentPromotion.startDate)) {
-            setError('End date must be after or equal to start date');
+            showFieldError(endDateRef, 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.');
+            return;
+        }
+
+        const parsedMaxUsage = currentPromotion.maxUsage === '' ? null : parseInt(currentPromotion.maxUsage, 10);
+        if (parsedMaxUsage !== null && (Number.isNaN(parsedMaxUsage) || parsedMaxUsage < 1)) {
+            showFieldError(maxUsageRef, 'Giới hạn sử dụng phải từ 1 trở lên nếu bạn có nhập giá trị này.');
+            return;
+        }
+
+        if ((parseFloat(currentPromotion.minOrderAmount) || 0) < 0) {
+            showFieldError(minOrderAmountRef, 'Đơn hàng tối thiểu không được nhỏ hơn 0.');
             return;
         }
 
         try {
             const promotionData = {
                 ...currentPromotion,
-                maxUsage: currentPromotion.maxUsage === '' ? null : parseInt(currentPromotion.maxUsage),
+                code: normalizedCode,
+                maxUsage: parsedMaxUsage,
                 minOrderAmount: parseFloat(currentPromotion.minOrderAmount) || 0
             };
 
@@ -110,7 +205,17 @@ const AdminPromotions = () => {
             fetchPromotions();
             handleCloseModal();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save promotion. Please try again.');
+            const backendErrors = err?.response?.data?.errors;
+            if (backendErrors && typeof backendErrors === 'object') {
+                const firstErrorEntry = Object.entries(backendErrors).find(([field]) => fieldRefMap[field]);
+                if (firstErrorEntry) {
+                    const [field, message] = firstErrorEntry;
+                    showFieldError(fieldRefMap[field], message);
+                    return;
+                }
+            }
+
+            setError(err?.response?.data?.message || 'Failed to save promotion. Please try again.');
             console.error(err);
         }
     };
@@ -130,6 +235,11 @@ const AdminPromotions = () => {
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('vi-VN');
+    };
+
+    const formatCurrency = (amount) => {
+        const numericAmount = parseFloat(amount) || 0;
+        return `${numericAmount.toLocaleString('vi-VN')}đ`;
     };
 
     const getStatusBadge = (status) => {
@@ -184,8 +294,8 @@ const AdminPromotions = () => {
                             <tr>
                                 <th>Mã</th>
                                 <th>Mô tả</th>
-                                <th>Loại</th>
-                                <th>Giá trị</th>
+                                <th>Đơn hàng tối thiểu</th>
+                                <th>Giá trị giảm</th>
                                 <th>Sử dụng</th>
                                 <th>Ngày bắt đầu</th>
                                 <th>Ngày kết thúc</th>
@@ -199,7 +309,7 @@ const AdminPromotions = () => {
                                     <tr key={promotion.id}>
                                         <td className="promotion-code"><strong>{promotion.code}</strong></td>
                                         <td className="promotion-description">{promotion.description || 'N/A'}</td>
-                                        <td>{promotion.discountType === 'PERCENTAGE' ? 'Phần trăm' : 'Cố định'}</td>
+                                        <td>{formatCurrency(promotion.minOrderAmount)}</td>
                                         <td className="promotion-value">{getDiscountDisplay(promotion)}</td>
                                         <td>{getUsageDisplay(promotion)}</td>
                                         <td>{formatDate(promotion.startDate)}</td>
@@ -241,8 +351,12 @@ const AdminPromotions = () => {
                                             type="text"
                                             className="form-control-custom"
                                             placeholder="VD: SUMMER2026"
+                                            ref={codeRef}
                                             value={currentPromotion.code}
-                                            onChange={(e) => setCurrentPromotion({ ...currentPromotion, code: e.target.value.toUpperCase() })}
+                                            onChange={(e) => {
+                                                clearFieldValidity(codeRef);
+                                                setCurrentPromotion({ ...currentPromotion, code: e.target.value.toUpperCase() });
+                                            }}
                                             required
                                         />
                                         <small className="text-muted mt-1 d-block">
@@ -284,8 +398,12 @@ const AdminPromotions = () => {
                                                     step="0.01"
                                                     className="form-control-custom"
                                                     placeholder={currentPromotion.discountType === 'PERCENTAGE' ? '0-100' : 'Số tiền'}
+                                                    ref={discountValueRef}
                                                     value={currentPromotion.discountValue}
-                                                    onChange={(e) => setCurrentPromotion({ ...currentPromotion, discountValue: e.target.value })}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(discountValueRef);
+                                                        setCurrentPromotion({ ...currentPromotion, discountValue: e.target.value });
+                                                    }}
                                                     required
                                                 />
                                             </div>
@@ -299,8 +417,14 @@ const AdminPromotions = () => {
                                                 <input
                                                     type="date"
                                                     className="form-control-custom"
+                                                    ref={startDateRef}
                                                     value={currentPromotion.startDate}
-                                                    onChange={(e) => setCurrentPromotion({ ...currentPromotion, startDate: e.target.value })}
+                                                    min={isEditing ? '' : getTodayDateString()}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(startDateRef);
+                                                        clearFieldValidity(endDateRef);
+                                                        setCurrentPromotion({ ...currentPromotion, startDate: e.target.value });
+                                                    }}
                                                     required
                                                 />
                                             </div>
@@ -311,8 +435,12 @@ const AdminPromotions = () => {
                                                 <input
                                                     type="date"
                                                     className="form-control-custom"
+                                                    ref={endDateRef}
                                                     value={currentPromotion.endDate}
-                                                    onChange={(e) => setCurrentPromotion({ ...currentPromotion, endDate: e.target.value })}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(endDateRef);
+                                                        setCurrentPromotion({ ...currentPromotion, endDate: e.target.value });
+                                                    }}
                                                     required
                                                 />
                                             </div>
@@ -327,8 +455,13 @@ const AdminPromotions = () => {
                                                     type="number"
                                                     className="form-control-custom"
                                                     placeholder="Để trống = không giới hạn"
+                                                    min="1"
+                                                    ref={maxUsageRef}
                                                     value={currentPromotion.maxUsage}
-                                                    onChange={(e) => setCurrentPromotion({ ...currentPromotion, maxUsage: e.target.value })}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(maxUsageRef);
+                                                        setCurrentPromotion({ ...currentPromotion, maxUsage: e.target.value });
+                                                    }}
                                                 />
                                                 <small className="text-muted mt-1 d-block">
                                                     Số lần tối đa mã có thể được sử dụng
@@ -343,8 +476,12 @@ const AdminPromotions = () => {
                                                     step="1000"
                                                     className="form-control-custom"
                                                     placeholder="0"
+                                                    ref={minOrderAmountRef}
                                                     value={currentPromotion.minOrderAmount}
-                                                    onChange={(e) => setCurrentPromotion({ ...currentPromotion, minOrderAmount: e.target.value })}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(minOrderAmountRef);
+                                                        setCurrentPromotion({ ...currentPromotion, minOrderAmount: e.target.value });
+                                                    }}
                                                 />
                                             </div>
                                         </div>

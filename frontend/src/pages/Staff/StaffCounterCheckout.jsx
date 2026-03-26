@@ -38,6 +38,11 @@ function isPromoValid(p) {
     return true;
 }
 
+function isPromoEligibleForOrder(promo, orderTotal) {
+    const minOrder = parseFloat(promo?.minOrderAmount) || 0;
+    return orderTotal >= minOrder;
+}
+
 export default function StaffCounterCheckout() {
     const { showtimeId } = useParams();
     const location = useLocation();
@@ -88,7 +93,17 @@ export default function StaffCounterCheckout() {
         () => calcDiscountFromPromo(selectedPromo, grandTotal),
         [selectedPromo, grandTotal]
     );
+    const eligiblePromotions = useMemo(
+        () => promotions.filter((promo) => isPromoEligibleForOrder(promo, grandTotal)),
+        [promotions, grandTotal]
+    );
     const finalTotal = Math.max(0, grandTotal - discountAmount);
+
+    useEffect(() => {
+        if (selectedPromo && !isPromoEligibleForOrder(selectedPromo, grandTotal)) {
+            setSelectedPromo(null);
+        }
+    }, [selectedPromo, grandTotal]);
 
     const handleValidateCode = async () => {
         const code = codeInput.trim().toUpperCase();
@@ -229,11 +244,11 @@ export default function StaffCounterCheckout() {
                     <h2>Khuyến mãi</h2>
                     {promoLoading ? (
                         <p className="staff-hint">Đang tải danh sách khuyến mãi...</p>
-                    ) : promotions.length === 0 ? (
+                    ) : eligiblePromotions.length === 0 ? (
                         <p className="staff-hint">Hiện chưa có mã khuyến mãi áp dụng tại quầy.</p>
                     ) : (
                         <div className="staff-promo-list">
-                            {promotions.map((promo) => {
+                            {eligiblePromotions.map((promo) => {
                                 const active = selectedPromo?.id === promo.id;
                                 return (
                                     <button

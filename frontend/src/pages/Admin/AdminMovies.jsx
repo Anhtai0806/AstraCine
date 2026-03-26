@@ -49,6 +49,7 @@ const AdminMovies = () => {
     const [fileErrors, setFileErrors] = useState({ poster: '', trailer: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const genreRequiredRef = useRef(null);
+    const durationInputRef = useRef(null);
     const posterInputRef = useRef(null);
     const trailerInputRef = useRef(null);
     const today = getTodayDateString();
@@ -63,6 +64,12 @@ const AdminMovies = () => {
             genreRequiredRef.current.setCustomValidity('');
         }
     }, [currentMovie.genreIds]);
+
+    useEffect(() => {
+        if (durationInputRef.current) {
+            durationInputRef.current.setCustomValidity('');
+        }
+    }, [currentMovie.duration]);
 
     const fetchMovies = async () => {
         try {
@@ -235,6 +242,24 @@ const AdminMovies = () => {
 
     const handleSave = async (e) => {
         e.preventDefault();
+
+        const durationValue = Number(currentMovie.duration);
+
+        if (durationInputRef.current) {
+            if (!currentMovie.duration) {
+                durationInputRef.current.setCustomValidity('Vui lòng nhập thời lượng phim.');
+                durationInputRef.current.reportValidity();
+                return;
+            }
+
+            if (!Number.isFinite(durationValue) || durationValue <= 0) {
+                durationInputRef.current.setCustomValidity('Thời lượng phim phải lớn hơn 0.');
+                durationInputRef.current.reportValidity();
+                return;
+            }
+
+            durationInputRef.current.setCustomValidity('');
+        }
 
         if (!currentMovie.releaseDate || !currentMovie.endDate) {
             setError('Ngay khoi chieu va ngay ket thuc la bat buoc');
@@ -484,7 +509,29 @@ const AdminMovies = () => {
                                         <div className="form-col">
                                             <div className="form-group-custom">
                                                 <label>Thời lượng (phút)</label>
-                                                <input className="form-control-custom" type="number" name="duration" value={currentMovie.duration} onChange={handleChange} />
+                                                <input
+                                                    ref={durationInputRef}
+                                                    className="form-control-custom"
+                                                    type="number"
+                                                    name="duration"
+                                                    min="1"
+                                                    value={currentMovie.duration}
+                                                    onChange={handleChange}
+                                                    onInvalid={(e) => {
+                                                        if (!e.target.value) {
+                                                            e.target.setCustomValidity('Vui lòng nhập thời lượng phim.');
+                                                            return;
+                                                        }
+
+                                                        if (Number(e.target.value) <= 0) {
+                                                            e.target.setCustomValidity('Thời lượng phim phải lớn hơn 0.');
+                                                            return;
+                                                        }
+
+                                                        e.target.setCustomValidity('Thời lượng phim không hợp lệ.');
+                                                    }}
+                                                    required
+                                                />
                                             </div>
                                         </div>
                                         <div className="form-col">
