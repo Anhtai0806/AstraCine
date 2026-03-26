@@ -10,10 +10,13 @@ import com.astracine.backend.presentation.dto.movie.MovieRequest;
 import com.astracine.backend.presentation.dto.movie.MovieResponse;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,13 +31,20 @@ public class MovieService {
     private final GenreRepository genreRepository;
     private final FileStorageService fileStorageService;
 
+    @EventListener(ApplicationReadyEvent.class)
+    public void syncMovieStatusesOnStartup() {
+        refreshMovieStatuses();
+    }
+
     public List<MovieResponse> getAllMovies() {
+        refreshMovieStatuses();
         return movieRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<MovieResponse> getMoviesByStatus(String status) {
+        refreshMovieStatuses();
         MovieStatus movieStatus = MovieStatus.valueOf(status.toUpperCase());
         return movieRepository.findByStatusOrderByCreatedAtDesc(movieStatus).stream()
                 .map(this::convertToResponse)
@@ -42,24 +52,28 @@ public class MovieService {
     }
 
     public List<MovieResponse> getNowShowingMovies() {
+        refreshMovieStatuses();
         return movieRepository.findTop4ByStatusOrderByEndDateAsc(MovieStatus.NOW_SHOWING).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<MovieResponse> getComingSoonMovies() {
+        refreshMovieStatuses();
         return movieRepository.findTop4ByStatusOrderByReleaseDateAsc(MovieStatus.COMING_SOON).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public MovieResponse getMovieById(Long id) {
+        refreshMovieStatuses();
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
         return convertToResponse(movie);
     }
 
     public List<MovieResponse> searchMovies(String status, String title, Long genreId) {
+        refreshMovieStatuses();
         MovieStatus movieStatus = (status != null && !status.isBlank())
                 ? MovieStatus.valueOf(status.toUpperCase())
                 : null;
@@ -69,12 +83,14 @@ public class MovieService {
     }
 
     public List<MovieResponse> searchMoviesByTitle(String title) {
+        refreshMovieStatuses();
         return movieRepository.findByTitleContainingIgnoreCase(title).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<MovieResponse> getMoviesByGenre(Long genreId) {
+        refreshMovieStatuses();
         return movieRepository.findByGenreId(genreId).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -183,9 +199,7 @@ public class MovieService {
             movie.setTrailerUrl(request.getTrailerUrl());
         }
 
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            movie.setStatus(MovieStatus.valueOf(request.getStatus().toUpperCase()));
-        }
+        movie.setStatus(resolveMovieStatus(request.getReleaseDate(), request.getEndDate()));
 
         // Update genres
         if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
@@ -220,5 +234,26 @@ public class MovieService {
         response.setGenres(genreDTOs);
 
         return response;
+    }
+
+    private void refreshMovieStatuses() {
+        LocalDate today = LocalDate.now();
+        movieRepository.markStoppedMovies(today);
+        movieRepository.markComingSoonMovies(today);
+        movieRepository.markNowShowingMovies(today);
+    }
+
+    private MovieStatus resolveMovieStatus(LocalDate releaseDate, LocalDate endDate) {
+        LocalDate today = LocalDate.now();
+
+        if (releaseDate != null && releaseDate.isAfter(today)) {
+            return MovieStatus.COMING_SOON;
+        }
+
+        if (endDate != null && endDate.isBefore(today)) {
+            return MovieStatus.STOPPED;
+        }
+
+        return MovieStatus.NOW_SHOWING;
     }
 }
