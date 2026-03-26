@@ -30,6 +30,29 @@ const getErrorMessage = (error, fallback) =>
     error?.message ||
     fallback;
 
+const normalizeDateString = (value) => {
+    if (!value) return '';
+    return String(value).slice(0, 10);
+};
+
+const isMovieAvailableOnDate = (movie, scheduleDate) => {
+    if (!movie || movie.status === 'STOPPED' || !scheduleDate) return false;
+
+    const releaseDate = normalizeDateString(movie.releaseDate);
+    const endDate = normalizeDateString(movie.endDate);
+
+    if (!releaseDate) return false;
+
+    if (movie.status === 'COMING_SOON') {
+        return scheduleDate === releaseDate;
+    }
+
+    if (scheduleDate < releaseDate) return false;
+    if (endDate && scheduleDate > endDate) return false;
+
+    return true;
+};
+
 const ShowtimeManager = () => {
     const [view, setView] = useState('timeline');
     const [date, setDate] = useState(new Date());
@@ -50,6 +73,27 @@ const ShowtimeManager = () => {
     }, []);
 
     const activeMovies = useMemo(() => movies.filter((movie) => movie.status !== 'STOPPED'), [movies]);
+    const autoAvailableMovies = useMemo(
+        () => activeMovies.filter((movie) => isMovieAvailableOnDate(movie, autoForm.scheduleDate)),
+        [activeMovies, autoForm.scheduleDate]
+    );
+
+    useEffect(() => {
+        const availableMovieIds = autoAvailableMovies.map((movie) => movie.id);
+
+        setAutoForm((prev) => {
+            const nextMovieIds = prev.movieIds.filter((movieId) => availableMovieIds.includes(movieId));
+
+            if (nextMovieIds.length === prev.movieIds.length) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                movieIds: nextMovieIds,
+            };
+        });
+    }, [autoAvailableMovies]);
 
     const loadData = async () => {
         try {
@@ -199,11 +243,16 @@ const ShowtimeManager = () => {
     };
 
     const openAutoModal = () => {
+        const scheduleDate = formatDateKey(date);
+        const availableMovieIds = activeMovies
+            .filter((movie) => isMovieAvailableOnDate(movie, scheduleDate))
+            .map((movie) => movie.id);
+
         setAutoForm({
-            scheduleDate: formatDateKey(date),
+            scheduleDate,
             openingTime: '07:00',
             closingTime: '02:00',
-            movieIds: activeMovies.map((movie) => movie.id),
+            movieIds: availableMovieIds,
             roomIds: rooms.map((room) => room.id),
         });
         setModal({ type: 'auto' });
@@ -536,7 +585,7 @@ const ShowtimeManager = () => {
                                 <div className="create-form-divider"></div>
                                 <div className="create-section-label">Chọn Phim</div>
                                 <div className="selection-grid">
-                                    {activeMovies.map((movie) => (
+                                    {autoAvailableMovies.map((movie) => (
                                         <label key={movie.id} className="selection-card">
                                             <input
                                                 type="checkbox"
@@ -547,6 +596,11 @@ const ShowtimeManager = () => {
                                         </label>
                                     ))}
                                 </div>
+                                {!autoAvailableMovies.length && (
+                                    <div className="info-note">
+                                        Khong co phim nao phu hop voi ngay da chon.
+                                    </div>
+                                )}
 
                                 <div className="create-form-divider"></div>
                                 <div className="create-section-label">Chọn Phòng</div>

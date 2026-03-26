@@ -1,6 +1,7 @@
 package com.astracine.backend.core.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,6 +33,22 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
         List<Movie> findTop4ByStatusOrderByEndDateAsc(MovieStatus status);
 
         List<Movie> findTop4ByStatusOrderByReleaseDateAsc(MovieStatus status);
+
+        @Modifying
+        @Query("UPDATE Movie m SET m.status = com.astracine.backend.core.enums.MovieStatus.STOPPED " +
+                        "WHERE m.endDate IS NOT NULL AND m.endDate < :today AND m.status <> com.astracine.backend.core.enums.MovieStatus.STOPPED")
+        int markStoppedMovies(@Param("today") LocalDate today);
+
+        @Modifying
+        @Query("UPDATE Movie m SET m.status = com.astracine.backend.core.enums.MovieStatus.COMING_SOON " +
+                        "WHERE m.releaseDate > :today AND m.status <> com.astracine.backend.core.enums.MovieStatus.COMING_SOON")
+        int markComingSoonMovies(@Param("today") LocalDate today);
+
+        @Modifying
+        @Query("UPDATE Movie m SET m.status = com.astracine.backend.core.enums.MovieStatus.NOW_SHOWING " +
+                        "WHERE m.releaseDate <= :today AND (m.endDate IS NULL OR m.endDate >= :today) " +
+                        "AND m.status <> com.astracine.backend.core.enums.MovieStatus.NOW_SHOWING")
+        int markNowShowingMovies(@Param("today") LocalDate today);
 
         @Query("SELECT DISTINCT m FROM Movie m LEFT JOIN m.genres g WHERE " +
                         "(:status IS NULL OR m.status = :status) AND " +
