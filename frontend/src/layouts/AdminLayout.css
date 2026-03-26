@@ -145,3 +145,52 @@ body {
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
+
+/* Icon trong menu */
+.icon-admin-layout {
+    margin-right: 12px;
+    font-size: 1.2rem;
+    color: inherit;
+}
+
+/* ===== LOGOUT SECTION ===== */
+.logout-section {
+    padding: 16px;
+    margin-top: auto; /* đẩy xuống đáy sidebar */
+}
+
+/* ===== LOGOUT BUTTON ===== */
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 12px;
+
+    background: rgba(239, 68, 68, 0.1); /* đỏ nhẹ */
+    color: #f87171; /* đỏ dịu */
+
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+/* Hover */
+.logout-btn:hover {
+    background: #ef4444;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+/* Active (click) */
+.logout-btn:active {
+    transform: scale(0.97);
+}
