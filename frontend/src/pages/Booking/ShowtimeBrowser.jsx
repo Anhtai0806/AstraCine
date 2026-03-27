@@ -219,7 +219,7 @@ export default function ShowtimeBrowser() {
                 />
             </div>
 
-            {/* Time Slot Tabs - chỉ hiển thị nếu có slots */}
+            Time Slot Tabs - chỉ hiển thị nếu có slots
             {slots.length > 0 && (
                 <div className="slot-tabs">
                     <button

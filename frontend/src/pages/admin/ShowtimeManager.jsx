@@ -43,10 +43,6 @@ const isMovieAvailableOnDate = (movie, scheduleDate) => {
 
     if (!releaseDate) return false;
 
-    if (movie.status === 'COMING_SOON') {
-        return scheduleDate === releaseDate;
-    }
-
     if (scheduleDate < releaseDate) return false;
     if (endDate && scheduleDate > endDate) return false;
 
@@ -73,10 +69,29 @@ const ShowtimeManager = () => {
     }, []);
 
     const activeMovies = useMemo(() => movies.filter((movie) => movie.status !== 'STOPPED'), [movies]);
+    const createAvailableMovies = useMemo(
+        () => activeMovies.filter((movie) => isMovieAvailableOnDate(movie, createForm.date)),
+        [activeMovies, createForm.date]
+    );
     const autoAvailableMovies = useMemo(
         () => activeMovies.filter((movie) => isMovieAvailableOnDate(movie, autoForm.scheduleDate)),
         [activeMovies, autoForm.scheduleDate]
     );
+
+    useEffect(() => {
+        if (!createForm.movieId) return;
+
+        const isSelectedMovieAvailable = createAvailableMovies.some(
+            (movie) => String(movie.id) === String(createForm.movieId)
+        );
+
+        if (isSelectedMovieAvailable) return;
+
+        setCreateForm((prev) => ({
+            ...prev,
+            movieId: '',
+        }));
+    }, [createAvailableMovies, createForm.movieId]);
 
     useEffect(() => {
         const availableMovieIds = autoAvailableMovies.map((movie) => movie.id);
@@ -464,10 +479,15 @@ const ShowtimeManager = () => {
                                         required
                                     >
                                         <option value="">-- Chọn phim --</option>
-                                        {activeMovies.map((movie) => (
+                                        {createAvailableMovies.map((movie) => (
                                             <option key={movie.id} value={movie.id}>{movie.title}</option>
                                         ))}
                                     </select>
+                                    {!createAvailableMovies.length && (
+                                        <div className="info-note">
+                                            Khong co phim nao phu hop voi ngay da chon.
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="create-form-group">
                                     <label className="create-form-label">Phòng Chiếu</label>
