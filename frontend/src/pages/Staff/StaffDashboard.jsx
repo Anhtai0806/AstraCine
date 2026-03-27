@@ -84,7 +84,7 @@ export default function StaffDashboard() {
                             onClick={() => setShowScanner((prev) => !prev)}
                             disabled={!canCheckin}
                         >
-                            {showScanner ? "🔽 Đóng soát vé" : "📷 Mở scanner nhanh"}
+                            {showScanner ? " Đóng soát vé" : " Mở scanner nhanh"}
                         </button>
                     </div>
                 </div>

@@ -54,6 +54,11 @@ public class ShowtimeService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Phòng chiếu không tồn tại với ID: " + request.getRoomId()));
 
+        // [GUARD] Chặn tạo suất chiếu cho phòng đang INACTIVE
+        if (room.getStatus() != com.astracine.backend.core.enums.RoomStatus.ACTIVE) {
+            throw new RuntimeException("Phòng chiếu đang ngưng hoạt động, không thể tạo suất chiếu mới.");
+        }
+
         // 5. Lưu Showtime
         // Constructor này nhận tham số hỗn hợp: (Long movieId, Room room, Long
         // timeSlotId, ...)

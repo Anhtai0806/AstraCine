@@ -24,4 +24,10 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
                         @Param("startTime") LocalDateTime startTime,
                         @Param("endTime") LocalDateTime endTime,
                         @Param("excludedStatus") ShowtimeStatus excludedStatus); // ✅ Thêm tham số
+
+        // Kiểm tra phòng có suất chiếu TƯƠNG LAI không (dùng cho Deactivate)
+        boolean existsByRoomIdAndStartTimeAfter(Long roomId, LocalDateTime time);
+
+        // Kiểm tra phòng ĐÃ TỪNG có suất chiếu nào chưa (dùng cho Hard Delete)
+        boolean existsByRoomId(Long roomId);
 }

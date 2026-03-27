@@ -31,7 +31,7 @@ const ShowtimeManager = () => {
         try {
             const [m, r, s] = await Promise.all([
                 axiosClient.get('/admin/movies'),
-                axiosClient.get('/admin/rooms'),
+                axiosClient.get('/admin/rooms/active'),
                 axiosClient.get('/admin/showtimes')
             ]);
             setMovies(m.data);
