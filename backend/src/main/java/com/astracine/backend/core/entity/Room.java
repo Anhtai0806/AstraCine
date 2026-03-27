@@ -36,14 +36,18 @@ public class Room {
     @Column(name = "total_columns", nullable = false)
     private Integer totalColumns;
 
+    @Column(name = "screen_type", length = 20)
+    private String screenType;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private RoomStatus status;
 
-    public Room(String name, Integer totalRows, Integer totalColumns) {
+    public Room(String name, Integer totalRows, Integer totalColumns, String screenType) {
         this.name = name;
         this.totalRows = totalRows;
         this.totalColumns = totalColumns;
+        this.screenType = screenType;
         this.status = RoomStatus.ACTIVE;
     }
 }

@@ -110,7 +110,7 @@ export default function StaffDashboard() {
             >
               {showScanner ? (
                 <>
-                  <FaArrowAltCircleDown className="scan-icon"/> Đóng soát vé{" "}
+                  <FaArrowAltCircleDown className="scan-icon" /> Đóng soát vé{" "}
                 </>
               ) : (
                 <>

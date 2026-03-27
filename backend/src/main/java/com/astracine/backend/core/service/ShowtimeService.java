@@ -66,7 +66,8 @@ public class ShowtimeService {
 
         Room room = getActiveRoom(request.getRoomId());
         Movie movie = getSchedulableMovie(request.getMovieId(), request.getStartTime().toLocalDate());
-        validateShowtimeRules(room.getId(), movie.getId(), request.getStartTime(), movie.getDurationMinutes(), showtimeId);
+        validateShowtimeRules(room.getId(), movie.getId(), request.getStartTime(), movie.getDurationMinutes(),
+                showtimeId);
 
         deleteShowtimeSeats(existing.getId());
 
@@ -273,11 +274,12 @@ public class ShowtimeService {
     }
 
     private RoomGenerationState buildRoomState(Room room,
-                                               int roomIndex,
-                                               List<Showtime> existingShowtimes,
-                                               LocalDateTime windowStart) {
+            int roomIndex,
+            List<Showtime> existingShowtimes,
+            LocalDateTime windowStart) {
         List<Showtime> anchors = existingShowtimes.stream()
-                .filter(showtime -> showtime.getStartTime().isAfter(windowStart) || showtime.getEndTime().isAfter(windowStart))
+                .filter(showtime -> showtime.getStartTime().isAfter(windowStart)
+                        || showtime.getEndTime().isAfter(windowStart))
                 .collect(Collectors.toList());
 
         Showtime previousShowtime = findPreviousShowtime(existingShowtimes, windowStart);
@@ -329,12 +331,12 @@ public class ShowtimeService {
     }
 
     private Movie chooseMovieGreedyRoundRobin(RoomGenerationState state,
-                                              LocalDateTime gapEnd,
-                                              List<Movie> movies,
-                                              Map<Long, Integer> movieCounts,
-                                              Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-                                              int roundRobinIndex,
-                                              Long nextAnchorMovieId) {
+            LocalDateTime gapEnd,
+            List<Movie> movies,
+            Map<Long, Integer> movieCounts,
+            Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
+            int roundRobinIndex,
+            Long nextAnchorMovieId) {
         List<Movie> fittingMovies = movies.stream()
                 .filter(movie -> !Objects.equals(movie.getId(), state.previousMovieId))
                 .filter(movie -> state.cursor.plusMinutes(movie.getDurationMinutes()).isBefore(gapEnd)
@@ -358,7 +360,8 @@ public class ShowtimeService {
         return leastScheduledMovies.stream()
                 .sorted(Comparator
                         .comparingInt((Movie movie) -> getRoundRobinDistance(movies, movie.getId(), roundRobinIndex))
-                        .thenComparingInt(movie -> getSameMovieAtSameTimePenalty(slotMovieUsage, state.cursor, movie.getId()))
+                        .thenComparingInt(
+                                movie -> getSameMovieAtSameTimePenalty(slotMovieUsage, state.cursor, movie.getId()))
                         .thenComparingInt(movie -> getSlotLoadPenalty(slotMovieUsage, state.cursor))
                         .thenComparing(Movie::getDurationMinutes)
                         .thenComparing(Movie::getTitle))
@@ -384,8 +387,8 @@ public class ShowtimeService {
     }
 
     private int getSameMovieAtSameTimePenalty(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-                                              LocalDateTime startTime,
-                                              Long movieId) {
+            LocalDateTime startTime,
+            Long movieId) {
         return slotMovieUsage.getOrDefault(startTime, Map.of()).getOrDefault(movieId, 0);
     }
 
@@ -394,8 +397,8 @@ public class ShowtimeService {
     }
 
     private void recordSlotUsage(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-                                 LocalDateTime startTime,
-                                 Long movieId) {
+            LocalDateTime startTime,
+            Long movieId) {
         slotMovieUsage
                 .computeIfAbsent(startTime, ignored -> new HashMap<>())
                 .merge(movieId, 1, Integer::sum);
@@ -405,6 +408,14 @@ public class ShowtimeService {
         TimeSlot timeSlot = resolveTimeSlot(startTime);
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
+        // [GUARD] Chặn tạo suất chiếu cho phòng đang INACTIVE
+        if (room.getStatus() != com.astracine.backend.core.enums.RoomStatus.ACTIVE) {
+            throw new RuntimeException("Phòng chiếu đang ngưng hoạt động, không thể tạo suất chiếu mới.");
+        }
+
+        // 5. Lưu Showtime
+        // Constructor này nhận tham số hỗn hợp: (Long movieId, Room room, Long
+        // timeSlotId, ...)
         Showtime showtime = new Showtime(
                 movie.getId(),
                 room,
@@ -433,19 +444,19 @@ public class ShowtimeService {
     }
 
     private void validateShowtimeRules(Long roomId,
-                                       Long movieId,
-                                       LocalDateTime startTime,
-                                       Integer durationMinutes,
-                                       Long excludedShowtimeId) {
+            Long movieId,
+            LocalDateTime startTime,
+            Integer durationMinutes,
+            Long excludedShowtimeId) {
         LocalDateTime endTime = startTime.plusMinutes(durationMinutes);
         validateRoomAvailability(roomId, startTime, endTime, excludedShowtimeId);
         validateMovieAlternation(roomId, movieId, startTime, excludedShowtimeId);
     }
 
     private void validateRoomAvailability(Long roomId,
-                                          LocalDateTime startTime,
-                                          LocalDateTime endTime,
-                                          Long excludedShowtimeId) {
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            Long excludedShowtimeId) {
         LocalDateTime overlapStart = startTime.minusMinutes(CLEANUP_MINUTES);
         LocalDateTime overlapEnd = endTime.plusMinutes(CLEANUP_MINUTES);
 
@@ -460,9 +471,9 @@ public class ShowtimeService {
     }
 
     private void validateMovieAlternation(Long roomId,
-                                          Long movieId,
-                                          LocalDateTime startTime,
-                                          Long excludedShowtimeId) {
+            Long movieId,
+            LocalDateTime startTime,
+            Long excludedShowtimeId) {
         List<Showtime> roomShowtimes = showtimeRepository.findByRoom_IdAndStatusNotOrderByStartTimeAsc(
                 roomId, ShowtimeStatus.CANCELLED).stream()
                 .filter(showtime -> !Objects.equals(showtime.getId(), excludedShowtimeId))
@@ -513,7 +524,8 @@ public class ShowtimeService {
 
         return rooms.stream()
                 .filter(room -> room.getStatus() == RoomStatus.ACTIVE)
-                .sorted(Comparator.comparing(room -> room.getTotalRows() * room.getTotalColumns(), Comparator.reverseOrder()))
+                .sorted(Comparator.comparing(room -> room.getTotalRows() * room.getTotalColumns(),
+                        Comparator.reverseOrder()))
                 .collect(Collectors.toList());
     }
 
@@ -635,11 +647,11 @@ public class ShowtimeService {
         private Long previousMovieId;
 
         private RoomGenerationState(Room room,
-                                    int roomIndex,
-                                    List<Showtime> anchors,
-                                    int nextAnchorIndex,
-                                    LocalDateTime cursor,
-                                    Long previousMovieId) {
+                int roomIndex,
+                List<Showtime> anchors,
+                int nextAnchorIndex,
+                LocalDateTime cursor,
+                Long previousMovieId) {
             this.room = room;
             this.roomIndex = roomIndex;
             this.anchors = anchors;
