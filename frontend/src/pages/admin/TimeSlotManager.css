@@ -294,6 +294,33 @@
     transform: translateY(0);
 }
 
+.form-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.form-actions .btn-submit {
+    margin-top: 0;
+    flex: 1;
+}
+
+.btn-secondary-soft {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-main);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-secondary-soft:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+}
+
 @keyframes slideUp {
     from {
         opacity: 0;

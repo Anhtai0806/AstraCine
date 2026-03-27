@@ -46,6 +46,11 @@ function isPromoValid(p) {
     return true;
 }
 
+function isPromoEligibleForOrder(promo, orderTotal) {
+    const minOrder = parseFloat(promo?.minOrderAmount) || 0;
+    return orderTotal >= minOrder;
+}
+
 const InvoiceSummary = () => {
     const { showtimeId } = useParams();
     const location = useLocation();
@@ -95,6 +100,17 @@ const InvoiceSummary = () => {
             .catch(err => console.warn('[Promo] load failed:', err))
             .finally(() => setPromoLoading(false));
     }, [user, navigate, showtimeId]);
+
+    const eligiblePromotions = useMemo(
+        () => promotions.filter((promo) => isPromoEligibleForOrder(promo, grandTotal)),
+        [promotions, grandTotal]
+    );
+
+    useEffect(() => {
+        if (selectedPromo && !isPromoEligibleForOrder(selectedPromo, grandTotal)) {
+            setSelectedPromo(null);
+        }
+    }, [selectedPromo, grandTotal]);
 
     // ── Discount calculation ──────────────────────────────────────
     const discountAmount = useMemo(() =>
@@ -282,13 +298,13 @@ const InvoiceSummary = () => {
                         {/* Chips từ DB */}
                         {promoLoading ? (
                             <p className="discount-hint">Đang tải mã giảm giá...</p>
-                        ) : promotions.length === 0 ? (
+                        ) : eligiblePromotions.length === 0 ? (
                             <p className="discount-hint">Hiện không có mã khuyến mãi nào.</p>
                         ) : (
                             <>
                                 <p className="discount-hint">Chọn một mã hoặc nhập thủ công:</p>
                                 <div className="discount-list">
-                                    {promotions.map(promo => {
+                                    {eligiblePromotions.map(promo => {
                                         const isSelected = selectedPromo?.id === promo.id;
                                         const saving = calcDiscountFromPromo(promo, grandTotal);
                                         const label = promo.discountType === 'PERCENTAGE'

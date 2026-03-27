@@ -20,4 +20,9 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 
     @Query("SELECT t FROM TimeSlot t WHERE t.startTime < :endTime AND t.endTime > :startTime")
     List<TimeSlot> findOverlapping(@Param("startTime") LocalTime startTime, @Param("endTime") LocalTime endTime);
+
+    @Query("SELECT t FROM TimeSlot t WHERE t.id <> :id AND t.startTime < :endTime AND t.endTime > :startTime")
+    List<TimeSlot> findOverlappingExcludingId(@Param("id") Long id,
+                                              @Param("startTime") LocalTime startTime,
+                                              @Param("endTime") LocalTime endTime);
 }

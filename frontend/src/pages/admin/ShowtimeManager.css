@@ -129,6 +129,44 @@
     transform: translateY(-1px);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.btn-danger-soft {
+    background: #fff1f2;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-danger-soft:hover {
+    background: #ffe4e6;
+    border-color: #fda4af;
+}
+
 /* --- 2. TIMELINE VIEW --- */
 .timeline-wrapper {
     flex: 1;
@@ -258,6 +296,16 @@
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
+.show-card-title {
+    font-weight: 700;
+}
+
+.show-card-time {
+    opacity: 0.9;
+    font-size: 0.72rem;
+    margin-top: 4px;
+}
+
 /* --- 3. CALENDAR MONTH VIEW (GRID 7x6) --- */
 .calendar-wrapper {
     flex: 1;
@@ -363,6 +411,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 24px;
+    overflow-y: auto;
     z-index: 1000;
 }
 
@@ -395,6 +445,12 @@
 .modal-content {
     padding: 24px;
     overflow-y: auto;
+}
+
+.seat-modal-content {
+    background: #f8fafc;
+    display: flex;
+    justify-content: center;
 }
 
 /* Colors */
@@ -438,6 +494,7 @@
 /* === 5. CREATE MODAL (PREMIUM) === */
 .create-modal {
     width: 540px;
+    max-height: calc(100vh - 48px);
     border-radius: 20px;
     overflow: hidden;
     border: none;
@@ -514,8 +571,11 @@
 
 /* --- Body: Clean white for high contrast --- */
 .create-modal-body {
+    flex: 1;
+    min-height: 0;
     padding: 28px;
     background: #ffffff;
+    overflow-y: auto;
 }
 
 /* --- Section divider above datetime --- */
@@ -695,4 +755,92 @@
     margin: 12px 0 0 0;
     font-weight: 400;
     letter-spacing: 0.1px;
+}
+
+.auto-modal {
+    width: 720px;
+    max-height: calc(100vh - 48px);
+}
+
+.selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.selection-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.selection-card input {
+    accent-color: #4f46e5;
+}
+
+.info-note {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    border: 1px solid #c7d2fe;
+}
+
+.modal-action-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.modal-action-row .create-form-submit {
+    margin-top: 0;
+    flex: 1;
+}
+
+.btn-outline,
+.btn-danger {
+    border: none;
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-outline {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.btn-outline:hover {
+    background: #cbd5e1;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
+.empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    font-weight: 600;
 }
