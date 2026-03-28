@@ -72,4 +72,11 @@ export const userManagementAPI = {
     updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
 };
 
+export const customerManagementAPI = {
+    getAll: (keyword) => adminApi.get("/customers", { 
+        params: keyword ? { keyword } : {} 
+    }),
+    lock: (userId, reason) => adminApi.put(`/customers/${userId}/lock`, { reason }),
+    unlock: (userId) => adminApi.put(`/customers/${userId}/unlock`)
+};
 export default adminApi;

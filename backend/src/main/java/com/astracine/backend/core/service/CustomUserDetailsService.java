@@ -30,11 +30,18 @@ public class CustomUserDetailsService implements UserDetailsService {
 
                 // Check trạng thái tài khoản
                 if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
-                        throw new DisabledException("User is not active");
+                        String reason = user.getLockReason();
+                        String message = "Tài khoản của bạn đã bị khóa.";
+                        if (reason != null && !reason.isBlank()) {
+                                message += " Lý do: " + reason + ".";
+
+                        }
+                        message += " Vui lòng liên hệ bộ phận hỗ trợ để biết thêm chi tiết hoặc được mở khóa tài khoản.";
+                        throw new DisabledException(message);
                 }
 
                 if (Boolean.FALSE.equals(user.getEnabled())) {
-                        throw new DisabledException("User is disabled");
+                        throw new DisabledException("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ admin để được hỗ trợ.");
                 }
 
                 List<SimpleGrantedAuthority> authorities = user.getRoles().stream()

@@ -1,5 +1,5 @@
 import React from "react";
-import {useNavigate, Outlet, NavLink } from "react-router-dom";
+import { useNavigate, Outlet, NavLink } from "react-router-dom";
 import "./AdminLayout.css";
 import { FaRegChartBar } from "react-icons/fa";
 import { FaPhotoVideo } from "react-icons/fa";
@@ -101,6 +101,14 @@ const AdminLayout = () => {
           >
             <SlCalender className="icon-admin-layout" /> Lịch Chiếu
           </NavLink>
+          <NavLink
+            to="/admin/customer-management"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            👤 Quản lý Customer
+          </NavLink>
 
           <NavLink
             to="/admin/staff-management"
@@ -113,7 +121,7 @@ const AdminLayout = () => {
         </nav>
         <div className="logout-section">
           <button className="logout-btn" onClick={handleLogout}>
-           <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
+            <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
           </button>
         </div>
       </aside>
