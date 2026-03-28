@@ -23,18 +23,26 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException authException)
-            throws IOException, ServletException {
+            throws IOException {
 
         logger.error("Unauthorized error: {}", authException.getMessage());
 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
+        String errorMessage = authException.getMessage();
+
+        String errorType = "Unauthorized";
+        if (errorMessage != null && errorMessage.toLowerCase().contains("khóa")) {
+            errorType = "ACCOUNT_LOCKED";
+        }
+
         final Map<String, Object> body = new HashMap<>();
         body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        body.put("error", "Unauthorized");
-        body.put("message", authException.getMessage());
+        body.put("error", errorType);
+        body.put("message", errorMessage != null ? errorMessage : "Unauthorized access");
         body.put("path", request.getServletPath());
+        body.put("timestamp", System.currentTimeMillis());
 
         final ObjectMapper mapper = new ObjectMapper();
         mapper.writeValue(response.getOutputStream(), body);

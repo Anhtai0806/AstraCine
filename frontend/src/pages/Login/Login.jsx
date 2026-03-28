@@ -34,13 +34,22 @@ function Login() {
     );
 
     const extractMessage = (err, fallback) => {
-        const data = err?.response?.data;
-        if (data?.errors) {
-            const firstKey = Object.keys(data.errors)[0];
-            return data.errors[firstKey];
-        }
-        return data?.message || fallback;
-    };
+    const data = err?.response?.data;
+
+    // Ưu tiên message từ backend
+    if (data?.message) {
+        return data.message;
+    }
+
+    // validation errors
+    if (data?.errors) {
+        const firstKey = Object.keys(data.errors)[0];
+        return data.errors[firstKey];
+    }
+
+    // fallback cuối cùng
+    return fallback;
+};
 
     const handleChange = (e) => {
         let value = e.target.value;
