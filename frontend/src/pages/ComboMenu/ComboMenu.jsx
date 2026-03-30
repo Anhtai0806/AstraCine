@@ -66,7 +66,12 @@ const ComboMenu = () => {
 
     // --- CART LOGIC ---
     const addToCart = (combo) => {
-        setCart(prev => ({ ...prev, [combo.id]: (prev[combo.id] || 0) + 1 }));
+        const maxQty = combo.stockQuantity ?? 0;
+        setCart(prev => {
+            const currentQty = prev[combo.id] || 0;
+            if (currentQty >= maxQty) return prev; // Đã đạt giới hạn tồn kho
+            return { ...prev, [combo.id]: currentQty + 1 };
+        });
     };
 
     const removeFromCart = (comboId) => {
@@ -176,10 +181,13 @@ const ComboMenu = () => {
                             {filtered.map((item) => {
                                 const qty = cart[item.id] || 0;
                                 const isActive = item.status === 'ACTIVE';
+                                const maxQty = item.stockQuantity ?? 0;
+                                const isOutOfStock = maxQty === 0;
+                                const isAtLimit = qty >= maxQty;
                                 return (
                                     <div
                                         key={item.id}
-                                        className={`combo-card ${qty > 0 ? 'in-cart' : ''} ${!isActive ? 'out-of-stock' : ''}`}
+                                        className={`combo-card ${qty > 0 ? 'in-cart' : ''} ${(!isActive || isOutOfStock) ? 'out-of-stock' : ''}`}
                                     >
                                         <div className="combo-img-box">
                                             <img
@@ -187,8 +195,13 @@ const ComboMenu = () => {
                                                 src="https://images.unsplash.com/photo-1585647347483-22b66260dfff?w=400&auto=format&fit=crop"
                                             />
                                             <span className="price-badge">{formatCurrency(item.price)}</span>
-                                            {!isActive && <span className="sold-out-overlay">Hết hàng</span>}
+                                            {(!isActive || isOutOfStock) && <span className="sold-out-overlay">Hết hàng</span>}
                                             {qty > 0 && <span className="cart-qty-badge">{qty}</span>}
+                                            {isActive && !isOutOfStock && (
+                                                <span className="stock-count-badge">
+                                                    Còn {maxQty - qty}/{maxQty}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="combo-card-body">
                                             <h4 className="combo-name">{item.name}</h4>
@@ -196,7 +209,7 @@ const ComboMenu = () => {
                                                 {qty === 0 ? (
                                                     <button
                                                         className="btn-add-to-cart"
-                                                        disabled={!isActive}
+                                                        disabled={!isActive || isOutOfStock}
                                                         onClick={() => addToCart(item)}
                                                     >
                                                         + Thêm vào giỏ
@@ -205,7 +218,11 @@ const ComboMenu = () => {
                                                     <div className="qty-control">
                                                         <button onClick={() => removeFromCart(item.id)}>−</button>
                                                         <span>{qty}</span>
-                                                        <button onClick={() => addToCart(item)}>+</button>
+                                                        <button
+                                                            onClick={() => addToCart(item)}
+                                                            disabled={isAtLimit}
+                                                            title={isAtLimit ? `Chỉ còn ${maxQty} sản phẩm` : ''}
+                                                        >+</button>
                                                     </div>
                                                 )}
                                             </div>

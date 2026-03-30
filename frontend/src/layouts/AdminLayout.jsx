@@ -119,6 +119,13 @@ const AdminLayout = () => {
           >
             <GrUserManager className="icon-admin-layout" /> Quản lý Staff
           </NavLink>
+
+          <NavLink
+            to="/admin/combos"
+            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+          >
+            🍿 Bắp &amp; Nước
+          </NavLink>
         </nav>
         <div className="logout-section">
           <button className="logout-btn" onClick={handleLogout}>
