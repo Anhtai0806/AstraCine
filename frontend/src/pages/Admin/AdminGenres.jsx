@@ -141,7 +141,7 @@ const AdminGenres = () => {
                     <div className="custom-modal-backdrop" onClick={handleCloseModal}>
                         <div className="custom-modal-panel genre-modal" onClick={(e) => e.stopPropagation()}>
                             <div className="custom-modal-header">
-                                <h3>{isEditing ? 'Chinh sua the loai' : 'Them the loai moi'}</h3>
+                                <h3>{isEditing ? 'Chỉnh sửa thể loại' : 'Thêm thể loại mới'}</h3>
                                 <button className="modal-close-btn" onClick={handleCloseModal}>x</button>
                             </div>
                             <form onSubmit={handleSave}>
@@ -163,7 +163,7 @@ const AdminGenres = () => {
                                         Huỷ
                                     </button>
                                     <button type="submit" className="btn-custom btn-primary">
-                                        {isEditing ? 'Cap nhat' : 'Tao moi'}
+                                        {isEditing ? 'Cập nhật' : 'Thêm mới'}
                                     </button>
                                 </div>
                             </form>

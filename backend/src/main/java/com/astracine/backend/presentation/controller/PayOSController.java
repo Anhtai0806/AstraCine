@@ -83,8 +83,8 @@ public class PayOSController {
      */
     @PostMapping("/confirm/{orderCode}")
     public ResponseEntity<Map<String, Object>> confirm(
-            @PathVariable long orderCode,
-            @RequestParam(defaultValue = "PAID") String status) {
+            @PathVariable("orderCode") long orderCode,
+            @RequestParam(name = "status", defaultValue = "PAID") String status) {
         log.info("[PayOS] Confirm request for orderCode={} status={}", orderCode, status);
         boolean ok = payOSService.confirmPayment(orderCode, status);
         if (ok) {
@@ -100,24 +100,20 @@ public class PayOSController {
      */
    
     @GetMapping("/ticket/{orderCode}")
-    public ResponseEntity<?> getETicket(@PathVariable String orderCode) {
-        
-        
+    public ResponseEntity<?> getETicket(@PathVariable("orderCode") String orderCode) {
         try {
             ETicketDTO ticket = invoiceService.getETicketByOrderCode(orderCode);
             return ResponseEntity.ok(ticket);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
         }
-         
-
     }
 
     /**
      * Kiểm tra trạng thái payment theo orderCode — để FE polling.
      */
     @GetMapping("/status/{orderCode}")
-    public ResponseEntity<Map<String, Object>> status(@PathVariable long orderCode) {
+    public ResponseEntity<Map<String, Object>> status(@PathVariable("orderCode") long orderCode) {
         return ResponseEntity.ok(
                 Map.of("orderCode", orderCode, "message", "Dùng /confirm để xác nhận sau khi thanh toán"));
     }

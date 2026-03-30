@@ -1,5 +1,5 @@
 import React from "react";
-import {useNavigate, Outlet, NavLink } from "react-router-dom";
+import { useNavigate, Outlet, NavLink } from "react-router-dom";
 import "./AdminLayout.css";
 import { FaRegChartBar } from "react-icons/fa";
 import { FaPhotoVideo } from "react-icons/fa";
@@ -11,6 +11,7 @@ import { SlCalender } from "react-icons/sl";
 import { GrUserManager } from "react-icons/gr";
 import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
+import { MdOutlineManageAccounts } from "react-icons/md";
 
 const AdminLayout = () => {
   const { logout } = useAuth();
@@ -101,6 +102,14 @@ const AdminLayout = () => {
           >
             <SlCalender className="icon-admin-layout" /> Lịch Chiếu
           </NavLink>
+          <NavLink
+            to="/admin/customer-management"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            <MdOutlineManageAccounts className="icon-admin-layout" /> Quản lý Customer
+          </NavLink>
 
           <NavLink
             to="/admin/staff-management"
@@ -110,10 +119,17 @@ const AdminLayout = () => {
           >
             <GrUserManager className="icon-admin-layout" /> Quản lý Staff
           </NavLink>
+
+          <NavLink
+            to="/admin/combos"
+            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+          >
+            🍿 Bắp &amp; Nước
+          </NavLink>
         </nav>
         <div className="logout-section">
           <button className="logout-btn" onClick={handleLogout}>
-           <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
+            <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
           </button>
         </div>
       </aside>

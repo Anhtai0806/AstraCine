@@ -1,7 +1,7 @@
 package com.astracine.backend.presentation.dto;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,6 +30,19 @@ public class RoomDTO {
         @NotNull(message = "Số cột không được để trống")
         @Min(value = 1, message = "Số cột phải lớn hơn 0")
         private Integer totalColumns;
+
+        private String screenType; // 2D, 3D, IMAX (optional)
+    }
+
+    /** DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateRequest {
+        @NotBlank(message = "Tên phòng không được để trống")
+        private String name;
+
+        private String screenType; // 2D, 3D, IMAX (optional)
     }
 
     // ================== RESPONSE (Dữ liệu trả về) ==================
@@ -43,6 +56,7 @@ public class RoomDTO {
         private String name;
         private Integer totalRows;
         private Integer totalColumns;
+        private String screenType;
         private String status;
     }
 

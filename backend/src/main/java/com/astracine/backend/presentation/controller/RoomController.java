@@ -20,44 +20,90 @@ public class RoomController {
 
     private final RoomService roomService;
 
+    // ===================== TẠO PHÒNG =====================
+
     /**
-     * Tạo phòng mới
-     * POST /api/rooms
-     * Body: { "name": "Rap 1", "totalRows": 10, "totalColumns": 12 }
+     * POST /api/admin/rooms
+     * Body: { "name": "Rap 1", "totalRows": 10, "totalColumns": 12, "screenType": "2D" }
      */
     @PostMapping
-    // Sử dụng RoomDTO.CreateRequest rất rõ ràng
     public ResponseEntity<Room> createRoom(@Valid @RequestBody RoomDTO.CreateRequest request) {
         Room room = roomService.createRoom(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(room);
     }
 
+    // ===================== CẬP NHẬT =====================
+
     /**
-     * Lấy danh sách phòng
-     * GET /api/rooms
+     * PUT /api/admin/rooms/{id}
+     * Body: { "name": "Rạp 1 - IMAX", "screenType": "IMAX" }
+     * Chỉ cho phép sửa name + screenType, KHÔNG sửa rows/columns
      */
+    @PutMapping("/{id}")
+    public ResponseEntity<Room> updateRoom(
+            @PathVariable Long id,
+            @Valid @RequestBody RoomDTO.UpdateRequest request) {
+        Room room = roomService.updateRoom(id, request);
+        return ResponseEntity.ok(room);
+    }
+
+    // ===================== TRẠNG THÁI =====================
+
+    /**
+     * PATCH /api/admin/rooms/{id}/deactivate
+     * Ngưng hoạt động phòng (Soft Delete)
+     */
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<Room> deactivateRoom(@PathVariable Long id) {
+        Room room = roomService.deactivateRoom(id);
+        return ResponseEntity.ok(room);
+    }
+
+    /**
+     * PATCH /api/admin/rooms/{id}/activate
+     * Kích hoạt lại phòng
+     */
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<Room> activateRoom(@PathVariable Long id) {
+        Room room = roomService.activateRoom(id);
+        return ResponseEntity.ok(room);
+    }
+
+    // ===================== XÓA =====================
+
+    /**
+     * DELETE /api/admin/rooms/{id}
+     * Xóa vĩnh viễn (chỉ khi phòng chưa từng có suất chiếu)
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> hardDeleteRoom(@PathVariable Long id) {
+        roomService.hardDeleteRoom(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ===================== TRUY VẤN =====================
+
+    /** GET /api/admin/rooms - Lấy tất cả phòng (Admin) */
     @GetMapping
     public ResponseEntity<List<Room>> getAllRooms() {
         return ResponseEntity.ok(roomService.getAllRooms());
     }
 
-    /**
-     * Lấy danh sách ghế của 1 phòng (Dùng cho Admin xem/sửa)
-     * GET /api/rooms/{id}/seats
-     */
-    @GetMapping("/{id}/seats")
-    public ResponseEntity<List<Seat>> getRoomSeats(@PathVariable Long id) {
-        return ResponseEntity.ok(roomService.getRoomSeats(id));
+    /** GET /api/admin/rooms/active - Chỉ phòng ACTIVE (dùng cho Showtime dropdown) */
+    @GetMapping("/active")
+    public ResponseEntity<List<Room>> getActiveRooms() {
+        return ResponseEntity.ok(roomService.getActiveRooms());
     }
 
-    /**
-     * Lấy chi tiết phòng
-     * GET /api/rooms/{id}
-     */
-
+    /** GET /api/admin/rooms/{id} - Chi tiết phòng */
     @GetMapping("/{id}")
     public ResponseEntity<Room> getRoomById(@PathVariable Long id) {
         return ResponseEntity.ok(roomService.getRoomById(id));
     }
 
+    /** GET /api/admin/rooms/{id}/seats - Ghế của phòng */
+    @GetMapping("/{id}/seats")
+    public ResponseEntity<List<Seat>> getRoomSeats(@PathVariable Long id) {
+        return ResponseEntity.ok(roomService.getRoomSeats(id));
+    }
 }
