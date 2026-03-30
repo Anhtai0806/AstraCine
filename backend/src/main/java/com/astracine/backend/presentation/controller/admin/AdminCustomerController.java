@@ -23,10 +23,14 @@ public class AdminCustomerController {
 
     // Get all customers with optional search keyword
     @GetMapping
-    public ResponseEntity<List<AdminUserManagementResponse>> getAllCustomers(
-            @RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(adminCustomerService.getAllCustomers(keyword));
-    }
+public ResponseEntity<?> getAllCustomers(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "15") int size,
+        @RequestParam(required = false) String keyword) {
+
+    return ResponseEntity.ok(
+            adminCustomerService.getAllCustomers(page, size, keyword));
+}
 
     // Lock customer account
     @PutMapping("/{userId}/lock")

@@ -73,9 +73,14 @@ export const userManagementAPI = {
 };
 
 export const customerManagementAPI = {
-    getAll: (keyword) => adminApi.get("/customers", { 
-        params: keyword ? { keyword } : {} 
-    }),
+    getAll: (keyword, page = 0, size = 15) =>
+  adminApi.get("/customers", {
+    params: {
+      keyword,
+      page,
+      size
+    }
+  }),
     lock: (userId, reason) => adminApi.put(`/customers/${userId}/lock`, { reason }),
     unlock: (userId) => adminApi.put(`/customers/${userId}/unlock`)
 };
