@@ -3,6 +3,7 @@ import Footer from "../components/Footer/Footer";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./ClientLayout.css";
+import AIChatBox from "../pages/Home/components/AIChatBox/AIChatBox";
 
 function ClientLayout() {
     const { user } = useAuth();
@@ -25,6 +26,8 @@ function ClientLayout() {
                 <Outlet />
             </main>
             <Footer />
+            <AIChatBox />
+
         </div>
     );
 }
