@@ -100,8 +100,8 @@ const ShowtimeManager = () => {
             setLoading(true);
             const [movieRes, roomRes, showtimeRes] = await Promise.all([
                 axiosClient.get('/admin/movies'),
-                axiosClient.get('/admin/rooms'),
-                axiosClient.get('/admin/showtimes'),
+                axiosClient.get('/admin/rooms/active'),
+                axiosClient.get('/admin/showtimes')
             ]);
 
             setMovies(movieRes.data || []);

@@ -12,6 +12,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(RoomBusinessException.class)
+    public ResponseEntity<?> handleRoomBusiness(RoomBusinessException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", ex.getErrorCode());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(HoldConflictException.class)
     public ResponseEntity<?> handleHoldConflict(HoldConflictException ex) {
         Map<String, Object> body = new HashMap<>();
