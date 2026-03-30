@@ -11,6 +11,7 @@ import { SlCalender } from "react-icons/sl";
 import { GrUserManager } from "react-icons/gr";
 import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
+import { MdOutlineManageAccounts } from "react-icons/md";
 
 const AdminLayout = () => {
   const { logout } = useAuth();
@@ -107,7 +108,7 @@ const AdminLayout = () => {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            👤 Quản lý Customer
+            <MdOutlineManageAccounts className="icon-admin-layout" /> Quản lý Customer
           </NavLink>
 
           <NavLink
