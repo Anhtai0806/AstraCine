@@ -13,7 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @CrossOrigin(origins = { "http://localhost:5173", "http://localhost:3000" })
 public class TimeSlotController {
-    private final TimeSlotService timeSlotService; // 👈 Inject trực tiếp Class
+    private final TimeSlotService timeSlotService;
 
     @GetMapping
     public ResponseEntity<List<TimeSlotDTO>> getAll() {

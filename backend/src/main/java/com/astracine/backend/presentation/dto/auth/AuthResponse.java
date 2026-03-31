@@ -39,7 +39,6 @@ public class AuthResponse {
 
     }
 
-    // ===== getters =====
 
     public String getToken() {
         return token;
@@ -69,7 +68,6 @@ public class AuthResponse {
         return roles;
     }
 
-    // ===== setters =====
 
     public void setToken(String token) {
         this.token = token;

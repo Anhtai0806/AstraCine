@@ -2,13 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { roomService } from '../../services/roomService';
 import SeatGrid from '../../components/admin/SeatGrid';
 import './RoomManager.css';
+import { FaPencilAlt, FaPlus, FaCircle, FaExclamationTriangle, FaCheckCircle, FaSave } from "react-icons/fa";
+import { VscLock } from "react-icons/vsc";
+import { FaUnlockKeyhole } from "react-icons/fa6";
+import { RiDeleteBin6Line, RiMovie2Line } from "react-icons/ri";
+
+
+
 
 const RoomManager = () => {
     // --- STATE ---
     const [rooms, setRooms] = useState([]);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [seats, setSeats] = useState([]);
-    const [formData, setFormData] = useState({ name: '', totalRows: 10, totalColumns: 12, screenType: '2D' });
+    const [formData, setFormData] = useState({ name: '', totalRows: 10, totalColumns: 12, screenType: '2D', priceMultiplier: 1.0 });
 
     // Batch Logic
     const [pendingChanges, setPendingChanges] = useState(new Set());
@@ -17,7 +24,7 @@ const RoomManager = () => {
 
     // Edit Modal
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editFormData, setEditFormData] = useState({ name: '', screenType: '' });
+    const [editFormData, setEditFormData] = useState({ name: '', screenType: '', priceMultiplier: 1.0 });
 
     // Delete Dialog
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -50,7 +57,7 @@ const RoomManager = () => {
             showToast(`✅ Tạo phòng "${res.data.name}" thành công!`);
             loadRooms();
             handleSelectRoom(res.data);
-            setFormData({ name: '', totalRows: 10, totalColumns: 12, screenType: '2D' });
+            setFormData({ name: '', totalRows: 10, totalColumns: 12, screenType: '2D', priceMultiplier: 1.0 });
         } catch { showToast("Lỗi tạo phòng", 'error'); } finally { setIsLoading(false); }
     };
 
@@ -72,7 +79,8 @@ const RoomManager = () => {
         if (!selectedRoom) return;
         setEditFormData({
             name: selectedRoom.name,
-            screenType: selectedRoom.screenType || '2D'
+            screenType: selectedRoom.screenType || '2D',
+            priceMultiplier: selectedRoom.priceMultiplier || 1.0
         });
         setShowEditModal(true);
     };
@@ -201,7 +209,7 @@ const RoomManager = () => {
             {/* PANEL TRÁI */}
             <div className="manager-sidebar">
                 <div className="sidebar-card">
-                    <div className="sidebar-header">✨ Thêm Phòng Mới</div>
+                    <div className="sidebar-header"><FaPlus /> Thêm Phòng Mới</div>
                     <form onSubmit={handleCreateRoom}>
                         <input className="form-input" placeholder="Tên phòng (VD: Cinema 01)" required
                             value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -215,11 +223,23 @@ const RoomManager = () => {
                             />
                         </div>
                         <select className="form-input" value={formData.screenType}
-                            onChange={e => setFormData({ ...formData, screenType: e.target.value })}>
+                            onChange={e => {
+                                const type = e.target.value;
+                                const defaultMultipliers = { '2D': 1.0, '3D': 1.3, 'IMAX': 1.5 };
+                                setFormData({ ...formData, screenType: type, priceMultiplier: defaultMultipliers[type] || 1.0 });
+                            }}>
                             <option value="2D">2D</option>
                             <option value="3D">3D</option>
                             <option value="IMAX">IMAX</option>
                         </select>
+                        <div className="form-group-inline">
+                            <label className="form-label-inline">Hệ số giá (×)</label>
+                            <input className="form-input" type="number" step="0.01" min="0.5" max="5.0"
+                                placeholder="1.00" required
+                                value={formData.priceMultiplier}
+                                onChange={e => setFormData({ ...formData, priceMultiplier: parseFloat(e.target.value) || 1.0 })}
+                            />
+                        </div>
                         <button disabled={isLoading} className="btn-submit">
                             {isLoading ? 'Đang tạo...' : '+ Tạo Ngay'}
                         </button>
@@ -236,12 +256,13 @@ const RoomManager = () => {
                                 <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                                     {room.name}
                                     <span className={`status-badge ${room.status === 'ACTIVE' ? 'status-active' : 'status-inactive'}`}>
-                                        {room.status === 'ACTIVE' ? '🟢' : '🔴'}
+                                        <FaCircle style={{ color: room.status === 'ACTIVE' ? '#22c55e' : '#ef4444' }} />
                                     </span>
                                 </div>
                                 <div className="room-meta">
                                     {room.totalRows}x{room.totalColumns}
                                     {room.screenType && <span className="screen-type-tag">{room.screenType}</span>}
+                                    {room.priceMultiplier && <span className="multiplier-tag">×{Number(room.priceMultiplier).toFixed(2)}</span>}
                                 </div>
                             </div>
                         </div>
@@ -258,13 +279,16 @@ const RoomManager = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <h2 className="room-name">{selectedRoom.name}</h2>
                                 <span className={`status-pill ${selectedRoom.status === 'ACTIVE' ? 'pill-active' : 'pill-inactive'}`}>
-                                    {selectedRoom.status === 'ACTIVE' ? '🟢 Hoạt động' : '🔴 Ngưng hoạt động'}
+                                    {selectedRoom.status === 'ACTIVE' ? <><FaCircle style={{ color: '#22c55e' }} /> Hoạt động</> : <><FaCircle style={{ color: '#ef4444' }} /> Ngưng hoạt động</>}
                                 </span>
                                 {selectedRoom.screenType && (
                                     <span className="screen-type-pill">{selectedRoom.screenType}</span>
                                 )}
+                                {selectedRoom.priceMultiplier && (
+                                    <span className="multiplier-pill">×{Number(selectedRoom.priceMultiplier).toFixed(2)}</span>
+                                )}
                                 <span className={`sync-badge ${pendingChanges.size > 0 ? 'unsaved' : 'saved'}`}>
-                                    {pendingChanges.size > 0 ? `⚠️ ${pendingChanges.size} chưa lưu` : '● Đã đồng bộ'}
+                                    {pendingChanges.size > 0 ? <><FaExclamationTriangle /> {pendingChanges.size} chưa lưu</> : <><FaCheckCircle /> Đã đồng bộ</>}
                                 </span>
                             </div>
 
@@ -281,15 +305,15 @@ const RoomManager = () => {
 
                                 {/* Room actions */}
                                 <button onClick={openEditModal} className="btn-action btn-edit" title="Sửa thông tin phòng">
-                                    ✏️ Sửa
+                                    <FaPencilAlt /> Sửa
                                 </button>
                                 <button onClick={handleToggleStatus}
                                     className={`btn-action ${selectedRoom.status === 'ACTIVE' ? 'btn-deactivate' : 'btn-activate'}`}
                                     title={selectedRoom.status === 'ACTIVE' ? 'Ngưng hoạt động' : 'Kích hoạt lại'}>
-                                    {selectedRoom.status === 'ACTIVE' ? '🔒 Ngưng' : '🔓 Kích hoạt'}
+                                    {selectedRoom.status === 'ACTIVE' ? (<><VscLock /> Ngưng hoạt động</>) : (<><FaUnlockKeyhole /> Hoạt động</>)}
                                 </button>
                                 <button onClick={handleDeleteClick} className="btn-action btn-delete" title="Xóa vĩnh viễn">
-                                    🗑️ Xóa
+                                    <RiDeleteBin6Line /> Xóa
                                 </button>
                             </div>
                         </div>
@@ -300,12 +324,13 @@ const RoomManager = () => {
                                 seats={seats}
                                 totalColumns={selectedRoom.totalColumns}
                                 onSeatClick={handleSeatClick}
+                                priceMultiplier={selectedRoom.priceMultiplier}
                             />
                         </div>
                     </>
                 ) : (
                     <div className="empty-state">
-                        <div className="empty-emoji">🍿</div>
+                        <div className="empty-emoji"><RiMovie2Line /></div>
                         <h3 style={{ fontSize: '1.5rem', margin: 0, color: '#374151' }}>Chào mừng trở lại!</h3>
                         <p>Chọn một phòng từ danh sách bên trái để bắt đầu thiết kế.</p>
                     </div>
@@ -317,7 +342,7 @@ const RoomManager = () => {
                 <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>✏️ Sửa thông tin phòng</h3>
+                            <h3> Sửa thông tin phòng</h3>
                             <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
                         </div>
                         <form onSubmit={handleEditSubmit}>
@@ -343,13 +368,22 @@ const RoomManager = () => {
                                 <input className="form-input form-input-disabled" type="number"
                                     value={selectedRoom.totalColumns} disabled />
                                 <p className="form-hint">
-                                    🔒 Số hàng và cột ghế không thể thay đổi để bảo vệ dữ liệu vé đã bán.
+                                    Số hàng và cột ghế không thể thay đổi để bảo vệ dữ liệu vé đã bán.
                                     Nếu cần thay đổi sơ đồ ghế, hãy ngưng hoạt động phòng cũ và tạo phòng mới.
+                                </p>
+
+                                <label className="form-label">Hệ số giá (×)</label>
+                                <input className="form-input" type="number" step="0.01" min="0.5" max="5.0"
+                                    value={editFormData.priceMultiplier}
+                                    onChange={e => setEditFormData({ ...editFormData, priceMultiplier: parseFloat(e.target.value) || 1.0 })}
+                                />
+                                <p className="form-hint-sm">
+                                    Hệ số giá sẽ áp dụng cho các suất chiếu được tạo SAU khi thay đổi. Các suất chiếu cũ không bị ảnh hưởng.
                                 </p>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn-cancel" onClick={() => setShowEditModal(false)}>Hủy bỏ</button>
-                                <button type="submit" className="btn-save">💾 Lưu thay đổi</button>
+                                <button type="submit" className="btn-save"><FaSave /> Lưu thay đổi</button>
                             </div>
                         </form>
                     </div>
@@ -361,20 +395,20 @@ const RoomManager = () => {
                 <div className="modal-overlay" onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}>
                     <div className="modal-content modal-danger" onClick={e => e.stopPropagation()}>
                         <div className="modal-header modal-header-danger">
-                            <h3>🗑️ Xóa phòng vĩnh viễn</h3>
+                            <h3><RiDeleteBin6Line /> Xóa phòng vĩnh viễn</h3>
                             <button className="modal-close" onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}>✕</button>
                         </div>
                         <div className="modal-body">
                             {!deleteError ? (
                                 <>
                                     <p className="delete-warning">
-                                        ⚠️ Bạn có chắc chắn muốn xóa phòng <strong>"{selectedRoom.name}"</strong>?
+                                        <FaExclamationTriangle /> Bạn có chắc chắn muốn xóa phòng <strong>"{selectedRoom.name}"</strong>?
                                     </p>
                                     <p className="delete-warning-sub">Hành động này không thể hoàn tác. Phòng và tất cả ghế sẽ bị xóa vĩnh viễn.</p>
                                 </>
                             ) : (
                                 <div className="delete-error-container">
-                                    <p className="delete-error-msg">⚠️ {deleteError}</p>
+                                    <p className="delete-error-msg"><FaExclamationTriangle /> {deleteError}</p>
                                     <p className="delete-error-suggestion">
                                         Hệ thống đề xuất chuyển sang trạng thái <strong>Ngưng Hoạt Động</strong> thay vì xóa.
                                     </p>
@@ -387,11 +421,11 @@ const RoomManager = () => {
                             </button>
                             {!deleteError ? (
                                 <button className="btn-danger" onClick={handleConfirmDelete}>
-                                    🗑️ Xóa vĩnh viễn
+                                    <RiDeleteBin6Line /> Xóa vĩnh viễn
                                 </button>
                             ) : (
                                 <button className="btn-deactivate-suggest" onClick={handleDeactivateFromDeleteDialog}>
-                                    🔒 Ngưng hoạt động ngay
+                                    <VscLock /> Ngưng hoạt động ngay
                                 </button>
                             )}
                         </div>

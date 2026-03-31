@@ -82,7 +82,7 @@ public class ShowtimeService {
         existing.setStatus(ShowtimeStatus.OPEN);
 
         Showtime saved = showtimeRepository.save(existing);
-        initializeShowtimeSeats(saved, room.getId(), timeSlot.getPriceMultiplier());
+        initializeShowtimeSeats(saved, room.getId(), timeSlot.getPriceMultiplier(), room.getPriceMultiplier());
         return saved;
     }
 
@@ -424,17 +424,19 @@ public class ShowtimeService {
                 endTime);
 
         Showtime saved = showtimeRepository.save(showtime);
-        initializeShowtimeSeats(saved, room.getId(), timeSlot.getPriceMultiplier());
+        initializeShowtimeSeats(saved, room.getId(), timeSlot.getPriceMultiplier(), room.getPriceMultiplier());
         return saved;
     }
 
-    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal multiplier) {
+    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal timeSlotMultiplier, BigDecimal roomMultiplier) {
         List<Seat> originalSeats = seatRepository.findByRoomIdAndStatus(roomId, SeatStatus.ACTIVE);
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
+        BigDecimal effectiveRoomMultiplier = roomMultiplier != null ? roomMultiplier : BigDecimal.ONE;
 
         for (Seat seat : originalSeats) {
             BigDecimal finalPrice = seat.getBasePrice()
-                    .multiply(multiplier)
+                    .multiply(timeSlotMultiplier)
+                    .multiply(effectiveRoomMultiplier)
                     .setScale(0, RoundingMode.HALF_UP);
 
             showtimeSeats.add(new ShowtimeSeat(showtime, seat, finalPrice));
