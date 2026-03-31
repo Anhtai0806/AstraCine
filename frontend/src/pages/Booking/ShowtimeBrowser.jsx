@@ -220,7 +220,7 @@ export default function ShowtimeBrowser() {
             </div>
 
             {/* Time Slot Tabs - chỉ hiển thị nếu có slots */}
-            {slots.length > 0 && (
+            {/* {slots.length > 0 && (
                 <div className="slot-tabs">
                     <button
                         className={`tab ${activeSlotId === "ALL" ? "active" : ""}`}
@@ -239,7 +239,7 @@ export default function ShowtimeBrowser() {
                         </button>
                     ))}
                 </div>
-            )}
+            )} */}
 
             {/* 7-day picker */}
             <div className="day-picker">

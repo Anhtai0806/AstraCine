@@ -200,11 +200,24 @@ public class InvoiceService {
                 continue;
             }
             comboRepository.findById(item.getComboId()).ifPresent(combo -> {
+                // Kiểm tra tồn kho
+                int currentStock = combo.getStockQuantity() != null ? combo.getStockQuantity() : 0;
+                int requested = item.getQuantity();
+                if (currentStock < requested) {
+                    throw new IllegalStateException(
+                        "Combo \"" + combo.getName() + "\" chỉ còn " + currentStock + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ")."
+                    );
+                }
+
+                // Trừ tồn kho
+                combo.setStockQuantity(currentStock - requested);
+                comboRepository.save(combo);
+
                 BigDecimal itemPrice = item.getPrice() != null ? item.getPrice() : combo.getPrice();
                 invoiceComboRepository.save(InvoiceCombo.builder()
                         .invoice(invoice)
                         .combo(combo)
-                        .quantity(item.getQuantity())
+                        .quantity(requested)
                         .price(itemPrice)
                         .build());
             });

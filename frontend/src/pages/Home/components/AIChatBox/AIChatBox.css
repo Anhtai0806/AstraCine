@@ -1,0 +1,181 @@
+/* ===== Container góc phải ===== */
+.ai-chat-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+/* ===== ICON (KHÔNG nền - KHÔNG bo tròn) ===== */
+.chat-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Ảnh giữ nguyên shape */
+.chat-toggle img {
+  width: 80px;
+  height: 80px;
+  /* display: block; */
+  object-fit: cover;
+  border-radius: 50%;
+  /* bóng ngoài */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.853);
+
+  transition: transform 0.2s ease;
+}
+
+/* Hover nhẹ */
+.chat-toggle img:hover {
+  transform: scale(1.08);
+}
+
+/* ===== CHAT BOX ===== */
+.chat-box {
+  width: 320px;
+  height: 420px;
+  background: #fff;
+  border-radius: 12px;
+
+  display: flex;
+  flex-direction: column;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+
+  animation: fadeIn 0.25s ease;
+}
+
+/* ===== HEADER ===== */
+.chat-header {
+  background: rgba(30, 64, 175, 0.15);
+  color: #1e40af;
+  padding: 12px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  font-weight: 500;
+}
+
+/* nút close */
+.chat-header button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ===== BODY ===== */
+.chat-body {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+/* ===== INPUT ===== */
+.chat-input {
+  display: flex;
+  border-top: 1px solid #eee;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+.chat-input button {
+  background: rgba(30, 64, 175, 0.15);
+  color: #1e40af;
+  border: none;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+/* ===== Animation mở box ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-greeting {
+  position: absolute;
+  bottom: 90px;   /* nằm phía trên icon */
+  right: 20px;    /* vẫn bên trái icon */
+
+  background: white;
+  padding: 15px 16px;
+  border-radius: 16px;
+
+  white-space: nowrap;   /*  không xuống dòng */
+  width: max-content;
+
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  animation: popIn 0.3s ease;
+}
+
+.chat-greeting::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;      /* 🔥 nằm phía trên bubble */
+  left: 250px;     /* 🔥 chỉnh vị trí mũi tên */
+
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid white; /* 🔥 hướng lên trên */
+}
+
+.close-btn {
+  position: absolute;
+  top: 4px;      
+  right: 7.5px;    
+
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* icon */
+.close-btn svg {
+  font-size: 14px;  
+}
+
+.AI-icon {
+  font-size: 20px;
+  position: relative;
+  top: -2px;
+}
+
+.header-title-ai {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-header .close-btn-chat{
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: black;
+}
