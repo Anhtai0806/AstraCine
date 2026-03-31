@@ -3,15 +3,15 @@
    Theme: Dark cinema / cosmic starfield
    ================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  --footer-bg: #080c18;
+  --footer-bg: #000000;
   --footer-surface: #0f1525;
   --footer-border: rgba(255, 255, 255, 0.07);
-  --footer-text: #b0b8cc;
-  --footer-text-bright: #f0f2f7;
+  --footer-text: #f1f5f9;
+  --footer-text-bright: #ffffff;
   --footer-accent: #c9a84c;
   /* gold */
   --footer-accent-dim: rgba(201, 168, 76, 0.15);
@@ -24,37 +24,38 @@
   position: relative;
   background-color: var(--footer-bg);
   color: var(--footer-text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   overflow: hidden;
   border-top: 1px solid var(--footer-border);
 }
 
-/* ── Starfield ── */
-.footer__stars {
+/* ── Video Background ── */
+.footer__video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.footer__video-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%; /* Phanh khung hình lên trên cùng để không cắt mất thân trên và đầu nhân vật */
+  opacity: 0.65; /* Giảm độ mờ một tí để thấy nhân vật rõ hơn */
+  filter: saturate(1.2) contrast(1.1);
+}
+
+.footer__overlay {
   position: absolute;
   inset: 0;
+  /* Dark dramatic overlay blending */
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(15, 21, 37, 0.7) 40%, rgba(0, 0, 0, 0.85) 100%);
   pointer-events: none;
-  z-index: 0;
-}
-
-.footer__star {
-  position: absolute;
-  background: #fff;
-  border-radius: 50%;
-  animation: starTwinkle 3s ease-in-out infinite alternate;
-}
-
-@keyframes starTwinkle {
-  from {
-    opacity: 0.05;
-    transform: scale(1);
-  }
-
-  to {
-    opacity: 0.45;
-    transform: scale(1.4);
-  }
 }
 
 /* ── Inner layout ── */
@@ -91,6 +92,27 @@
   }
 }
 
+/* ── Entrance Animation ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.footer__col {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.footer__col:nth-child(1) { animation-delay: 0.1s; }
+.footer__col:nth-child(2) { animation-delay: 0.2s; }
+.footer__col:nth-child(3) { animation-delay: 0.3s; }
+.footer__col:nth-child(4) { animation-delay: 0.4s; }
+
 /* ── Brand column ── */
 .footer__logo {
   display: flex;
@@ -102,16 +124,22 @@
 .footer__logo-icon {
   font-size: 28px;
   color: var(--footer-accent);
-  animation: rotateStar 8s linear infinite;
+  animation: rotateStar 8s linear infinite, glowPulse 3s ease-in-out infinite alternate;
 }
 
 @keyframes rotateStar {
-  from {
-    transform: rotate(0deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-  to {
-    transform: rotate(360deg);
+@keyframes glowPulse {
+  from { 
+    filter: drop-shadow(0 0 2px var(--footer-accent)); 
+    transform: scale(0.95) rotate(0deg); 
+  }
+  to { 
+    filter: drop-shadow(0 0 12px var(--footer-accent)); 
+    transform: scale(1.1) rotate(15deg); 
   }
 }
 
@@ -157,7 +185,8 @@
   background: var(--footer-accent-dim);
   border-color: var(--footer-accent);
   color: var(--footer-accent);
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.1) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(201, 168, 76, 0.25);
 }
 
 /* ── Badge ── */
@@ -228,18 +257,34 @@
 }
 
 .footer__link {
+  position: relative;
   color: var(--footer-text);
   text-decoration: none;
   font-size: 15px;
   font-weight: 400;
   line-height: 1.5;
-  transition: color 0.2s ease, padding-left 0.2s ease;
+  transition: color 0.3s ease, transform 0.3s ease;
   display: inline-block;
+}
+
+.footer__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 1px;
+  background: var(--footer-accent);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .footer__link:hover {
   color: var(--footer-accent);
-  padding-left: 4px;
+  transform: translateX(4px);
+}
+
+.footer__link:hover::after {
+  width: 100%;
 }
 
 /* ── Contact ── */
@@ -259,6 +304,12 @@
   font-size: 18px;
   margin-top: 1px;
   flex-shrink: 0;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s;
+}
+
+.footer__contact-item:hover .footer__contact-icon {
+  transform: scale(1.2) rotate(-10deg);
+  filter: drop-shadow(0 0 5px rgba(201, 168, 76, 0.5));
 }
 
 .footer__contact-label {

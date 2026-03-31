@@ -3,14 +3,14 @@ import "./Footer.css";
 const footerLinks = {
   about: [
     { label: "Về AstraCine", href: "#" },
-    { label: "Hệ thống rạp", href: "#" },
-    { label: "Cụm rạp", href: "#" },
+    { label: "Về chúng tôi", href: "#" },
+    { label: "Tuyển dụng", href: "#" },
     { label: "Liên hệ", href: "#" },
   ],
   policy: [
     { label: "Quy định thành viên", href: "#" },
     { label: "Điều khoản sử dụng", href: "#" },
-    { label: "Hướng dẫn đặt vé trực tuyến", href: "#" },
+    { label: "Hướng dẫn đặt vé trực tuyến", href: "https://www.youtube.com/watch?v=10YzP-pnBIo&list=RD10YzP-pnBIo&start_radio=1" },
     { label: "Quy định và chính sách chung", href: "#" },
     { label: "Chính sách bảo vệ thông tin cá nhân", href: "#" },
   ],
@@ -41,18 +41,12 @@ const socialLinks = [
 function Footer() {
   return (
     <footer className="footer">
-      {/* Stars background */}
-      <div className="footer__stars" aria-hidden="true">
-        {Array.from({ length: 60 }).map((_, i) => (
-          <span key={i} className="footer__star" style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 4}s`,
-            width: `${Math.random() * 2 + 1}px`,
-            height: `${Math.random() * 2 + 1}px`,
-            opacity: Math.random() * 0.5 + 0.1,
-          }} />
-        ))}
+      <div className="footer__video-bg">
+        {/* Video Goku SSJ4 lấy trực tiếp từ nguồn online, không cần tải */}
+        <video autoPlay loop muted playsInline poster="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExenQzMXp1eXRqMzJ3YjlqOWk0MWNmeTRwYTI4b3V6Z240OHhucGNkdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9EvnXdZaUZbCqScn67/giphy.gif">
+          <source src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExenQzMXp1eXRqMzJ3YjlqOWk0MWNmeTRwYTI4b3V6Z240OHhucGNkdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9EvnXdZaUZbCqScn67/giphy.mp4" type="video/mp4" />
+        </video>
+        <div className="footer__overlay"></div>
       </div>
 
       <div className="footer__inner">

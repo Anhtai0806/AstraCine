@@ -255,7 +255,7 @@ const RoomManager = () => {
                             <div>
                                 <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                                     {room.name}
-                                    <span className={`status-badge ${room.status === 'ACTIVE' ? 'status-active' : 'status-inactive'}`}>
+                                    <span className="room-status-dot">
                                         <FaCircle style={{ color: room.status === 'ACTIVE' ? '#22c55e' : '#ef4444' }} />
                                     </span>
                                 </div>

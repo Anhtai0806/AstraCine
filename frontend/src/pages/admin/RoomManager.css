@@ -242,9 +242,11 @@
     margin-top: 4px;
 }
 
-.status-badge {
+.room-status-dot {
     font-size: 0.65rem;
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
 }
 
 .screen-type-tag {
