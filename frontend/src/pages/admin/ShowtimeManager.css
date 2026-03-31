@@ -451,6 +451,20 @@
     background: #f8fafc;
     display: flex;
     justify-content: center;
+    overflow: auto;
+    padding: 24px;
+}
+
+.seat-modal-panel {
+    width: max-content !important;
+    max-width: 95vw !important;
+    min-width: 500px;
+}
+
+/* Ép SeatGrid bên trong popup phải bung rộng thay vì có thanh cuộn ngang */
+.seat-modal-content .visual-editor-wrapper {
+    width: max-content !important;
+    margin: 0 auto;
 }
 
 /* Colors */

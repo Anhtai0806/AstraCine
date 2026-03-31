@@ -242,9 +242,11 @@
     margin-top: 4px;
 }
 
-.status-badge {
+.room-status-dot {
     font-size: 0.65rem;
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
 }
 
 .screen-type-tag {
@@ -615,4 +617,52 @@
 .btn-deactivate-suggest:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 12px -2px rgba(245, 158, 11, 0.4);
+}
+
+/* --- MULTIPLIER TAGS & PILLS --- */
+.multiplier-tag {
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.multiplier-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+}
+
+/* --- FORM HELPERS --- */
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.form-group-inline .form-input {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.form-label-inline {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-sec);
+    white-space: nowrap;
+}
+
+.form-hint-sm {
+    font-size: 0.75rem;
+    color: var(--text-sec);
+    margin: -6px 0 14px 0;
+    opacity: 0.8;
 }

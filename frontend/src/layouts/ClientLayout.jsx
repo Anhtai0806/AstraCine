@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./ClientLayout.css";
 import AIChatBox from "../pages/Home/components/AIChatBox/AIChatBox";
+import GlobalStarfield from "../components/GlobalStarfield/GlobalStarfield";
 
 function ClientLayout() {
     const { user } = useAuth();
@@ -21,6 +22,7 @@ function ClientLayout() {
 
     return (
         <div className="client-layout">
+            <GlobalStarfield />
             <Header />
             <main className="client-container">
                 <Outlet />

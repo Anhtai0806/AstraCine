@@ -1,6 +1,8 @@
 package com.astracine.backend.presentation.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -32,9 +34,13 @@ public class RoomDTO {
         private Integer totalColumns;
 
         private String screenType; // 2D, 3D, IMAX (optional)
+
+        @DecimalMin(value = "0.50", message = "Hệ số giá phải >= 0.50")
+        @DecimalMax(value = "5.00", message = "Hệ số giá phải <= 5.00")
+        private BigDecimal priceMultiplier; // default 1.00
     }
 
-    /** DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType */
+    /** DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType + priceMultiplier */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -43,6 +49,10 @@ public class RoomDTO {
         private String name;
 
         private String screenType; // 2D, 3D, IMAX (optional)
+
+        @DecimalMin(value = "0.50", message = "Hệ số giá phải >= 0.50")
+        @DecimalMax(value = "5.00", message = "Hệ số giá phải <= 5.00")
+        private BigDecimal priceMultiplier;
     }
 
     // ================== RESPONSE (Dữ liệu trả về) ==================
@@ -57,6 +67,7 @@ public class RoomDTO {
         private Integer totalRows;
         private Integer totalColumns;
         private String screenType;
+        private BigDecimal priceMultiplier;
         private String status;
     }
 

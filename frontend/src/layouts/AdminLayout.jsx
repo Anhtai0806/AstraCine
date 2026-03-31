@@ -12,6 +12,7 @@ import { GrUserManager } from "react-icons/gr";
 import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
 import { MdOutlineManageAccounts } from "react-icons/md";
+import { LuPopcorn } from "react-icons/lu";
 
 const AdminLayout = () => {
   const { logout } = useAuth();
@@ -124,7 +125,7 @@ const AdminLayout = () => {
             to="/admin/combos"
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
           >
-            🍿 Bắp &amp; Nước
+            <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
           </NavLink>
         </nav>
         <div className="logout-section">
