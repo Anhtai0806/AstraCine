@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "rooms")
 @Getter
@@ -36,14 +38,22 @@ public class Room {
     @Column(name = "total_columns", nullable = false)
     private Integer totalColumns;
 
+    @Column(name = "screen_type", length = 20)
+    private String screenType;
+
+    @Column(name = "price_multiplier", nullable = false, precision = 5, scale = 2, columnDefinition = "DECIMAL(5,2) NOT NULL DEFAULT 1.00")
+    private BigDecimal priceMultiplier;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private RoomStatus status;
 
-    public Room(String name, Integer totalRows, Integer totalColumns) {
+    public Room(String name, Integer totalRows, Integer totalColumns, String screenType, BigDecimal priceMultiplier) {
         this.name = name;
         this.totalRows = totalRows;
         this.totalColumns = totalColumns;
+        this.screenType = screenType;
+        this.priceMultiplier = priceMultiplier != null ? priceMultiplier : BigDecimal.ONE;
         this.status = RoomStatus.ACTIVE;
     }
 }

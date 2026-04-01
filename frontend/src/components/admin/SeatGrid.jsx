@@ -13,7 +13,7 @@ const SEAT_STATUS = {
     SOLD: { label: 'Đã bán', class: 'status-SOLD' }
 };
 
-const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle }) => {
+const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, priceMultiplier }) => {
     if (!seats || seats.length === 0) {
         return <div style={{ padding: 20, color: '#888' }}>Không có dữ liệu ghế</div>;
     }
@@ -47,11 +47,14 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle })
                 {seats.map((seat) => {
                     const config = SEAT_TYPES[seat.seatType] || SEAT_TYPES.NORMAL;
                     const rawPrice = seat.basePrice ?? seat.price ?? seat.finalPrice ?? null;
-                    const priceDisplay = rawPrice ? formatPrice(rawPrice) : 'Chưa set giá';
+                    const multiplier = priceMultiplier || 1;
+                    const displayPrice = rawPrice ? rawPrice * multiplier : null;
+                    const priceDisplay = displayPrice ? formatPrice(displayPrice) : 'Chưa set giá';
                     const extra = getExtraClass ? getExtraClass(seat) : '';
                     const seatStatus = seat.effectiveStatus || seat.status || 'AVAILABLE';
+                    const priceLabel = multiplier !== 1 ? 'Giá ' : 'Giá';
                     const title = (getTitle && getTitle(seat))
-                        || `Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\nGiá: ${priceDisplay}\nTrạng thái: ${seatStatus}`;
+                        || `Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\n${priceLabel}: ${priceDisplay}\nTrạng thái: ${seatStatus}`;
 
                     return (
                         <div

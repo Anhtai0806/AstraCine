@@ -14,6 +14,8 @@ import AdminStaffManagement from '../pages/Admin/AdminStaffManagement';
 import AdminStaffScheduling from '../pages/Admin/AdminStaffScheduling';
 import AdminAttendance from '../pages/Admin/AdminAttendance';
 import AdminPayroll from '../pages/Admin/AdminPayroll';
+import CustomerManagement from '../pages/Admin/CustomerManagement';
+import AdminCombo from '../pages/Admin/Combo';
 
 const AdminRoutes = () => {
     const { user } = useAuth();
@@ -45,6 +47,8 @@ const AdminRoutes = () => {
                 <Route path="staff-scheduling" element={<AdminStaffScheduling />} />
                 <Route path="attendance" element={<AdminAttendance />} />
                 <Route path="payroll" element={<AdminPayroll />} />
+                <Route path="customer-management" element={<CustomerManagement />} />
+                <Route path="combos" element={<AdminCombo />} />
             </Route>
         </Routes>
     );

@@ -21,6 +21,21 @@ adminApi.interceptors.request.use(
     }
 );
 
+// Separate instance for /api/combos (not under /api/admin)
+const comboApi = axios.create({
+    baseURL: "http://localhost:8080/api/combos",
+    headers: { "Content-Type": "application/json" },
+});
+
+comboApi.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 // Genre APIs
 export const genreAPI = {
     getAll: () => adminApi.get('/genres'),
@@ -72,4 +87,26 @@ export const userManagementAPI = {
     updateStaffRole: (userId, payload) => adminApi.put(`/users/${userId}/staff-role`, payload),
 };
 
+// Combo APIs (bắp nước)
+export const comboAPI = {
+    getAll: () => comboApi.get(''),
+    getById: (id) => comboApi.get(`/${id}`),
+    create: (data) => comboApi.post('', data),
+    update: (id, data) => comboApi.put(`/${id}`, data),
+    delete: (id) => comboApi.delete(`/${id}`),
+    search: (params) => comboApi.get('/search', { params }),
+};
+
+export const customerManagementAPI = {
+    getAll: (keyword, page = 0, size = 15) =>
+        adminApi.get("/customers", {
+            params: {
+                keyword,
+                page,
+                size
+            }
+        }),
+    lock: (userId, reason) => adminApi.put(`/customers/${userId}/lock`, { reason }),
+    unlock: (userId) => adminApi.put(`/customers/${userId}/unlock`)
+};
 export default adminApi;

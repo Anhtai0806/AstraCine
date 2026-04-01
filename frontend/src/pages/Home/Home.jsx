@@ -50,6 +50,7 @@ function Home() {
           movies={comingSoonMovies}
         />
       )}
+
     </div>
   );
 }

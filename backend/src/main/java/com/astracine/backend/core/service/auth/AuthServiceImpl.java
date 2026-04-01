@@ -3,15 +3,17 @@ package com.astracine.backend.core.service.auth;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.astracine.backend.core.entity.Customer;
 import com.astracine.backend.core.entity.Role;
 import com.astracine.backend.core.entity.User;
+import com.astracine.backend.core.repository.CustomerRepository;
 import com.astracine.backend.core.repository.RoleRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.core.service.PasswordResetService;
@@ -19,6 +21,8 @@ import com.astracine.backend.infrastructure.security.JwtTokenProvider;
 import com.astracine.backend.presentation.dto.auth.AuthResponse;
 import com.astracine.backend.presentation.dto.auth.LoginRequest;
 import com.astracine.backend.presentation.dto.auth.RegisterRequest;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -29,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetService passwordResetService;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final CustomerRepository customerRepository;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -36,13 +41,15 @@ public class AuthServiceImpl implements AuthService {
             PasswordEncoder passwordEncoder,
             PasswordResetService passwordResetService,
             AuthenticationManager authenticationManager,
-            JwtTokenProvider tokenProvider) {
+            JwtTokenProvider tokenProvider,
+            CustomerRepository customerRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
+        this.customerRepository = customerRepository;
     }
 
     // ================= LOGIN =================
@@ -72,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ================= REGISTER =================
+    @Transactional
     @Override
     public AuthResponse register(RegisterRequest request) {
 
@@ -85,21 +93,21 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // ===== Check tồn tại =====
-        if (userRepository.existsByUsername(normalizedUsername) ||
-                userRepository.existsByEmail(normalizedUsername) ||
-                userRepository.existsByPhone(normalizedUsername)) {
+        if (userRepository.existsByUsername(normalizedUsername)
+                || userRepository.existsByEmail(normalizedUsername)
+                || userRepository.existsByPhone(normalizedUsername)) {
             throw new RuntimeException("Tên người dùng đã được sử dụng");
         }
 
-        if (userRepository.existsByEmail(normalizedEmail) ||
-                userRepository.existsByUsername(normalizedEmail) ||
-                userRepository.existsByPhone(normalizedEmail)) {
+        if (userRepository.existsByEmail(normalizedEmail)
+                || userRepository.existsByUsername(normalizedEmail)
+                || userRepository.existsByPhone(normalizedEmail)) {
             throw new RuntimeException("Email đã được sử dụng");
         }
 
-        if (userRepository.existsByPhone(normalizedPhone) ||
-                userRepository.existsByUsername(normalizedPhone) ||
-                userRepository.existsByEmail(normalizedPhone)) {
+        if (userRepository.existsByPhone(normalizedPhone)
+                || userRepository.existsByUsername(normalizedPhone)
+                || userRepository.existsByEmail(normalizedPhone)) {
             throw new RuntimeException("Số điện thoại đã được sử dụng");
         }
 
@@ -120,16 +128,27 @@ public class AuthServiceImpl implements AuthService {
 
         user.getRoles().add(customerRole);
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+// ===== TẠO CUSTOMER =====
+        Customer customer = new Customer();
+        customer.setUser(savedUser); // nếu bạn dùng @OneToOne
+        customer.setFullName(savedUser.getFullName());
+        customer.setPhone(savedUser.getPhone());
+        customer.setEmail(savedUser.getEmail());
+
+        if (!customerRepository.existsByUserId(savedUser.getId())) {
+            customerRepository.save(customer);
+        }
 
         // Auto login sau register
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword()));
+                new UsernamePasswordAuthenticationToken(savedUser.getUsername(), request.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
 
-        return buildAuthResponse(user, jwt);
+        return buildAuthResponse(savedUser, jwt);
     }
 
     // ================= PASSWORD RESET =================

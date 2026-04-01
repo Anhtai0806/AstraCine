@@ -1,7 +1,9 @@
 package com.astracine.backend.presentation.dto;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,6 +32,27 @@ public class RoomDTO {
         @NotNull(message = "Số cột không được để trống")
         @Min(value = 1, message = "Số cột phải lớn hơn 0")
         private Integer totalColumns;
+
+        private String screenType; // 2D, 3D, IMAX (optional)
+
+        @DecimalMin(value = "0.50", message = "Hệ số giá phải >= 0.50")
+        @DecimalMax(value = "5.00", message = "Hệ số giá phải <= 5.00")
+        private BigDecimal priceMultiplier; // default 1.00
+    }
+
+    /** DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType + priceMultiplier */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateRequest {
+        @NotBlank(message = "Tên phòng không được để trống")
+        private String name;
+
+        private String screenType; // 2D, 3D, IMAX (optional)
+
+        @DecimalMin(value = "0.50", message = "Hệ số giá phải >= 0.50")
+        @DecimalMax(value = "5.00", message = "Hệ số giá phải <= 5.00")
+        private BigDecimal priceMultiplier;
     }
 
     // ================== RESPONSE (Dữ liệu trả về) ==================
@@ -43,6 +66,8 @@ public class RoomDTO {
         private String name;
         private Integer totalRows;
         private Integer totalColumns;
+        private String screenType;
+        private BigDecimal priceMultiplier;
         private String status;
     }
 

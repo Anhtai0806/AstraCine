@@ -21,7 +21,7 @@
     background: #ffffff;
     border-radius: 50px;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .legend-item {
@@ -39,14 +39,34 @@
     height: 16px;
     border-radius: 50%;
     display: inline-block;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Định nghĩa màu trực tiếp tại đây để chắc chắn hiện */
-.dot.type-NORMAL, .seat-item.type-NORMAL { background-color: #08419d; } /* Xanh dương */
-.dot.type-VIP,    .seat-item.type-VIP    { background-color: #f59e0b; } /* Vàng cam */
-.dot.type-COUPLE, .seat-item.type-COUPLE { background-color: #ea2cd3bf; } /* Đỏ */
-.dot.type-PREMIUM,.seat-item.type-PREMIUM{ background-color: hwb(0 8% 6%); } /* Tím */
+.dot.type-NORMAL,
+.seat-item.type-NORMAL {
+    background-color: #08419d;
+}
+
+/* Xanh dương */
+.dot.type-VIP,
+.seat-item.type-VIP {
+    background-color: #f59e0b;
+}
+
+/* Vàng cam */
+.dot.type-COUPLE,
+.seat-item.type-COUPLE {
+    background-color: #ea2cd3bf;
+}
+
+/* Đỏ */
+.dot.type-PREMIUM,
+.seat-item.type-PREMIUM {
+    background-color: hwb(0 8% 6%);
+}
+
+/* Tím */
 
 /* =========================================
    3. Màn hình cong (Screen Curve) - Đã chỉnh chữ
@@ -63,8 +83,10 @@
     height: 12px;
     background: linear-gradient(to right, #cbd5e1, #94a3b8, #cbd5e1);
     width: 70%;
-    border-radius: 0 0 50% 50% / 0 0 100% 100%; /* Cong xuống dưới */
-    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.15); /* Bóng đổ 3D */
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    /* Cong xuống dưới */
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15);
+    /* Bóng đổ 3D */
     opacity: 0.9;
     margin-bottom: 8px;
 }
@@ -92,7 +114,8 @@
    ========================================= */
 .seat-grid {
     display: grid;
-    gap: 8px; /* Khoảng cách ghế */
+    gap: 8px;
+    /* Khoảng cách ghế */
     justify-content: center;
     padding: 20px;
     background: #f8fafc;
@@ -104,7 +127,8 @@
    5. Từng ghế (Seat Item)
    ========================================= */
 .seat-item {
-    aspect-ratio: 1; /* Vuông */
+    aspect-ratio: 1;
+    /* Vuông */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -114,26 +138,28 @@
     font-size: 0.75rem;
     cursor: pointer;
     user-select: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .seat-item:hover {
     transform: scale(1.15);
     z-index: 10;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
-.seat-item:active { transform: scale(0.95); }
+.seat-item:active {
+    transform: scale(0.95);
+}
 
 .seat-item[data-status="HELD"] {
-    box-shadow: inset 0 0 0 3px #fef3c7, 0 2px 4px rgba(0,0,0,0.12);
+    box-shadow: inset 0 0 0 3px #fef3c7, 0 2px 4px rgba(0, 0, 0, 0.12);
     filter: saturate(0.75);
 }
 
 .seat-item[data-status="SOLD"] {
     background: #475569 !important;
     color: #f8fafc;
-    box-shadow: inset 0 0 0 3px #ef4444, 0 2px 4px rgba(0,0,0,0.14);
+    box-shadow: inset 0 0 0 3px #ef4444, 0 2px 4px rgba(0, 0, 0, 0.14);
     text-decoration: line-through;
 }

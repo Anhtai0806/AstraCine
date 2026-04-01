@@ -67,20 +67,23 @@ export default function StaffTicketScanner() {
 
     const stopScanner = useCallback(async () => {
         if (!scannerRef.current) return;
+        
+        // Cập nhật giao diện lập tức, không chờ thư viện xử lý
+        const tempScanner = scannerRef.current;
+        scannerRef.current = null;
+        setScanning(false);
+
         try {
-            await scannerRef.current.stop();
-            scannerRef.current.clear();
+            await tempScanner.stop();
+            tempScanner.clear();
         } catch (err) {
             console.error("Error stopping scanner:", err);
         }
 
-        // 🔥 FIX 1: Quét sạch thẻ <video> thừa thãi khỏi giao diện
+        // Dọn sạch thẻ <video> thừa thãi
         if (readerRef.current) {
             readerRef.current.innerHTML = ""; 
         }
-
-        scannerRef.current = null;
-        setScanning(false);
     }, []);
 
     useEffect(() => {
