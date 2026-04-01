@@ -69,7 +69,8 @@ public class ClientChatboxService {
     private static final int MAX_SHOWTIME_CONTEXT = 12;
     private static final int MAX_FINAL_SUGGESTIONS = 3;
     private static final int BOOKING_SESSION_TTL_MINUTES = 30;
-    private static final Pattern HOUR_PATTERN = Pattern.compile("\\b(\\d{1,2})(?:[:hHgG]\\s*(\\d{0,2}))?\\b");
+    private static final Pattern EXPLICIT_TIME_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*[:hHgG]\\s*(\\d{1,2})\\b");
+    private static final Pattern HOUR_ONLY_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*(?:h|gio)\\b");
     private static final Pattern SEAT_CODE_PATTERN = Pattern.compile("\\b([A-Za-z])\\s*(\\d{1,2})\\b");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\b(\\d{1,2})\\b");
     private static final Map<String, List<String>> INTENT_KEYWORDS = Map.ofEntries(
@@ -88,7 +89,7 @@ public class ClientChatboxService {
             Map.entry("TOMORROW", List.of("ngay mai", "toi mai", "sang mai", "trua mai", "chieu mai")),
             Map.entry("TIME_SLOT_MORNING", List.of("buoi sang", "vao sang", "suat sang", "sang mai", "sang nay")),
             Map.entry("TIME_SLOT_NOON", List.of("buoi trua", "vao trua", "suat trua", "trua mai", "trua nay")),
-            Map.entry("TIME_SLOT_AFTERNOON", List.of("buoi chieu", "vao chieu", "suat chieu", "chieu mai", "chieu nay")),
+            Map.entry("TIME_SLOT_AFTERNOON", List.of("buoi chieu", "vao chieu", "suat buoi chieu", "chieu mai", "chieu nay")),
             Map.entry("TIME_SLOT_EVENING", List.of("buoi toi", "vao toi", "suat toi", "toi mai", "toi nay")));
     private static final Map<String, List<String>> GENRE_KEYWORDS = Map.ofEntries(
             Map.entry("horror", List.of("kinh di", "horror")),
@@ -1372,13 +1373,19 @@ public class ClientChatboxService {
     }
 
     private LocalTime extractTargetTime(String normalizedConversation) {
-        Matcher matcher = HOUR_PATTERN.matcher(normalizedConversation);
-        while (matcher.find()) {
-            int hour = Integer.parseInt(matcher.group(1));
-            String minuteGroup = matcher.group(2);
-            int minute = (minuteGroup == null || minuteGroup.isBlank()) ? 0 : Integer.parseInt(minuteGroup);
-            if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59)
+        Matcher explicitMatcher = EXPLICIT_TIME_PATTERN.matcher(normalizedConversation);
+        while (explicitMatcher.find()) {
+            int hour = Integer.parseInt(explicitMatcher.group(1));
+            int minute = Integer.parseInt(explicitMatcher.group(2));
+            if (minute >= 0 && minute <= 59) {
                 return LocalTime.of(hour, minute);
+            }
+        }
+
+        Matcher hourOnlyMatcher = HOUR_ONLY_PATTERN.matcher(normalizedConversation);
+        while (hourOnlyMatcher.find()) {
+            int hour = Integer.parseInt(hourOnlyMatcher.group(1));
+            return LocalTime.of(hour, 0);
         }
         return null;
     }

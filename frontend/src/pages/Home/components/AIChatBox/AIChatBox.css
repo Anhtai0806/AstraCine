@@ -209,7 +209,7 @@
   padding-top: 10px;
 }
 
-.chat-suggestion-block + .chat-suggestion-block {
+.chat-suggestion-block+.chat-suggestion-block {
   margin-top: 10px;
 }
 
@@ -319,11 +319,11 @@
 }
 
 .seat-type-normal {
-  background: #2563eb;
+  background: #08419d;
 }
 
 .seat-type-couple {
-  background: #db2777;
+  background: #ea2cd3bf;
 }
 
 .seat-type-vip {
@@ -331,7 +331,7 @@
 }
 
 .seat-type-premium {
-  background: #7c3aed;
+  background: hwb(0 8% 6%);
 }
 
 .seat-status-held {
@@ -412,6 +412,7 @@
 }
 
 @keyframes typingPulse {
+
   0%,
   80%,
   100% {
