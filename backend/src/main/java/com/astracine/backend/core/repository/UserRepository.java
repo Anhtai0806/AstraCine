@@ -42,22 +42,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
             ORDER BY u.username ASC
             """)
     java.util.List<User> findActiveStaffCandidates();
-    SELECT u FROM User u
-    JOIN u.roles r
-    WHERE r.name = 'ROLE_CUSTOMER'
-""")
+
+
+    @Query("""
+            SELECT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_CUSTOMER'
+            """)
     Page<User> findCustomers(Pageable pageable);
 
     @Query("""
-    SELECT u FROM User u
-    JOIN u.roles r
-    WHERE r.name = 'ROLE_CUSTOMER'
-    AND (
-        LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-    )
-""")
+            SELECT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_CUSTOMER'
+              AND (
+                    LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+              )
+            """)
     Page<User> searchCustomers(@Param("keyword") String keyword, Pageable pageable);
 }
