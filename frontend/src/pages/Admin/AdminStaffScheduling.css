@@ -1,0 +1,299 @@
+.staff-scheduling-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    color: #ecf3ff;
+}
+
+.staff-scheduling-header,
+.staff-scheduling-panel,
+.staff-scheduling-stat-card {
+    background: linear-gradient(180deg, rgba(13, 21, 44, 0.96), rgba(8, 13, 30, 0.98));
+    border: 1px solid rgba(108, 140, 255, 0.18);
+    border-radius: 20px;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+.staff-scheduling-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 24px;
+    flex-wrap: wrap;
+}
+
+.staff-scheduling-kicker {
+    color: #8ca7ff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+}
+
+.staff-scheduling-header h1,
+.staff-scheduling-panel h2 {
+    margin: 0;
+}
+
+.staff-scheduling-header p {
+    max-width: 780px;
+    color: #bfd0ff;
+    line-height: 1.6;
+}
+
+.staff-scheduling-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.staff-scheduling-toolbar label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #bfd0ff;
+}
+
+.staff-scheduling-toolbar input,
+.staff-scheduling-toolbar select,
+.staff-scheduling-toolbar button,
+.ghost,
+.link-button {
+    border-radius: 12px;
+    border: 1px solid rgba(125, 148, 255, 0.25);
+    background: rgba(15, 25, 52, 0.95);
+    color: #f7f9ff;
+    padding: 10px 14px;
+    font: inherit;
+}
+
+.staff-scheduling-toolbar button,
+.ghost,
+.link-button {
+    cursor: pointer;
+}
+
+.staff-scheduling-toolbar button.primary,
+.success {
+    background: linear-gradient(135deg, #5d79ff, #4462eb);
+}
+
+.staff-scheduling-toolbar button.secondary {
+    background: rgba(97, 135, 255, 0.16);
+}
+
+.staff-scheduling-toolbar button.success.outline {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.staff-scheduling-toolbar button:disabled,
+.link-button:disabled,
+.ghost:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.staff-scheduling-banner {
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-weight: 600;
+}
+
+.staff-scheduling-banner.error {
+    background: rgba(214, 64, 64, 0.16);
+    color: #ffd5d5;
+    border: 1px solid rgba(255, 130, 130, 0.28);
+}
+
+.staff-scheduling-banner.success {
+    background: rgba(54, 166, 99, 0.16);
+    color: #d7ffe6;
+    border: 1px solid rgba(115, 255, 175, 0.28);
+}
+
+.staff-scheduling-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.staff-scheduling-stat-card {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.staff-scheduling-stat-card span {
+    color: #bfd0ff;
+}
+
+.staff-scheduling-stat-card strong {
+    font-size: 1.6rem;
+}
+
+.staff-scheduling-stat-card.highlight {
+    border-color: rgba(124, 154, 255, 0.32);
+}
+
+.staff-scheduling-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+    gap: 20px;
+}
+
+.staff-scheduling-panel {
+    padding: 22px;
+}
+
+.staff-scheduling-panel.full-width {
+    width: 100%;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.panel-header span {
+    color: #93a8e3;
+    font-size: 0.95rem;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-wrap th,
+.table-wrap td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(140, 164, 255, 0.14);
+    text-align: left;
+    vertical-align: top;
+}
+
+.table-wrap th {
+    color: #9fb4ee;
+    font-size: 0.9rem;
+}
+
+.plan-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.plan-card {
+    border: 1px solid rgba(122, 147, 255, 0.14);
+    border-radius: 16px;
+    padding: 16px;
+    background: rgba(12, 20, 42, 0.92);
+}
+
+.plan-card-top,
+.plan-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.plan-card h3,
+.plan-card p {
+    margin: 0;
+}
+
+.plan-card p,
+.plan-meta {
+    color: #bdd0ff;
+}
+
+.plan-meta {
+    margin-top: 12px;
+    font-size: 0.92rem;
+}
+
+.plan-badge,
+.assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.plan-badge.draft,
+.assignment-badge.draft {
+    background: rgba(255, 201, 71, 0.16);
+    color: #ffe293;
+}
+
+.plan-badge.published,
+.assignment-badge.published,
+.assignment-badge.confirmed {
+    background: rgba(82, 193, 125, 0.18);
+    color: #caffdc;
+}
+
+.assignment-badge.absent,
+.plan-badge.archived {
+    background: rgba(255, 107, 107, 0.16);
+    color: #ffc2c2;
+}
+
+.staff-name {
+    font-weight: 700;
+}
+
+.staff-sub {
+    color: #97addf;
+    font-size: 0.88rem;
+    margin-top: 4px;
+}
+
+.link-button,
+.ghost {
+    padding: 8px 12px;
+    background: rgba(96, 122, 255, 0.1);
+}
+
+.explanation-box p,
+.empty-state {
+    color: #c6d4ff;
+    line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+    .staff-scheduling-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .staff-scheduling-header,
+    .staff-scheduling-panel {
+        padding: 18px;
+    }
+
+    .staff-scheduling-toolbar {
+        width: 100%;
+    }
+
+    .staff-scheduling-toolbar label,
+    .staff-scheduling-toolbar button {
+        width: 100%;
+    }
+}

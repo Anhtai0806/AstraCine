@@ -112,14 +112,35 @@ const AdminLayout = () => {
             <MdOutlineManageAccounts className="icon-admin-layout" /> Quản lý Customer
           </NavLink>
 
-          <NavLink
-            to="/admin/staff-management"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <GrUserManager className="icon-admin-layout" /> Quản lý Staff
-          </NavLink>
+                    <NavLink
+                        to="/admin/staff-management"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        👥 Quản lý Staff
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/staff-scheduling"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        🗓️ Chia lịch Staff
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/attendance"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        ⏱️ Attendance Staff
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/payroll"
+                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                    >
+                        💰 Payroll Staff
+                    </NavLink>
+                </nav>
+            </aside>
 
           <NavLink
             to="/admin/combos"

@@ -33,6 +33,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
 
     @Query("""
+            SELECT DISTINCT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_STAFF'
+              AND u.enabled = true
+              AND u.status = 'ACTIVE'
+              AND u.staffPosition IS NOT NULL
+            ORDER BY u.username ASC
+            """)
+    java.util.List<User> findActiveStaffCandidates();
     SELECT u FROM User u
     JOIN u.roles r
     WHERE r.name = 'ROLE_CUSTOMER'
