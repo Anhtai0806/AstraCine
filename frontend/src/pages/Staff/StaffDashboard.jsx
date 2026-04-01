@@ -28,18 +28,18 @@ export default function StaffDashboard() {
     effectivePosition === "MULTI" ||
     effectivePosition === "COUNTER";
 
-  return (
-    <div className="staff-dashboard-page">
-      <div className="staff-hero-card">
-        <div>
-          <div className="staff-hero-kicker">AstraCine Staff Portal</div>
-          <h1>Trung tâm nghiệp vụ cho nhân viên rạp</h1>
-          <p>
-            Luồng online vẫn được giữ nguyên. Tại đây nhân viên có thể bán vé
-            tại quầy, bán combo riêng và thực hiện nghiệp vụ soát vé bằng mã QR.
-          </p>
-        </div>
-      </div>
+    return (
+        <div className="staff-dashboard-page">
+            <div className="staff-hero-card">
+                <div>
+                    <div className="staff-hero-kicker">AstraCine Staff Portal</div>
+                    <h1>Trung tâm nghiệp vụ cho nhân viên rạp</h1>
+                    <p>
+                        Luồng online vẫn được giữ nguyên. Tại đây nhân viên có thể bán vé tại quầy,
+                        bán combo riêng, thực hiện nghiệp vụ soát vé và theo dõi lịch làm việc đã được admin publish.
+                    </p>
+                </div>
+            </div>
 
       {!effectivePosition && (
         <div className="staff-dashboard-alert">
@@ -48,23 +48,26 @@ export default function StaffDashboard() {
         </div>
       )}
 
-      <div className="staff-dashboard-grid">
-        <div className="staff-feature-card">
-          <div className="staff-feature-icon">
-            <HiOutlineTicket />
-          </div>
-          <h2>Bán vé tại quầy</h2>
-          <p>
-            Chọn lịch chiếu, giữ ghế, thêm combo, áp mã giảm giá và chốt hóa đơn
-            tại quầy bằng tiền mặt hoặc thẻ.
-          </p>
-          <button
-            onClick={() => navigate("/staff/booking")}
-            disabled={!canCounter}
-          >
-            Bắt đầu tạo đơn
-          </button>
-        </div>
+            <div className="staff-dashboard-grid">
+                <div className="staff-feature-card">
+                    <div className="staff-feature-icon">🗓️</div>
+                    <h2>Lịch làm việc của tôi</h2>
+                    <p>
+                        Kiểm tra ca đã publish, xem vai trò trong từng ca và xác nhận lịch để phối hợp với quản lý.
+                    </p>
+                    <button onClick={() => navigate("/staff/schedule")}>Xem lịch làm việc</button>
+                </div>
+                <div className="staff-feature-card">
+                    <div className="staff-feature-icon">🎟️</div>
+                    <h2>Bán vé tại quầy</h2>
+                    <p>
+                        Chọn lịch chiếu, giữ ghế, thêm combo, áp mã giảm giá và chốt hóa đơn tại quầy
+                        bằng tiền mặt hoặc thẻ.
+                    </p>
+                    <button onClick={() => navigate("/staff/booking")} disabled={!canCounter}>
+                        Bắt đầu tạo đơn
+                    </button>
+                </div>
 
         <div className="staff-feature-card">
           <div className="staff-feature-icon">

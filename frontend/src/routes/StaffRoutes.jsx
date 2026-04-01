@@ -9,6 +9,9 @@ import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
 import SeatSelection from "../pages/Booking/SeatSelection";
 import ComboMenu from "../pages/ComboMenu/ComboMenu";
 import ProfilePage from "../pages/Profile/ProfilePage";
+import StaffMySchedule from "../pages/Staff/StaffMySchedule";
+import StaffAttendance from "../pages/Staff/StaffAttendance";
+import StaffPayroll from "../pages/Staff/StaffPayroll";
 
 export default function StaffRoutes() {
     const { user } = useAuth();
@@ -29,6 +32,9 @@ export default function StaffRoutes() {
             <Route element={<StaffLayout />}>
                 <Route index element={<StaffDashboard />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="schedule" element={<StaffMySchedule />} />
+                <Route path="attendance" element={<StaffAttendance />} />
+                <Route path="payroll" element={<StaffPayroll />} />
 
                 <Route
                     path="booking"

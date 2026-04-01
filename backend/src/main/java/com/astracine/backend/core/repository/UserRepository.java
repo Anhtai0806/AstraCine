@@ -33,22 +33,34 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
 
     @Query("""
-    SELECT u FROM User u
-    JOIN u.roles r
-    WHERE r.name = 'ROLE_CUSTOMER'
-""")
+            SELECT DISTINCT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_STAFF'
+              AND u.enabled = true
+              AND u.status = 'ACTIVE'
+              AND u.staffPosition IS NOT NULL
+            ORDER BY u.username ASC
+            """)
+    java.util.List<User> findActiveStaffCandidates();
+
+
+    @Query("""
+            SELECT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_CUSTOMER'
+            """)
     Page<User> findCustomers(Pageable pageable);
 
     @Query("""
-    SELECT u FROM User u
-    JOIN u.roles r
-    WHERE r.name = 'ROLE_CUSTOMER'
-    AND (
-        LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-    )
-""")
+            SELECT u FROM User u
+            JOIN u.roles r
+            WHERE r.name = 'ROLE_CUSTOMER'
+              AND (
+                    LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                 OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+              )
+            """)
     Page<User> searchCustomers(@Param("keyword") String keyword, Pageable pageable);
 }

@@ -1,0 +1,20 @@
+.admin-payroll-page { display:flex; flex-direction:column; gap:20px; }
+.admin-payroll-header, .admin-payroll-panel, .admin-payroll-stat-card { background:#fff; border-radius:22px; border:1px solid #e8ecf8; box-shadow:0 14px 28px rgba(17,34,68,.08); }
+.admin-payroll-header { padding:24px; display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+.admin-payroll-kicker { color:#4b65db; text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; margin-bottom:8px; }
+.admin-payroll-filter { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+.admin-payroll-filter label { display:flex; flex-direction:column; gap:6px; color:#44506c; }
+.admin-payroll-filter input, .admin-payroll-panel button { padding:10px 14px; border-radius:12px; border:1px solid #d8dff2; font:inherit; }
+.admin-payroll-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+.admin-payroll-stat-card { padding:18px; display:flex; flex-direction:column; gap:6px; }
+.admin-payroll-stat-card strong { font-size:1.5rem; color:#1d2740; }
+.admin-payroll-banner { padding:14px 18px; border-radius:14px; font-weight:600; }
+.admin-payroll-banner.error { background:#fff1f1; color:#bf3b3b; border:1px solid #f1c1c1; }
+.admin-payroll-grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
+.admin-payroll-panel { padding:22px; }
+.table-wrap { overflow:auto; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:12px 10px; border-bottom:1px solid #edf1fa; vertical-align:top; text-align:left; }
+.subtext, .rates-text { margin-top:4px; color:#6a7794; font-size:.88rem; }
+.selected-row { background:#f6f8ff; }
+@media (max-width:1100px) { .admin-payroll-grid { grid-template-columns:1fr; } }
