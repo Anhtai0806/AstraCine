@@ -26,10 +26,10 @@ public class ShowtimeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(showtime);
     }
 
-    @PostMapping("/generate")
-    public ResponseEntity<ShowtimeDTO.GenerateResponse> generateShowtimes(
-            @Valid @RequestBody ShowtimeDTO.GenerateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.generateShowtimes(request));
+    @PostMapping("/bulk")
+    public ResponseEntity<ShowtimeDTO.BulkCreateResponse> bulkCreateShowtimes(
+            @Valid @RequestBody ShowtimeDTO.BulkCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.bulkCreateShowtimes(request));
     }
 
     @PutMapping("/{id}")

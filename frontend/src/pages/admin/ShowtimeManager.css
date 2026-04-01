@@ -113,6 +113,9 @@
 }
 
 .btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: var(--primary);
     color: white;
     border: none;
@@ -136,6 +139,9 @@
 }
 
 .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: white;
     color: var(--text-main);
     border: 1px solid var(--border);
@@ -152,6 +158,9 @@
 }
 
 .btn-danger-soft {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: #fff1f2;
     color: #be123c;
     border: 1px solid #fecdd3;
@@ -166,6 +175,28 @@
     background: #ffe4e6;
     border-color: #fda4af;
 }
+
+.btn-bulk {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #64748b;
+    color: #f8fafc;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.2);
+}
+
+.btn-bulk:hover {
+    background: #475569;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(100, 116, 139, 0.3);
+}
+
 
 /* --- 2. TIMELINE VIEW --- */
 .timeline-wrapper {
@@ -520,7 +551,7 @@
 /* --- Header: Dark gradient for max contrast --- */
 .create-modal-header {
     background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #3730a3 100%);
-    padding: 26px 28px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -587,7 +618,7 @@
 .create-modal-body {
     flex: 1;
     min-height: 0;
-    padding: 28px;
+    padding: 20px 24px;
     background: #ffffff;
     overflow-y: auto;
 }
@@ -596,12 +627,12 @@
 .create-form-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
-    margin: 6px 0 22px 0;
+    margin: 8px 0 16px 0;
 }
 
 /* --- Form Fields --- */
 .create-form-group {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     flex: 1;
 }
 
@@ -610,9 +641,9 @@
     align-items: center;
     gap: 7px;
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: #1e293b;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
@@ -625,8 +656,8 @@
 .create-form-select,
 .create-form-input {
     width: 100%;
-    padding: 12px 16px;
-    border-radius: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
     border: 2px solid #e2e8f0;
     background: #f8fafc;
     font-size: 0.9rem;
@@ -682,7 +713,7 @@
 
 .create-form-row .create-form-group {
     flex: 1;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 /* --- Section Label (small caps above groups) --- */
@@ -695,7 +726,7 @@
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .create-section-label::after {
@@ -779,15 +810,15 @@
 .selection-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .selection-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: 8px;
+    padding: 8px 12px;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     background: #f8fafc;

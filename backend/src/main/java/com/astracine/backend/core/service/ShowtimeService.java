@@ -29,11 +29,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,9 +40,6 @@ import java.util.stream.Collectors;
 public class ShowtimeService {
 
     private static final int CLEANUP_MINUTES = 15;
-    private static final int ROOM_STAGGER_MINUTES = 15;
-    private static final LocalTime DEFAULT_OPENING_TIME = LocalTime.of(7, 0);
-    private static final LocalTime DEFAULT_CLOSING_TIME = LocalTime.of(2, 0);
 
     private final ShowtimeRepository showtimeRepository;
     private final ShowtimeSeatRepository showtimeSeatRepository;
@@ -58,6 +53,87 @@ public class ShowtimeService {
         Movie movie = getSchedulableMovie(request.getMovieId(), request.getStartTime().toLocalDate());
         validateShowtimeRules(room.getId(), movie.getId(), request.getStartTime(), movie.getDurationMinutes(), null);
         return saveShowtime(movie, room, request.getStartTime());
+    }
+
+    public ShowtimeDTO.BulkCreateResponse bulkCreateShowtimes(ShowtimeDTO.BulkCreateRequest request) {
+        if (request.getEndDate().isBefore(request.getStartDate())) {
+            throw new RuntimeException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        }
+        if (request.getStartTimes() == null || request.getStartTimes().isEmpty()) {
+            throw new RuntimeException("Phải chọn ít nhất một khung giờ chiếu");
+        }
+
+        Room room = getActiveRoom(request.getRoomId());
+        Movie movie = movieRepository.findById(request.getMovieId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phim với ID: " + request.getMovieId()));
+
+        if (movie.getStatus() != MovieStatus.NOW_SHOWING) {
+            throw new RuntimeException("Chỉ có thể xếp lịch cho phim đang chiếu");
+        }
+
+        List<ShowtimeDTO.Response> created = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+
+        // Sắp xếp khung giờ theo thứ tự tăng dần
+        List<LocalTime> sortedTimes = request.getStartTimes().stream()
+                .sorted()
+                .collect(Collectors.toList());
+
+        // Lặp qua từng ngày trong giai đoạn
+        LocalDate current = request.getStartDate();
+        while (!current.isAfter(request.getEndDate())) {
+            // Kiểm tra phim có hợp lệ trong ngày này không
+            boolean movieValid = true;
+            if (movie.getReleaseDate() != null && movie.getReleaseDate().isAfter(current)) {
+                movieValid = false;
+            }
+            if (movie.getEndDate() != null && movie.getEndDate().isBefore(current)) {
+                movieValid = false;
+            }
+
+            if (!movieValid) {
+                skipped.add(current + ": Phim không khả dụng trong ngày này");
+                current = current.plusDays(1);
+                continue;
+            }
+
+            // Lặp qua từng khung giờ
+            for (LocalTime time : sortedTimes) {
+                LocalDateTime startTime = current.atTime(time);
+
+                // Bỏ qua nếu thời gian đã qua
+                if (!startTime.isAfter(LocalDateTime.now())) {
+                    skipped.add(current + " " + time + ": Thời gian đã qua");
+                    continue;
+                }
+
+                try {
+                    validateShowtimeRules(room.getId(), movie.getId(), startTime, movie.getDurationMinutes(), null);
+                    Showtime saved = saveShowtime(movie, room, startTime);
+                    created.add(mapToResponse(saved));
+                } catch (Exception e) {
+                    skipped.add(current + " " + time + ": " + e.getMessage());
+                }
+            }
+
+            current = current.plusDays(1);
+        }
+
+        String message;
+        if (created.isEmpty()) {
+            message = "Không tạo được suất chiếu nào. Tất cả khung giờ đều bị trùng hoặc không hợp lệ.";
+        } else if (skipped.isEmpty()) {
+            message = "Đã tạo thành công " + created.size() + " suất chiếu!";
+        } else {
+            message = "Đã tạo " + created.size() + " suất chiếu, bỏ qua " + skipped.size() + " khung giờ bị trùng.";
+        }
+
+        return new ShowtimeDTO.BulkCreateResponse(
+                created.size(),
+                skipped.size(),
+                message,
+                created,
+                skipped);
     }
 
     public Showtime updateShowtime(Long showtimeId, ShowtimeDTO.CreateRequest request) {
@@ -117,104 +193,6 @@ public class ShowtimeService {
         }
     }
 
-    public ShowtimeDTO.GenerateResponse generateShowtimes(ShowtimeDTO.GenerateRequest request) {
-        LocalDate scheduleDate = request.getScheduleDate();
-        LocalDateTime windowStart = scheduleDate.atTime(
-                request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime());
-        LocalDateTime windowEnd = resolveWindowEnd(
-                scheduleDate,
-                request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime(),
-                request.getClosingTime() == null ? DEFAULT_CLOSING_TIME : request.getClosingTime());
-
-        List<Movie> movies = resolveMoviesForGeneration(request.getMovieIds(), scheduleDate);
-        if (movies.isEmpty()) {
-            throw new RuntimeException("Không có phim hợp lệ để tạo lịch trong ngày đã chọn");
-        }
-
-        List<Room> rooms = resolveRoomsForGeneration(request.getRoomIds());
-        if (rooms.isEmpty()) {
-            throw new RuntimeException("Không có phòng hợp lệ để tạo lịch");
-        }
-
-        Map<Long, Integer> movieCounts = new HashMap<>();
-        Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage = new HashMap<>();
-        List<RoomGenerationState> roomStates = new ArrayList<>();
-
-        movies.forEach(movie -> movieCounts.put(movie.getId(), 0));
-
-        for (int roomIndex = 0; roomIndex < rooms.size(); roomIndex++) {
-            Room room = rooms.get(roomIndex);
-            List<Showtime> existingShowtimes = showtimeRepository.findByRoom_IdAndStatusNotOrderByStartTimeAsc(
-                    room.getId(), ShowtimeStatus.CANCELLED);
-
-            existingShowtimes.stream()
-                    .filter(showtime -> overlapsWindow(showtime, windowStart, windowEnd))
-                    .forEach(showtime -> {
-                        movieCounts.merge(showtime.getMovieId(), 1, Integer::sum);
-                        recordSlotUsage(slotMovieUsage, showtime.getStartTime(), showtime.getMovieId());
-                    });
-
-            roomStates.add(buildRoomState(room, roomIndex, existingShowtimes, windowStart));
-        }
-
-        List<ShowtimeDTO.Response> createdShowtimes = new ArrayList<>();
-        int roundRobinIndex = 0;
-        boolean progress;
-
-        do {
-            progress = false;
-
-            for (RoomGenerationState state : roomStates) {
-                advancePastAnchors(state, windowEnd);
-                if (state.cursor == null || !state.cursor.isBefore(windowEnd)) {
-                    continue;
-                }
-
-                Showtime nextAnchor = state.peekNextAnchor();
-                LocalDateTime gapEnd = nextAnchor == null
-                        ? windowEnd
-                        : nextAnchor.getStartTime().minusMinutes(CLEANUP_MINUTES);
-
-                if (!state.cursor.isBefore(gapEnd)) {
-                    moveToAfterAnchor(state, nextAnchor, windowEnd);
-                    continue;
-                }
-
-                Movie selectedMovie = chooseMovieGreedyRoundRobin(
-                        state,
-                        gapEnd,
-                        movies,
-                        movieCounts,
-                        slotMovieUsage,
-                        roundRobinIndex,
-                        nextAnchor == null ? null : nextAnchor.getMovieId());
-
-                if (selectedMovie == null) {
-                    moveToAfterAnchor(state, nextAnchor, windowEnd);
-                    continue;
-                }
-
-                Showtime saved = saveShowtime(selectedMovie, state.room, state.cursor);
-                createdShowtimes.add(mapToResponse(saved));
-                movieCounts.merge(selectedMovie.getId(), 1, Integer::sum);
-                recordSlotUsage(slotMovieUsage, saved.getStartTime(), selectedMovie.getId());
-
-                state.previousMovieId = selectedMovie.getId();
-                state.cursor = saved.getEndTime().plusMinutes(CLEANUP_MINUTES);
-                roundRobinIndex = (indexOfMovie(movies, selectedMovie.getId()) + 1) % movies.size();
-                progress = true;
-            }
-        } while (progress);
-
-        return new ShowtimeDTO.GenerateResponse(
-                scheduleDate,
-                CLEANUP_MINUTES,
-                createdShowtimes.size(),
-                createdShowtimes.isEmpty()
-                        ? "Không tìm thấy khoảng trống phù hợp để tạo thêm suất chiếu"
-                        : "Đã tạo lịch tự động thành công",
-                createdShowtimes);
-    }
 
     @Transactional(readOnly = true)
     public ShowtimeDTO.SeatMapResponse getSeatMap(Long showtimeId) {
@@ -273,136 +251,7 @@ public class ShowtimeService {
                 .collect(Collectors.toList());
     }
 
-    private RoomGenerationState buildRoomState(Room room,
-            int roomIndex,
-            List<Showtime> existingShowtimes,
-            LocalDateTime windowStart) {
-        List<Showtime> anchors = existingShowtimes.stream()
-                .filter(showtime -> showtime.getStartTime().isAfter(windowStart)
-                        || showtime.getEndTime().isAfter(windowStart))
-                .collect(Collectors.toList());
 
-        Showtime previousShowtime = findPreviousShowtime(existingShowtimes, windowStart);
-        LocalDateTime staggeredStart = windowStart.plusMinutes((long) roomIndex * ROOM_STAGGER_MINUTES);
-        LocalDateTime initialCursor = previousShowtime == null
-                ? staggeredStart
-                : max(staggeredStart, previousShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES));
-
-        return new RoomGenerationState(
-                room,
-                roomIndex,
-                anchors,
-                0,
-                initialCursor,
-                previousShowtime == null ? null : previousShowtime.getMovieId());
-    }
-
-    private void advancePastAnchors(RoomGenerationState state, LocalDateTime windowEnd) {
-        while (true) {
-            Showtime nextAnchor = state.peekNextAnchor();
-            if (nextAnchor == null) {
-                return;
-            }
-
-            LocalDateTime anchorGapStart = nextAnchor.getStartTime().minusMinutes(CLEANUP_MINUTES);
-            if (state.cursor.isBefore(anchorGapStart)) {
-                return;
-            }
-
-            state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
-            state.previousMovieId = nextAnchor.getMovieId();
-            state.nextAnchorIndex++;
-
-            if (!state.cursor.isBefore(windowEnd)) {
-                return;
-            }
-        }
-    }
-
-    private void moveToAfterAnchor(RoomGenerationState state, Showtime nextAnchor, LocalDateTime windowEnd) {
-        if (nextAnchor == null) {
-            state.cursor = windowEnd;
-            return;
-        }
-
-        state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
-        state.previousMovieId = nextAnchor.getMovieId();
-        state.nextAnchorIndex++;
-    }
-
-    private Movie chooseMovieGreedyRoundRobin(RoomGenerationState state,
-            LocalDateTime gapEnd,
-            List<Movie> movies,
-            Map<Long, Integer> movieCounts,
-            Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-            int roundRobinIndex,
-            Long nextAnchorMovieId) {
-        List<Movie> fittingMovies = movies.stream()
-                .filter(movie -> !Objects.equals(movie.getId(), state.previousMovieId))
-                .filter(movie -> state.cursor.plusMinutes(movie.getDurationMinutes()).isBefore(gapEnd)
-                        || state.cursor.plusMinutes(movie.getDurationMinutes()).isEqual(gapEnd))
-                .filter(movie -> !Objects.equals(movie.getId(), nextAnchorMovieId))
-                .collect(Collectors.toList());
-
-        if (fittingMovies.isEmpty()) {
-            return null;
-        }
-
-        int minCount = fittingMovies.stream()
-                .mapToInt(movie -> movieCounts.getOrDefault(movie.getId(), 0))
-                .min()
-                .orElse(0);
-
-        List<Movie> leastScheduledMovies = fittingMovies.stream()
-                .filter(movie -> movieCounts.getOrDefault(movie.getId(), 0) == minCount)
-                .collect(Collectors.toList());
-
-        return leastScheduledMovies.stream()
-                .sorted(Comparator
-                        .comparingInt((Movie movie) -> getRoundRobinDistance(movies, movie.getId(), roundRobinIndex))
-                        .thenComparingInt(
-                                movie -> getSameMovieAtSameTimePenalty(slotMovieUsage, state.cursor, movie.getId()))
-                        .thenComparingInt(movie -> getSlotLoadPenalty(slotMovieUsage, state.cursor))
-                        .thenComparing(Movie::getDurationMinutes)
-                        .thenComparing(Movie::getTitle))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private int getRoundRobinDistance(List<Movie> movies, Long movieId, int roundRobinIndex) {
-        int movieIndex = indexOfMovie(movies, movieId);
-        if (movieIndex < 0 || movies.isEmpty()) {
-            return 0;
-        }
-        return Math.floorMod(movieIndex - roundRobinIndex, movies.size());
-    }
-
-    private int indexOfMovie(List<Movie> movies, Long movieId) {
-        for (int index = 0; index < movies.size(); index++) {
-            if (Objects.equals(movies.get(index).getId(), movieId)) {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    private int getSameMovieAtSameTimePenalty(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-            LocalDateTime startTime,
-            Long movieId) {
-        return slotMovieUsage.getOrDefault(startTime, Map.of()).getOrDefault(movieId, 0);
-    }
-
-    private int getSlotLoadPenalty(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage, LocalDateTime startTime) {
-        return slotMovieUsage.getOrDefault(startTime, Map.of()).values().stream().mapToInt(Integer::intValue).sum();
-    }
-
-    private void recordSlotUsage(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-            LocalDateTime startTime,
-            Long movieId) {
-        slotMovieUsage
-                .computeIfAbsent(startTime, ignored -> new HashMap<>())
-                .merge(movieId, 1, Integer::sum);
-    }
 
     private Showtime saveShowtime(Movie movie, Room room, LocalDateTime startTime) {
         TimeSlot timeSlot = resolveTimeSlot(startTime);
@@ -452,7 +301,6 @@ public class ShowtimeService {
             Long excludedShowtimeId) {
         LocalDateTime endTime = startTime.plusMinutes(durationMinutes);
         validateRoomAvailability(roomId, startTime, endTime, excludedShowtimeId);
-        validateMovieAlternation(roomId, movieId, startTime, excludedShowtimeId);
     }
 
     private void validateRoomAvailability(Long roomId,
@@ -472,88 +320,7 @@ public class ShowtimeService {
         }
     }
 
-    private void validateMovieAlternation(Long roomId,
-            Long movieId,
-            LocalDateTime startTime,
-            Long excludedShowtimeId) {
-        List<Showtime> roomShowtimes = showtimeRepository.findByRoom_IdAndStatusNotOrderByStartTimeAsc(
-                roomId, ShowtimeStatus.CANCELLED).stream()
-                .filter(showtime -> !Objects.equals(showtime.getId(), excludedShowtimeId))
-                .collect(Collectors.toList());
 
-        Showtime previous = null;
-        Showtime next = null;
-
-        for (Showtime showtime : roomShowtimes) {
-            if (showtime.getStartTime().isBefore(startTime)) {
-                previous = showtime;
-            } else if (showtime.getStartTime().isAfter(startTime)) {
-                next = showtime;
-                break;
-            }
-        }
-
-        if (previous != null && Objects.equals(previous.getMovieId(), movieId)) {
-            throw new RuntimeException("Không thể để cùng một phim chiếu liên tiếp trong cùng phòng");
-        }
-
-        if (next != null && Objects.equals(next.getMovieId(), movieId)) {
-            throw new RuntimeException("Không thể để cùng một phim chiếu liên tiếp trong cùng phòng");
-        }
-    }
-
-    private List<Movie> resolveMoviesForGeneration(List<Long> requestedMovieIds, LocalDate scheduleDate) {
-        List<Movie> movies = movieRepository.findMoviesShowingOnDate(scheduleDate).stream()
-                .filter(movie -> movie.getStatus() == MovieStatus.NOW_SHOWING)
-                .collect(Collectors.toList());
-
-        if (requestedMovieIds == null || requestedMovieIds.isEmpty()) {
-            return movies.stream()
-                    .sorted(Comparator.comparing(Movie::getDurationMinutes).thenComparing(Movie::getTitle))
-                    .collect(Collectors.toList());
-        }
-
-        return movies.stream()
-                .filter(movie -> requestedMovieIds.contains(movie.getId()))
-                .sorted(Comparator.comparing(Movie::getDurationMinutes).thenComparing(Movie::getTitle))
-                .collect(Collectors.toList());
-    }
-
-    private List<Room> resolveRoomsForGeneration(List<Long> requestedRoomIds) {
-        List<Room> rooms = requestedRoomIds == null || requestedRoomIds.isEmpty()
-                ? roomRepository.findAll()
-                : roomRepository.findAllById(requestedRoomIds);
-
-        return rooms.stream()
-                .filter(room -> room.getStatus() == RoomStatus.ACTIVE)
-                .sorted(Comparator.comparing(room -> room.getTotalRows() * room.getTotalColumns(),
-                        Comparator.reverseOrder()))
-                .collect(Collectors.toList());
-    }
-
-    private Showtime findPreviousShowtime(List<Showtime> roomShowtimes, LocalDateTime beforeTime) {
-        Showtime previousShowtime = null;
-        for (Showtime showtime : roomShowtimes) {
-            if (showtime.getStartTime().isBefore(beforeTime)) {
-                previousShowtime = showtime;
-                continue;
-            }
-            break;
-        }
-        return previousShowtime;
-    }
-
-    private boolean overlapsWindow(Showtime showtime, LocalDateTime windowStart, LocalDateTime windowEnd) {
-        return showtime.getStartTime().isBefore(windowEnd) && showtime.getEndTime().isAfter(windowStart);
-    }
-
-    private LocalDateTime resolveWindowEnd(LocalDate scheduleDate, LocalTime openingTime, LocalTime closingTime) {
-        LocalDateTime end = scheduleDate.atTime(closingTime);
-        if (!closingTime.isAfter(openingTime)) {
-            end = end.plusDays(1);
-        }
-        return end;
-    }
 
     private TimeSlot resolveTimeSlot(LocalDateTime startTime) {
         return timeSlotRepository.findByTime(startTime.toLocalTime())
@@ -636,37 +403,5 @@ public class ShowtimeService {
         return dto;
     }
 
-    private LocalDateTime max(LocalDateTime first, LocalDateTime second) {
-        return first.isAfter(second) ? first : second;
-    }
 
-    private static final class RoomGenerationState {
-        private final Room room;
-        private final int roomIndex;
-        private final List<Showtime> anchors;
-        private int nextAnchorIndex;
-        private LocalDateTime cursor;
-        private Long previousMovieId;
-
-        private RoomGenerationState(Room room,
-                int roomIndex,
-                List<Showtime> anchors,
-                int nextAnchorIndex,
-                LocalDateTime cursor,
-                Long previousMovieId) {
-            this.room = room;
-            this.roomIndex = roomIndex;
-            this.anchors = anchors;
-            this.nextAnchorIndex = nextAnchorIndex;
-            this.cursor = cursor;
-            this.previousMovieId = previousMovieId;
-        }
-
-        private Showtime peekNextAnchor() {
-            if (nextAnchorIndex >= anchors.size()) {
-                return null;
-            }
-            return anchors.get(nextAnchorIndex);
-        }
-    }
 }

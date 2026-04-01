@@ -35,23 +35,6 @@ public class ShowtimeDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class GenerateRequest {
-        @NotNull(message = "Ngày tạo lịch không được để trống")
-        @FutureOrPresent(message = "Ngày tạo lịch phải từ hôm nay trở đi")
-        private LocalDate scheduleDate;
-
-        private LocalTime openingTime;
-
-        private LocalTime closingTime;
-
-        private List<Long> roomIds;
-
-        private List<Long> movieIds;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Response {
         private Long id;
         private Long movieId;
@@ -62,17 +45,6 @@ public class ShowtimeDTO {
         private String movieTitle;
         private String roomName;
         private Integer movieDuration;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GenerateResponse {
-        private LocalDate scheduleDate;
-        private Integer cleanupMinutes;
-        private Integer createdCount;
-        private String message;
-        private List<Response> createdShowtimes;
     }
 
     @Data
@@ -106,5 +78,41 @@ public class ShowtimeDTO {
         private BigDecimal basePrice;
         private BigDecimal finalPrice;
         private SeatBookingStatus status;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BulkCreateRequest {
+        @NotNull(message = "ID phim không được để trống")
+        private Long movieId;
+
+        @NotNull(message = "ID phòng không được để trống")
+        private Long roomId;
+
+        @NotNull(message = "Ngày bắt đầu không được để trống")
+        @FutureOrPresent(message = "Ngày bắt đầu phải từ hôm nay trở đi")
+        private LocalDate startDate;
+
+        @NotNull(message = "Ngày kết thúc không được để trống")
+        @FutureOrPresent(message = "Ngày kết thúc phải từ hôm nay trở đi")
+        private LocalDate endDate;
+
+        @NotNull(message = "Danh sách khung giờ không được để trống")
+        private List<LocalTime> startTimes;
+
+        /** Thời gian đệm (phút) giữa các suất, mặc định 15 */
+        private Integer bufferMinutes;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BulkCreateResponse {
+        private int createdCount;
+        private int skippedCount;
+        private String message;
+        private List<Response> createdShowtimes;
+        private List<String> skippedReasons;
     }
 }

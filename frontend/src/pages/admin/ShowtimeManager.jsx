@@ -1,18 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axiosClient from '../../services/axiosClient';
 import SeatGrid from '../../components/admin/SeatGrid';
+import { FiClipboard, FiTrash2, FiPlus, FiFilm } from 'react-icons/fi';
 import './ShowtimeManager.css';
 
 const START_HOUR = 7;
 const END_HOUR = 31;
 const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
-const DEFAULT_AUTO_FORM = {
-    scheduleDate: '',
-    openingTime: '07:00',
-    closingTime: '02:00',
-    movieIds: [],
-    roomIds: [],
-};
+
 
 const formatDateKey = (value) => {
     const date = value instanceof Date ? value : new Date(value);
@@ -63,7 +58,8 @@ const ShowtimeManager = () => {
 
     const [modal, setModal] = useState(null);
     const [createForm, setCreateForm] = useState({ id: null, movieId: '', roomId: '', startTime: '', date: '' });
-    const [autoForm, setAutoForm] = useState(DEFAULT_AUTO_FORM);
+    const [bulkForm, setBulkForm] = useState({ movieId: '', roomId: '', startDate: '', endDate: '', startTimes: [], bufferMinutes: 15, newTime: '' });
+    const [bulkResult, setBulkResult] = useState(null);
     const [selectedSeats, setSelectedSeats] = useState(null);
     const [roomCols, setRoomCols] = useState(10);
     const [loading, setLoading] = useState(false);
@@ -73,27 +69,6 @@ const ShowtimeManager = () => {
     }, []);
 
     const activeMovies = useMemo(() => movies.filter((movie) => movie.status !== 'STOPPED'), [movies]);
-    const autoAvailableMovies = useMemo(
-        () => activeMovies.filter((movie) => isMovieAvailableOnDate(movie, autoForm.scheduleDate)),
-        [activeMovies, autoForm.scheduleDate]
-    );
-
-    useEffect(() => {
-        const availableMovieIds = autoAvailableMovies.map((movie) => movie.id);
-
-        setAutoForm((prev) => {
-            const nextMovieIds = prev.movieIds.filter((movieId) => availableMovieIds.includes(movieId));
-
-            if (nextMovieIds.length === prev.movieIds.length) {
-                return prev;
-            }
-
-            return {
-                ...prev,
-                movieIds: nextMovieIds,
-            };
-        });
-    }, [autoAvailableMovies]);
 
     const loadData = async () => {
         try {
@@ -242,48 +217,43 @@ const ShowtimeManager = () => {
         }
     };
 
-    const openAutoModal = () => {
-        const scheduleDate = formatDateKey(date);
-        const availableMovieIds = activeMovies
-            .filter((movie) => isMovieAvailableOnDate(movie, scheduleDate))
-            .map((movie) => movie.id);
 
-        setAutoForm({
-            scheduleDate,
-            openingTime: '07:00',
-            closingTime: '02:00',
-            movieIds: availableMovieIds,
-            roomIds: rooms.map((room) => room.id),
-        });
-        setModal({ type: 'auto' });
+    const openBulkModal = () => {
+        setBulkForm({ movieId: '', roomId: rooms[0]?.id || '', startDate: formatDateKey(date), endDate: '', startTimes: [], bufferMinutes: 15, newTime: '' });
+        setBulkResult(null);
+        setModal({ type: 'bulk' });
     };
 
-    const toggleSelection = (key, id) => {
-        setAutoForm((prev) => ({
-            ...prev,
-            [key]: prev[key].includes(id)
-                ? prev[key].filter((value) => value !== id)
-                : [...prev[key], id],
-        }));
+    const addBulkTime = () => {
+        if (!bulkForm.newTime) return;
+        if (bulkForm.startTimes.includes(bulkForm.newTime)) return;
+        setBulkForm(prev => ({ ...prev, startTimes: [...prev.startTimes, prev.newTime].sort(), newTime: '' }));
     };
 
-    const handleAutoSubmit = async (event) => {
+    const removeBulkTime = (time) => {
+        setBulkForm(prev => ({ ...prev, startTimes: prev.startTimes.filter(t => t !== time) }));
+    };
+
+    const handleBulkSubmit = async (event) => {
         event.preventDefault();
+        if (!bulkForm.startTimes.length) { alert('Phải thêm ít nhất một khung giờ'); return; }
         try {
+            setLoading(true);
             const payload = {
-                scheduleDate: autoForm.scheduleDate,
-                openingTime: autoForm.openingTime,
-                closingTime: autoForm.closingTime,
-                movieIds: autoForm.movieIds,
-                roomIds: autoForm.roomIds,
+                movieId: Number(bulkForm.movieId),
+                roomId: Number(bulkForm.roomId),
+                startDate: bulkForm.startDate,
+                endDate: bulkForm.endDate,
+                startTimes: bulkForm.startTimes,
+                bufferMinutes: Number(bulkForm.bufferMinutes) || 15,
             };
-
-            const response = await axiosClient.post('/admin/showtimes/generate', payload);
-            alert(response.data?.message || 'Đã tạo lịch tự động');
-            setModal(null);
+            const response = await axiosClient.post('/admin/showtimes/bulk', payload);
+            setBulkResult(response.data);
             await loadData();
         } catch (error) {
-            alert(getErrorMessage(error, 'Không thể tạo lịch chiếu tự động'));
+            alert(getErrorMessage(error, 'Không thể tạo lịch hàng loạt'));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -433,9 +403,15 @@ const ShowtimeManager = () => {
                 </div>
 
                 <div className="header-actions">
-                    <button className="btn-secondary" onClick={openAutoModal}>Tạo Tự Động</button>
-                    <button className="btn-danger-soft" onClick={handleDeleteDayShowtimes}>Xóa Lịch Trong Ngày</button>
-                    <button className="btn-create" onClick={() => openCreateModal()}>+ Tạo Mới</button>
+                    <button className="btn-bulk" onClick={openBulkModal}>
+                        <FiClipboard size={16} /> Bulk Create
+                    </button>
+                    <button className="btn-danger-soft" onClick={handleDeleteDayShowtimes}>
+                        <FiTrash2 size={16} /> Xóa Lịch Trong Ngày
+                    </button>
+                    <button className="btn-create" onClick={() => openCreateModal()}>
+                        <FiPlus size={18} /> Tạo Mới
+                    </button>
                 </div>
             </div>
 
@@ -445,7 +421,9 @@ const ShowtimeManager = () => {
                 <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
                     <div className="modal-panel create-modal" onClick={(event) => event.stopPropagation()}>
                         <div className="create-modal-header">
-                            <div className="create-modal-header-icon">🎬</div>
+                            <div className="create-modal-header-icon">
+                                <FiFilm color="#c7d2fe" />
+                            </div>
                             <div>
                                 <h3>{createForm.id ? 'Cập Nhật Suất Chiếu' : 'Thêm Suất Chiếu Mới'}</h3>
                                 <p className="create-modal-subtitle">Tăng tốc thao tác admin với tạo, sửa, xóa ngay trên timeline</p>
@@ -536,99 +514,6 @@ const ShowtimeManager = () => {
                 </div>
             )}
 
-            {modal?.type === 'auto' && (
-                <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
-                    <div className="modal-panel create-modal auto-modal" onClick={(event) => event.stopPropagation()}>
-                        <div className="create-modal-header">
-                            <div className="create-modal-header-icon">⚙</div>
-                            <div>
-                                <h3>Tạo Lịch Tự Động</h3>
-                                <p className="create-modal-subtitle">Lấp đầy khung giờ trống, tránh trùng phòng và tránh cùng phim chiếu liên tiếp</p>
-                            </div>
-                            <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
-                        </div>
-                        <div className="create-modal-body">
-                            <form onSubmit={handleAutoSubmit}>
-                                <div className="create-form-row">
-                                    <div className="create-form-group">
-                                        <label className="create-form-label">Ngày Áp Dụng</label>
-                                        <input
-                                            type="date"
-                                            className="create-form-input"
-                                            value={autoForm.scheduleDate}
-                                            onChange={(event) => setAutoForm({ ...autoForm, scheduleDate: event.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="create-form-group">
-                                        <label className="create-form-label">Mở Cửa</label>
-                                        <input
-                                            type="time"
-                                            className="create-form-input"
-                                            value={autoForm.openingTime}
-                                            onChange={(event) => setAutoForm({ ...autoForm, openingTime: event.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="create-form-group">
-                                        <label className="create-form-label">Đóng Cửa</label>
-                                        <input
-                                            type="time"
-                                            className="create-form-input"
-                                            value={autoForm.closingTime}
-                                            onChange={(event) => setAutoForm({ ...autoForm, closingTime: event.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="create-form-divider"></div>
-                                <div className="create-section-label">Chọn Phim</div>
-                                <div className="selection-grid">
-                                    {autoAvailableMovies.map((movie) => (
-                                        <label key={movie.id} className="selection-card">
-                                            <input
-                                                type="checkbox"
-                                                checked={autoForm.movieIds.includes(movie.id)}
-                                                onChange={() => toggleSelection('movieIds', movie.id)}
-                                            />
-                                            <span>{movie.title}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                {!autoAvailableMovies.length && (
-                                    <div className="info-note">
-                                        Khong co phim nao phu hop voi ngay da chon.
-                                    </div>
-                                )}
-
-                                <div className="create-form-divider"></div>
-                                <div className="create-section-label">Chọn Phòng</div>
-                                <div className="selection-grid">
-                                    {rooms.map((room) => (
-                                        <label key={room.id} className="selection-card">
-                                            <input
-                                                type="checkbox"
-                                                checked={autoForm.roomIds.includes(room.id)}
-                                                onChange={() => toggleSelection('roomIds', room.id)}
-                                            />
-                                            <span>{room.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
-
-                                <div className="info-note">
-                                    Khi tạo tự động, hệ thống sẽ giữ nguyên các suất đã có và chỉ chèn thêm suất mới vào những khoảng trống phù hợp. Thuật toán ưu tiên chia đều phim, giữ 15 phút dọn rạp giữa 2 suất.
-                                </div>
-
-                                <button type="submit" className="create-form-submit" disabled={!autoForm.movieIds.length || !autoForm.roomIds.length}>
-                                    Tạo Lịch
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {modal?.type === 'seat' && selectedSeats && (
                 <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
@@ -639,6 +524,99 @@ const ShowtimeManager = () => {
                         </div>
                         <div className="modal-content seat-modal-content">
                             <SeatGrid seats={selectedSeats.seats} totalColumns={roomCols} showPrice />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {modal?.type === 'bulk' && (
+                <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
+                    <div className="modal-panel create-modal auto-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="create-modal-header">
+                            <div className="create-modal-header-icon">
+                                <FiClipboard color="#c7d2fe" />
+                            </div>
+                            <div>
+                                <h3>Bulk Create — Tạo Lịch Hàng Loạt</h3>
+                                <p className="create-modal-subtitle">Chọn 1 phim, 1 phòng, khoảng ngày và các khung giờ để tạo hàng loạt suất chiếu</p>
+                            </div>
+                            <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
+                        </div>
+                        <div className="create-modal-body">
+                            <form onSubmit={handleBulkSubmit}>
+                                <div className="create-section-label">Phim & Phòng</div>
+                                <div className="create-form-row">
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">Chọn Phim</label>
+                                        <select className="create-form-select" value={bulkForm.movieId} onChange={(e) => setBulkForm({...bulkForm, movieId: e.target.value})} required>
+                                            <option value="">-- Chọn phim --</option>
+                                            {activeMovies.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">Phòng Chiếu</label>
+                                        <select className="create-form-select" value={bulkForm.roomId} onChange={(e) => setBulkForm({...bulkForm, roomId: e.target.value})} required>
+                                            <option value="">-- Chọn phòng --</option>
+                                            {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="create-form-divider"></div>
+                                <div className="create-section-label">Giai đoạn</div>
+                                <div className="create-form-row">
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">Từ ngày</label>
+                                        <input type="date" className="create-form-input" value={bulkForm.startDate} onChange={(e) => setBulkForm({...bulkForm, startDate: e.target.value})} required />
+                                    </div>
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">Đến ngày</label>
+                                        <input type="date" className="create-form-input" value={bulkForm.endDate} onChange={(e) => setBulkForm({...bulkForm, endDate: e.target.value})} required />
+                                    </div>
+                                    <div className="create-form-group">
+                                        <label className="create-form-label">Buffer (phút)</label>
+                                        <input type="number" className="create-form-input" value={bulkForm.bufferMinutes} onChange={(e) => setBulkForm({...bulkForm, bufferMinutes: e.target.value})} min="0" max="60" />
+                                    </div>
+                                </div>
+
+                                <div className="create-form-divider"></div>
+                                <div className="create-section-label">Khung giờ trong ngày</div>
+                                <div className="manual-input-row" style={{marginBottom: 8}}>
+                                    <input type="time" step="900" className="create-form-input" value={bulkForm.newTime} onChange={(e) => setBulkForm({...bulkForm, newTime: e.target.value})} />
+                                    <button type="button" className="btn-secondary" onClick={addBulkTime}>+ Thêm</button>
+                                </div>
+                                {bulkForm.startTimes.length > 0 && (
+                                    <div className="selection-grid" style={{marginBottom: 8}}>
+                                        {bulkForm.startTimes.map((t) => (
+                                            <div key={t} className="selection-card" style={{display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'default'}}>
+                                                <span style={{fontWeight:700}}>🕐 {t}</span>
+                                                <button type="button" onClick={() => removeBulkTime(t)} style={{background:'none', border:'none', color:'#ef4444', fontSize:'1.1rem', cursor:'pointer', padding:'0 4px'}}>✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {!bulkForm.startTimes.length && <div className="info-note">Chưa thêm khung giờ nào. Hãy chọn giờ và nhấn "+ Thêm".</div>}
+
+                                {bulkResult && (
+                                    <div style={{marginBottom: 16}}>
+                                        <div className={`toast ${bulkResult.createdCount > 0 ? 'toast-success' : 'toast-error'}`} style={{marginBottom: 8}}>
+                                            <span>{bulkResult.createdCount > 0 ? '🎉' : '⚠️'}</span> {bulkResult.message}
+                                        </div>
+                                        {bulkResult.skippedReasons?.length > 0 && (
+                                            <details style={{fontSize:'0.85rem', color:'#64748b'}}>
+                                                <summary style={{cursor:'pointer', fontWeight:600}}>Xem {bulkResult.skippedCount} khung giờ bị bỏ qua</summary>
+                                                <ul style={{marginTop:6, paddingLeft:20}}>
+                                                    {bulkResult.skippedReasons.map((r, i) => <li key={i}>{r}</li>)}
+                                                </ul>
+                                            </details>
+                                        )}
+                                    </div>
+                                )}
+
+                                <button type="submit" className="create-form-submit" disabled={loading || !bulkForm.startTimes.length || !bulkForm.movieId || !bulkForm.roomId}>
+                                    {loading ? '⏳ Đang tạo...' : `📋 Tạo Hàng Loạt (${bulkForm.startTimes.length} khung giờ/ngày)`}
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
