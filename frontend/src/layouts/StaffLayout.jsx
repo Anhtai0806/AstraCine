@@ -1,12 +1,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./StaffLayout.css";
-import { BiHomeAlt } from "react-icons/bi";
+import { BiHomeAlt, BiTimeFive } from "react-icons/bi";
 import { ImProfile } from "react-icons/im";
 import { HiOutlineTicket } from "react-icons/hi2";
-import { LuPopcorn } from "react-icons/lu";
-import { LuTicketCheck } from "react-icons/lu";
-
+import { LuPopcorn, LuTicketCheck } from "react-icons/lu";
+import { MdEventNote } from "react-icons/md";
+import { FaMoneyBillWave } from "react-icons/fa";
 
 const positionLabels = {
     COUNTER: "Nhân viên quầy vé",
@@ -23,13 +23,18 @@ export default function StaffLayout() {
     const rawPosition = user?.staffPosition || "";
     const position = rawPosition.toUpperCase().trim();
 
-    const effectivePosition = position || (roles.includes("ROLE_ADMIN") ? "MULTI" : "");
+    const effectivePosition =
+        position || (roles.includes("ROLE_ADMIN") ? "MULTI" : "");
     const hasAssignedPosition = Boolean(effectivePosition);
 
-    const canCounter = effectivePosition === "COUNTER" || effectivePosition === "MULTI";
-    const canCheckin = effectivePosition === "CHECKIN" || effectivePosition === "MULTI";
+    const canCounter =
+        effectivePosition === "COUNTER" || effectivePosition === "MULTI";
+    const canCheckin =
+        effectivePosition === "CHECKIN" || effectivePosition === "MULTI";
     const canConcession =
-        effectivePosition === "CONCESSION" || effectivePosition === "MULTI" || effectivePosition === "COUNTER";
+        effectivePosition === "CONCESSION" ||
+        effectivePosition === "MULTI" ||
+        effectivePosition === "COUNTER";
 
     const handleLogout = () => {
         logout();
@@ -76,9 +81,8 @@ export default function StaffLayout() {
                             isActive ? "staff-nav-link active" : "staff-nav-link"
                         }
                     >
-                        🗓️ Lịch làm việc
+                        <MdEventNote className="staff-icon" /> Lịch làm việc
                     </NavLink>
-
 
                     <NavLink
                         to="/staff/attendance"
@@ -86,7 +90,7 @@ export default function StaffLayout() {
                             isActive ? "staff-nav-link active" : "staff-nav-link"
                         }
                     >
-                        ⏱️ Chấm công
+                        <BiTimeFive className="staff-icon" /> Chấm công
                     </NavLink>
 
                     <NavLink
@@ -95,7 +99,7 @@ export default function StaffLayout() {
                             isActive ? "staff-nav-link active" : "staff-nav-link"
                         }
                     >
-                        💰 Lương tạm tính
+                        <FaMoneyBillWave className="staff-icon" /> Bảng lương tạm tính
                     </NavLink>
 
                     {hasAssignedPosition && canCounter && (
@@ -133,7 +137,8 @@ export default function StaffLayout() {
 
                     {!hasAssignedPosition && (
                         <div className="staff-nav-hint">
-                            Tài khoản này chưa được admin gán vị trí làm việc nên chưa thể dùng các chức năng nghiệp vụ.
+                            Tài khoản này chưa được admin gán vị trí làm việc nên chưa thể dùng
+                            các chức năng nghiệp vụ.
                         </div>
                     )}
                 </nav>
