@@ -9,19 +9,19 @@ const getAuthHeaders = () => {
 
 export const userApi = {
     getProfile: () => {
-        return axios.get(`${API_URL}/profile`, {
+        return axiosClient.get(`${API_URL}/profile`, {
             headers: getAuthHeaders(),
         });
     },
 
     updateProfile: (data) => {
-        return axios.put(`${API_URL}/profile`, data, {
+        return axiosClient.put(`${API_URL}/profile`, data, {
             headers: getAuthHeaders(),
         });
     },
 
     changePassword: (data) => {
-        return axios.put(`${API_URL}/change-password`, data, {
+        return axiosClient.put(`${API_URL}/change-password`, data, {
             headers: getAuthHeaders(),
         });
     },

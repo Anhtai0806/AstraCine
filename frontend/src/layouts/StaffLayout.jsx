@@ -64,6 +64,34 @@ export default function StaffLayout() {
                         👤 Thông tin cá nhân
                     </NavLink>
 
+                    <NavLink
+                        to="/staff/schedule"
+                        className={({ isActive }) =>
+                            isActive ? "staff-nav-link active" : "staff-nav-link"
+                        }
+                    >
+                        🗓️ Lịch làm việc
+                    </NavLink>
+
+
+                    <NavLink
+                        to="/staff/attendance"
+                        className={({ isActive }) =>
+                            isActive ? "staff-nav-link active" : "staff-nav-link"
+                        }
+                    >
+                        ⏱️ Chấm công
+                    </NavLink>
+
+                    <NavLink
+                        to="/staff/payroll"
+                        className={({ isActive }) =>
+                            isActive ? "staff-nav-link active" : "staff-nav-link"
+                        }
+                    >
+                        💰 Lương tạm tính
+                    </NavLink>
+
                     {hasAssignedPosition && canCounter && (
                         <NavLink
                             to="/staff/booking"

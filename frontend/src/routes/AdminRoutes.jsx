@@ -11,6 +11,9 @@ import AdminMovies from '../pages/Admin/AdminMovies';
 import AdminGenres from '../pages/Admin/AdminGenres';
 import AdminPromotions from '../pages/Admin/AdminPromotions';
 import AdminStaffManagement from '../pages/Admin/AdminStaffManagement';
+import AdminStaffScheduling from '../pages/Admin/AdminStaffScheduling';
+import AdminAttendance from '../pages/Admin/AdminAttendance';
+import AdminPayroll from '../pages/Admin/AdminPayroll';
 
 const AdminRoutes = () => {
     const { user } = useAuth();
@@ -39,6 +42,9 @@ const AdminRoutes = () => {
                 <Route path="time-slots" element={<TimeSlotManager />} />
                 <Route path="showtimes" element={<ShowtimeManager />} />
                 <Route path="staff-management" element={<AdminStaffManagement />} />
+                <Route path="staff-scheduling" element={<AdminStaffScheduling />} />
+                <Route path="attendance" element={<AdminAttendance />} />
+                <Route path="payroll" element={<AdminPayroll />} />
             </Route>
         </Routes>
     );

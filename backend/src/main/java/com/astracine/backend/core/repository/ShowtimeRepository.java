@@ -34,4 +34,9 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
                                               @Param("excludedStatus") ShowtimeStatus excludedStatus);
 
     List<Showtime> findByRoom_IdAndStatusNotOrderByStartTimeAsc(Long roomId, ShowtimeStatus status);
+
+    @Query("SELECT s FROM Showtime s WHERE s.startTime >= :fromTime AND s.startTime < :toTime AND s.status <> :excludedStatus ORDER BY s.startTime ASC")
+    List<Showtime> findByStartTimeBetweenAndStatusNot(@Param("fromTime") LocalDateTime fromTime,
+                                                      @Param("toTime") LocalDateTime toTime,
+                                                      @Param("excludedStatus") ShowtimeStatus excludedStatus);
 }

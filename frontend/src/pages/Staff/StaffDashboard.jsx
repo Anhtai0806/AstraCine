@@ -28,7 +28,7 @@ export default function StaffDashboard() {
                     <h1>Trung tâm nghiệp vụ cho nhân viên rạp</h1>
                     <p>
                         Luồng online vẫn được giữ nguyên. Tại đây nhân viên có thể bán vé tại quầy,
-                        bán combo riêng và thực hiện nghiệp vụ soát vé bằng mã QR.
+                        bán combo riêng, thực hiện nghiệp vụ soát vé và theo dõi lịch làm việc đã được admin publish.
                     </p>
                 </div>
             </div>
@@ -40,6 +40,14 @@ export default function StaffDashboard() {
             )}
 
             <div className="staff-dashboard-grid">
+                <div className="staff-feature-card">
+                    <div className="staff-feature-icon">🗓️</div>
+                    <h2>Lịch làm việc của tôi</h2>
+                    <p>
+                        Kiểm tra ca đã publish, xem vai trò trong từng ca và xác nhận lịch để phối hợp với quản lý.
+                    </p>
+                    <button onClick={() => navigate("/staff/schedule")}>Xem lịch làm việc</button>
+                </div>
                 <div className="staff-feature-card">
                     <div className="staff-feature-icon">🎟️</div>
                     <h2>Bán vé tại quầy</h2>

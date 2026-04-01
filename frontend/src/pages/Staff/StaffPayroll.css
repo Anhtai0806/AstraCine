@@ -1,0 +1,17 @@
+.staff-payroll-page { display:flex; flex-direction:column; gap:20px; }
+.staff-payroll-hero, .staff-payroll-panel, .staff-payroll-stat-card { background:#fff; border-radius:22px; border:1px solid #e8ecf8; box-shadow:0 14px 28px rgba(17,34,68,.08); }
+.staff-payroll-hero { padding:24px; display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+.staff-payroll-kicker { color:#4b65db; text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; margin-bottom:8px; }
+.staff-payroll-filter { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+.staff-payroll-filter label { display:flex; flex-direction:column; gap:6px; color:#44506c; }
+.staff-payroll-filter input { padding:10px 14px; border-radius:12px; border:1px solid #d8dff2; font:inherit; }
+.staff-payroll-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+.staff-payroll-stat-card { padding:18px; display:flex; flex-direction:column; gap:6px; }
+.staff-payroll-stat-card strong { font-size:1.5rem; color:#1d2740; }
+.staff-payroll-banner { padding:14px 18px; border-radius:14px; font-weight:600; }
+.staff-payroll-banner.error { background:#fff1f1; color:#bf3b3b; border:1px solid #f1c1c1; }
+.staff-payroll-panel { padding:22px; }
+.table-wrap { overflow:auto; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:12px 10px; border-bottom:1px solid #edf1fa; vertical-align:top; text-align:left; }
+.subtext { margin-top:4px; color:#6a7794; font-size:.88rem; }
