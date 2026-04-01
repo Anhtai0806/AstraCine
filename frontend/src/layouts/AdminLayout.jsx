@@ -1,166 +1,161 @@
 import React from "react";
 import { useNavigate, Outlet, NavLink } from "react-router-dom";
 import "./AdminLayout.css";
-import { FaRegChartBar } from "react-icons/fa";
-import { FaPhotoVideo } from "react-icons/fa";
-import { FaFilm } from "react-icons/fa";
+import { FaRegChartBar, FaPhotoVideo, FaFilm, FaBarcode } from "react-icons/fa";
 import { FaHouse } from "react-icons/fa6";
-import { MdAccessTime } from "react-icons/md";
-import { FaBarcode } from "react-icons/fa";
+import { MdAccessTime, MdOutlineManageAccounts } from "react-icons/md";
 import { SlCalender } from "react-icons/sl";
-import { GrUserManager } from "react-icons/gr";
 import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
-import { MdOutlineManageAccounts } from "react-icons/md";
 import { LuPopcorn } from "react-icons/lu";
 
 const AdminLayout = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-  return (
-    <div className="portal-layout">
-      {" "}
-      {/* Dùng class portal-layout để ăn CSS layout */}
-      {/* --- SIDEBAR --- */}
-      <aside className="sidebar">
-        {/* Logo Brand */}
-        <div className="brand">
-          Astra<span>Cine</span> Admin
-        </div>
+    const { logout } = useAuth();
+    const navigate = useNavigate();
 
-        {/* Menu Navigation */}
-        <nav className="portal-nav">
-          {/* 1. Dashboard */}
-          <NavLink
-            to="/admin/dashboard"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <FaRegChartBar className="icon-admin-layout" /> Dashboard
-          </NavLink>
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
 
-          {/* 2. Thể loại (Từ AdminLayout cũ) */}
-          <NavLink
-            to="/admin/genres"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <FaPhotoVideo className="icon-admin-layout" /> Thể loại
-          </NavLink>
+    return (
+        <div className="portal-layout">
+            <aside className="sidebar">
+                <div className="brand">
+                    Astra<span>Cine</span> Admin
+                </div>
 
-          {/* 3. Quản lý Phim (Từ AdminLayout cũ) */}
-          <NavLink
-            to="/admin/movies"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <FaFilm className="icon-admin-layout" /> Quản lý Phim
-          </NavLink>
+                <nav className="portal-nav">
+                    <NavLink
+                        to="/admin/dashboard"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaRegChartBar className="icon-admin-layout" /> Dashboard
+                    </NavLink>
 
-          {/* 4. Quản lý Phòng (Từ PortalLayout) */}
-          <NavLink
-            to="/admin/rooms"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <FaHouse className="icon-admin-layout" /> Quản lý Phòng
-          </NavLink>
+                    <NavLink
+                        to="/admin/genres"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaPhotoVideo className="icon-admin-layout" /> Thể loại
+                    </NavLink>
 
-          {/* MỚI: Quản lý Khung giờ */}
-          <NavLink
-            to="/admin/time-slots"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <MdAccessTime className="icon-admin-layout" /> Khung giờ
-          </NavLink>
+                    <NavLink
+                        to="/admin/movies"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaFilm className="icon-admin-layout" /> Quản lý Phim
+                    </NavLink>
 
-          {/* Quản lý Mã Khuyến Mãi */}
-          <NavLink
-            to="/admin/promotions"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <FaBarcode className="icon-admin-layout" /> Mã Khuyến Mãi
-          </NavLink>
+                    <NavLink
+                        to="/admin/rooms"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaHouse className="icon-admin-layout" /> Quản lý Phòng
+                    </NavLink>
 
-          {/* 5. Lịch chiếu (Sắp làm) */}
-          <NavLink
-            to="/admin/showtimes"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <SlCalender className="icon-admin-layout" /> Lịch Chiếu
-          </NavLink>
-          <NavLink
-            to="/admin/customer-management"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <MdOutlineManageAccounts className="icon-admin-layout" /> Quản lý Customer
-          </NavLink>
+                    <NavLink
+                        to="/admin/time-slots"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <MdAccessTime className="icon-admin-layout" /> Khung giờ
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/promotions"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaBarcode className="icon-admin-layout" /> Mã Khuyến Mãi
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/showtimes"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <SlCalender className="icon-admin-layout" /> Lịch Chiếu
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/customer-management"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <MdOutlineManageAccounts className="icon-admin-layout" /> Quản lý Customer
+                    </NavLink>
 
                     <NavLink
                         to="/admin/staff-management"
-                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
                     >
                         👥 Quản lý Staff
                     </NavLink>
 
                     <NavLink
                         to="/admin/staff-scheduling"
-                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
                     >
                         🗓️ Chia lịch Staff
                     </NavLink>
 
                     <NavLink
                         to="/admin/attendance"
-                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
                     >
                         ⏱️ Attendance Staff
                     </NavLink>
 
                     <NavLink
                         to="/admin/payroll"
-                        className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
                     >
                         💰 Payroll Staff
                     </NavLink>
+
+                    <NavLink
+                        to="/admin/combos"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
+                    </NavLink>
                 </nav>
+
+                <div className="logout-section">
+                    <button className="logout-btn" onClick={handleLogout}>
+                        <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
+                    </button>
+                </div>
             </aside>
 
-          <NavLink
-            to="/admin/combos"
-            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
-          >
-            <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
-          </NavLink>
-        </nav>
-        <div className="logout-section">
-          <button className="logout-btn" onClick={handleLogout}>
-            <IoIosLogOut className="icon-admin-layout" /> Đăng xuất
-          </button>
+            <main className="content">
+                <Outlet />
+            </main>
         </div>
-      </aside>
-      {/* --- MAIN CONTENT --- */}
-      <main className="content">
-        <Outlet /> {/* Nơi nội dung các trang con hiển thị */}
-      </main>
-    </div>
-  );
+    );
 };
 
 export default AdminLayout;
