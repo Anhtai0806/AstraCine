@@ -18,4 +18,6 @@ public class ChatRequest {
 
     @Valid
     private List<ChatMessageDTO> history;
+
+    private String sessionId;
 }

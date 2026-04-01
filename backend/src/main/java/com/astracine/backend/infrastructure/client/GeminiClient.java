@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -35,10 +36,9 @@ public class GeminiClient {
 
     public GeminiResult generateReply(String systemInstruction, List<String> userMessages) {
         String apiKey = geminiProperties.getResolvedApiKey();
-        String model = geminiProperties.getResolvedModel();
         if (apiKey.isBlank()) {
             return GeminiResult.failure(
-                    "Gemini API key chua duoc cau hinh. Hay dat gemini.api-key, gemini.key hoac bien moi truong GEMINI_API_KEY.");
+                    "Gemini API key chưa được cấu hình. Hãy đặt gemini.api-key, gemini.key hoặc biến môi trường GEMINI_API_KEY.");
         }
 
         try {
@@ -52,51 +52,128 @@ public class GeminiClient {
             generationConfig.put("topP", geminiProperties.getTopP());
             generationConfig.put("maxOutputTokens", geminiProperties.getMaxOutputTokens());
 
-            String endpoint = geminiProperties.getApiBaseUrl() + "/" + model
-                    + ":generateContent?key=" + apiKey;
+            String payloadJson = objectMapper.writeValueAsString(payload);
+            List<String> modelCandidates = geminiProperties.getResolvedModelCandidates();
+            List<String> attemptedModels = new ArrayList<>();
+            GeminiResult lastFailure = null;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 400) {
-                log.warn("Gemini API error {} body={}", response.statusCode(), response.body());
-                return GeminiResult.failure("Gemini API tra ve loi HTTP " + response.statusCode() + ".");
-            }
-
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode parts = root.path("candidates").path(0).path("content").path("parts");
-            if (!parts.isArray() || parts.isEmpty()) {
-                return GeminiResult.failure("Gemini khong tra ve noi dung hop le.");
-            }
-
-            StringBuilder answer = new StringBuilder();
-            for (JsonNode part : parts) {
-                String text = part.path("text").asText("");
-                if (!text.isBlank()) {
-                    if (answer.length() > 0) {
-                        answer.append("\n");
-                    }
-                    answer.append(text.trim());
+            for (String model : modelCandidates) {
+                attemptedModels.add(model);
+                GeminiResult result = invokeModel(apiKey, model, payloadJson);
+                if (result.success()) {
+                    return result;
+                }
+                lastFailure = result;
+                if (!result.retryable()) {
+                    break;
                 }
             }
 
-            if (answer.length() == 0) {
-                return GeminiResult.failure("Gemini khong tra ve noi dung hop le.");
+            if (lastFailure == null) {
+                return GeminiResult.failure("Không thể gọi Gemini API do chưa có model hợp lệ.");
             }
+            if (attemptedModels.size() > 1) {
+                return GeminiResult.failure(lastFailure.errorMessage()
+                        + " Đã thử lần lượt các model: " + String.join(", ", attemptedModels) + ".");
+            }
+            return lastFailure;
 
-            return GeminiResult.success(answer.toString());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             log.error("Gemini API interrupted", ex);
-            return GeminiResult.failure("Khong the goi Gemini API: " + ex.getMessage());
+            return GeminiResult.failure("Không thể gọi Gemini API: " + ex.getMessage());
         } catch (IOException ex) {
             log.error("Gemini API IO error", ex);
-            return GeminiResult.failure("Khong the goi Gemini API: " + ex.getMessage());
+            return GeminiResult.failure("Không thể gọi Gemini API: " + ex.getMessage());
+        }
+    }
+
+    private GeminiResult invokeModel(String apiKey, String model, String payloadJson) throws IOException, InterruptedException {
+        String endpoint = geminiProperties.getApiBaseUrl() + "/" + model + ":generateContent?key=" + apiKey;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payloadJson))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            return handleErrorResponse(model, response);
+        }
+
+        JsonNode root = objectMapper.readTree(response.body());
+        JsonNode parts = root.path("candidates").path(0).path("content").path("parts");
+        if (!parts.isArray() || parts.isEmpty()) {
+            return GeminiResult.failure("Gemini không trả về nội dung hợp lệ.");
+        }
+
+        StringBuilder answer = new StringBuilder();
+        for (JsonNode part : parts) {
+            String text = part.path("text").asText("");
+            if (!text.isBlank()) {
+                if (answer.length() > 0) {
+                    answer.append("\n");
+                }
+                answer.append(text.trim());
+            }
+        }
+
+        if (answer.length() == 0) {
+            return GeminiResult.failure("Gemini không trả về nội dung hợp lệ.");
+        }
+
+        return GeminiResult.success(answer.toString());
+    }
+
+    private GeminiResult handleErrorResponse(String model, HttpResponse<String> response) {
+        String body = response.body();
+        int statusCode = response.statusCode();
+        String retryDelay = extractRetryDelay(body);
+        String status = extractErrorStatus(body);
+
+        if (statusCode == 429) {
+            log.warn("Gemini model {} hit quota/rate limit: status={} retryDelay={} body={}",
+                    model, status, retryDelay, body);
+            String message = "Gemini model " + model + " đang vượt quota hoặc rate limit";
+            if (!retryDelay.isBlank()) {
+                message += ", có thể thử lại sau " + retryDelay;
+            }
+            message += ".";
+            return GeminiResult.retryableFailure(message);
+        }
+
+        if (statusCode >= 500) {
+            log.warn("Gemini model {} server error {} body={}", model, statusCode, body);
+            return GeminiResult.retryableFailure("Gemini model " + model + " tạm thời không khả dụng (HTTP " + statusCode + ").");
+        }
+
+        log.warn("Gemini API error on model {} status={} body={}", model, statusCode, body);
+        return GeminiResult.failure("Gemini API trả về lỗi HTTP " + statusCode + " cho model " + model + ".");
+    }
+
+    private String extractRetryDelay(String body) {
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            for (JsonNode detail : root.path("error").path("details")) {
+                String type = detail.path("@type").asText("");
+                if (type.contains("RetryInfo")) {
+                    return detail.path("retryDelay").asText("");
+                }
+            }
+        } catch (IOException ex) {
+            log.debug("Cannot parse Gemini retry delay", ex);
+        }
+        return "";
+    }
+
+    private String extractErrorStatus(String body) {
+        try {
+            return objectMapper.readTree(body).path("error").path("status").asText("");
+        } catch (IOException ex) {
+            log.debug("Cannot parse Gemini error status", ex);
+            return "";
         }
     }
 
@@ -121,13 +198,17 @@ public class GeminiClient {
         return contents;
     }
 
-    public record GeminiResult(boolean success, String text, String errorMessage) {
+    public record GeminiResult(boolean success, String text, String errorMessage, boolean retryable) {
         public static GeminiResult success(String text) {
-            return new GeminiResult(true, text, null);
+            return new GeminiResult(true, text, null, false);
         }
 
         public static GeminiResult failure(String errorMessage) {
-            return new GeminiResult(false, null, errorMessage);
+            return new GeminiResult(false, null, errorMessage, false);
+        }
+
+        public static GeminiResult retryableFailure(String errorMessage) {
+            return new GeminiResult(false, null, errorMessage, true);
         }
     }
 }

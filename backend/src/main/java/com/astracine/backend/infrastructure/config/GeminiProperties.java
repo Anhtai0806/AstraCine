@@ -32,6 +32,11 @@ public class GeminiProperties {
     private String model = "gemini-1.5-flash";
 
     /**
+     * Optional fallback models used when the primary model is rate-limited or unavailable.
+     */
+    private List<String> fallbackModels;
+
+    /**
      * Base endpoint without trailing slash.
      */
     private String apiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -69,6 +74,17 @@ public class GeminiProperties {
             return modelName.trim();
         }
         return "gemini-1.5-flash";
+    }
+
+    public List<String> getResolvedModelCandidates() {
+        List<String> configuredFallbacks = fallbackModels == null ? List.of() : fallbackModels;
+        return java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(getResolvedModel()),
+                        configuredFallbacks.stream()
+                                .filter(candidate -> candidate != null && !candidate.isBlank())
+                                .map(String::trim))
+                .distinct()
+                .toList();
     }
 
     private String nullToEmpty(String value) {
