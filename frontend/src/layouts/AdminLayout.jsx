@@ -1,13 +1,21 @@
 import React from "react";
 import { useNavigate, Outlet, NavLink } from "react-router-dom";
 import "./AdminLayout.css";
-import { FaRegChartBar, FaPhotoVideo, FaFilm, FaBarcode } from "react-icons/fa";
+import {
+    FaRegChartBar,
+    FaPhotoVideo,
+    FaFilm,
+    FaBarcode,
+    FaUsers,
+    FaMoneyBillWave,
+} from "react-icons/fa";
 import { FaHouse } from "react-icons/fa6";
-import { MdAccessTime, MdOutlineManageAccounts } from "react-icons/md";
+import { MdAccessTime, MdOutlineManageAccounts, MdEventNote } from "react-icons/md";
 import { SlCalender } from "react-icons/sl";
 import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
 import { LuPopcorn } from "react-icons/lu";
+import { BiTimeFive } from "react-icons/bi";
 
 const AdminLayout = () => {
     const { logout } = useAuth();
@@ -104,7 +112,7 @@ const AdminLayout = () => {
                             isActive ? "nav-link active" : "nav-link"
                         }
                     >
-                        👥 Quản lý Staff
+                        <FaUsers className="icon-admin-layout" /> Quản lý Nhân viên
                     </NavLink>
 
                     <NavLink
@@ -113,7 +121,7 @@ const AdminLayout = () => {
                             isActive ? "nav-link active" : "nav-link"
                         }
                     >
-                        🗓️ Chia lịch Staff
+                        <MdEventNote className="icon-admin-layout" /> Phân ca Nhân viên
                     </NavLink>
 
                     <NavLink
@@ -122,7 +130,7 @@ const AdminLayout = () => {
                             isActive ? "nav-link active" : "nav-link"
                         }
                     >
-                        ⏱️ Attendance Staff
+                        <BiTimeFive className="icon-admin-layout" /> Chấm công Nhân viên
                     </NavLink>
 
                     <NavLink
@@ -131,7 +139,7 @@ const AdminLayout = () => {
                             isActive ? "nav-link active" : "nav-link"
                         }
                     >
-                        💰 Payroll Staff
+                        <FaMoneyBillWave className="icon-admin-layout" /> Bảng lương Nhân viên
                     </NavLink>
 
                     <NavLink
