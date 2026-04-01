@@ -59,6 +59,7 @@ public class InvoiceService {
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
     private final SeatHoldService seatHoldService;
+    private final EmailService emailService;
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
@@ -185,6 +186,40 @@ public class InvoiceService {
             log.warn("[Invoice] confirmHoldToSold failed (holdId={}), falling back to direct seat update: {}",
                     holdId, ex.getMessage());
             markSeatsAsSold(showtimeId, seatIds);
+        }
+
+        // KÍCH HOẠT GỬI EMAIL VÉ
+        try {
+            String targetEmail = customerEmail;
+            
+            // Nếu không có email tham số (ví dụ online booking), lấy từ user liên kết
+            if (targetEmail == null || targetEmail.isBlank()) {
+                Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername, customerUsername);
+                if (uOpt.isPresent() && uOpt.get().getEmail() != null && !uOpt.get().getEmail().isBlank()) {
+                    targetEmail = uOpt.get().getEmail();
+                }
+            }
+            
+            final String finalTargetEmail = targetEmail;
+            if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
+                ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
+                
+                // Tạo một luồng mới để gửi thư
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        emailService.sendTicketEmail(finalTargetEmail, printTicket);
+                        log.info("[Invoice] Successfully dispatched ticket email to {}", finalTargetEmail);
+                    } catch (Exception e) {
+                        log.error("[Invoice] Failed to send ticket email to " + finalTargetEmail, e);
+                    }
+                });
+            } else {
+                log.info("[Invoice] No valid email found to send ticket for invoice=${}", invoice.getId());
+            }
+
+        } catch (Exception e) {
+            log.error("[Invoice] Error preparing ticket email: {}", e.getMessage(), e);
         }
 
         return invoice;
