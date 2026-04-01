@@ -318,7 +318,7 @@ const ShowtimeManager = () => {
 
             setRoomCols(maxColumns);
             setSelectedSeats({ ...data, seats: flatSeats });
-            setModal({ type: 'seat' });
+            setModal({ type: 'seat', movieTitle: data.movieTitle });
         } catch (error) {
             alert(getErrorMessage(error, 'Không thể tải sơ đồ ghế'));
         }
@@ -652,13 +652,13 @@ const ShowtimeManager = () => {
 
             {modal?.type === 'seat' && selectedSeats && (
                 <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
-                    <div className="modal-panel" style={{ maxWidth: '900px' }} onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-panel seat-modal-panel" onClick={(event) => event.stopPropagation()}>
                         <div className="modal-head">
                             <h3>{selectedSeats.movieTitle}</h3>
                             <button className="nav-btn" onClick={() => setModal(null)}>✕</button>
                         </div>
                         <div className="modal-content seat-modal-content">
-                            <SeatGrid seats={selectedSeats.seats} totalColumns={roomCols} />
+                            <SeatGrid seats={selectedSeats.seats} totalColumns={roomCols} showPrice />
                         </div>
                     </div>
                 </div>

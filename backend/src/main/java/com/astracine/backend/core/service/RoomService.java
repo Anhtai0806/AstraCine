@@ -38,7 +38,8 @@ public class RoomService {
                 request.getName(),
                 request.getTotalRows(),
                 request.getTotalColumns(),
-                request.getScreenType());
+                request.getScreenType(),
+                request.getPriceMultiplier());
         room = roomRepository.save(room);
 
         List<Seat> seats = generateSeats(room);
@@ -57,6 +58,9 @@ public class RoomService {
         Room room = findRoomOrThrow(id);
         room.setName(request.getName());
         room.setScreenType(request.getScreenType());
+        if (request.getPriceMultiplier() != null) {
+            room.setPriceMultiplier(request.getPriceMultiplier());
+        }
         return roomRepository.save(room);
     }
 
