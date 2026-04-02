@@ -38,10 +38,6 @@ const isMovieAvailableOnDate = (movie, scheduleDate) => {
 
     if (!releaseDate) return false;
 
-    if (movie.status === 'COMING_SOON') {
-        return scheduleDate === releaseDate;
-    }
-
     if (scheduleDate < releaseDate) return false;
     if (endDate && scheduleDate > endDate) return false;
 
@@ -442,10 +438,15 @@ const ShowtimeManager = () => {
                                         required
                                     >
                                         <option value="">-- Chọn phim --</option>
-                                        {activeMovies.map((movie) => (
+                                        {createAvailableMovies.map((movie) => (
                                             <option key={movie.id} value={movie.id}>{movie.title}</option>
                                         ))}
                                     </select>
+                                    {!createAvailableMovies.length && (
+                                        <div className="info-note">
+                                            Khong co phim nao phu hop voi ngay da chon.
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="create-form-group">
                                     <label className="create-form-label">Phòng Chiếu</label>
@@ -548,14 +549,14 @@ const ShowtimeManager = () => {
                                 <div className="create-form-row">
                                     <div className="create-form-group">
                                         <label className="create-form-label">Chọn Phim</label>
-                                        <select className="create-form-select" value={bulkForm.movieId} onChange={(e) => setBulkForm({...bulkForm, movieId: e.target.value})} required>
+                                        <select className="create-form-select" value={bulkForm.movieId} onChange={(e) => setBulkForm({ ...bulkForm, movieId: e.target.value })} required>
                                             <option value="">-- Chọn phim --</option>
                                             {activeMovies.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                                         </select>
                                     </div>
                                     <div className="create-form-group">
                                         <label className="create-form-label">Phòng Chiếu</label>
-                                        <select className="create-form-select" value={bulkForm.roomId} onChange={(e) => setBulkForm({...bulkForm, roomId: e.target.value})} required>
+                                        <select className="create-form-select" value={bulkForm.roomId} onChange={(e) => setBulkForm({ ...bulkForm, roomId: e.target.value })} required>
                                             <option value="">-- Chọn phòng --</option>
                                             {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                                         </select>
@@ -567,30 +568,30 @@ const ShowtimeManager = () => {
                                 <div className="create-form-row">
                                     <div className="create-form-group">
                                         <label className="create-form-label">Từ ngày</label>
-                                        <input type="date" className="create-form-input" value={bulkForm.startDate} onChange={(e) => setBulkForm({...bulkForm, startDate: e.target.value})} required />
+                                        <input type="date" className="create-form-input" value={bulkForm.startDate} onChange={(e) => setBulkForm({ ...bulkForm, startDate: e.target.value })} required />
                                     </div>
                                     <div className="create-form-group">
                                         <label className="create-form-label">Đến ngày</label>
-                                        <input type="date" className="create-form-input" value={bulkForm.endDate} onChange={(e) => setBulkForm({...bulkForm, endDate: e.target.value})} required />
+                                        <input type="date" className="create-form-input" value={bulkForm.endDate} onChange={(e) => setBulkForm({ ...bulkForm, endDate: e.target.value })} required />
                                     </div>
                                     <div className="create-form-group">
                                         <label className="create-form-label">Buffer (phút)</label>
-                                        <input type="number" className="create-form-input" value={bulkForm.bufferMinutes} onChange={(e) => setBulkForm({...bulkForm, bufferMinutes: e.target.value})} min="0" max="60" />
+                                        <input type="number" className="create-form-input" value={bulkForm.bufferMinutes} onChange={(e) => setBulkForm({ ...bulkForm, bufferMinutes: e.target.value })} min="0" max="60" />
                                     </div>
                                 </div>
 
                                 <div className="create-form-divider"></div>
                                 <div className="create-section-label">Khung giờ trong ngày</div>
-                                <div className="manual-input-row" style={{marginBottom: 8}}>
-                                    <input type="time" step="900" className="create-form-input" value={bulkForm.newTime} onChange={(e) => setBulkForm({...bulkForm, newTime: e.target.value})} />
+                                <div className="manual-input-row" style={{ marginBottom: 8 }}>
+                                    <input type="time" step="900" className="create-form-input" value={bulkForm.newTime} onChange={(e) => setBulkForm({ ...bulkForm, newTime: e.target.value })} />
                                     <button type="button" className="btn-secondary" onClick={addBulkTime}>+ Thêm</button>
                                 </div>
                                 {bulkForm.startTimes.length > 0 && (
-                                    <div className="selection-grid" style={{marginBottom: 8}}>
+                                    <div className="selection-grid" style={{ marginBottom: 8 }}>
                                         {bulkForm.startTimes.map((t) => (
-                                            <div key={t} className="selection-card" style={{display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'default'}}>
-                                                <span style={{fontWeight:700}}>🕐 {t}</span>
-                                                <button type="button" onClick={() => removeBulkTime(t)} style={{background:'none', border:'none', color:'#ef4444', fontSize:'1.1rem', cursor:'pointer', padding:'0 4px'}}>✕</button>
+                                            <div key={t} className="selection-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'default' }}>
+                                                <span style={{ fontWeight: 700 }}>🕐 {t}</span>
+                                                <button type="button" onClick={() => removeBulkTime(t)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.1rem', cursor: 'pointer', padding: '0 4px' }}>✕</button>
                                             </div>
                                         ))}
                                     </div>
@@ -598,14 +599,14 @@ const ShowtimeManager = () => {
                                 {!bulkForm.startTimes.length && <div className="info-note">Chưa thêm khung giờ nào. Hãy chọn giờ và nhấn "+ Thêm".</div>}
 
                                 {bulkResult && (
-                                    <div style={{marginBottom: 16}}>
-                                        <div className={`toast ${bulkResult.createdCount > 0 ? 'toast-success' : 'toast-error'}`} style={{marginBottom: 8}}>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div className={`toast ${bulkResult.createdCount > 0 ? 'toast-success' : 'toast-error'}`} style={{ marginBottom: 8 }}>
                                             <span>{bulkResult.createdCount > 0 ? '🎉' : '⚠️'}</span> {bulkResult.message}
                                         </div>
                                         {bulkResult.skippedReasons?.length > 0 && (
-                                            <details style={{fontSize:'0.85rem', color:'#64748b'}}>
-                                                <summary style={{cursor:'pointer', fontWeight:600}}>Xem {bulkResult.skippedCount} khung giờ bị bỏ qua</summary>
-                                                <ul style={{marginTop:6, paddingLeft:20}}>
+                                            <details style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                                                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Xem {bulkResult.skippedCount} khung giờ bị bỏ qua</summary>
+                                                <ul style={{ marginTop: 6, paddingLeft: 20 }}>
                                                     {bulkResult.skippedReasons.map((r, i) => <li key={i}>{r}</li>)}
                                                 </ul>
                                             </details>
