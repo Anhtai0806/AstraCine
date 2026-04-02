@@ -438,11 +438,11 @@ const ShowtimeManager = () => {
                                         required
                                     >
                                         <option value="">-- Chọn phim --</option>
-                                        {createAvailableMovies.map((movie) => (
+                                        {activeMovies.map((movie) => (
                                             <option key={movie.id} value={movie.id}>{movie.title}</option>
                                         ))}
                                     </select>
-                                    {!createAvailableMovies.length && (
+                                    {!activeMovies.length && (
                                         <div className="info-note">
                                             Khong co phim nao phu hop voi ngay da chon.
                                         </div>
