@@ -293,7 +293,7 @@ const AIChatBox = () => {
                           <div className="chat-suggestion-block">
                             <div className="suggestion-title">Phim gợi ý</div>
                             <div className="suggestion-chips">
-                              {message.suggestedMovies.slice(0, 3).map((movie) => (
+                              {message.suggestedMovies.map((movie) => (
                                 <button
                                   key={`movie-${movie.id}`}
                                   className="suggestion-chip"
@@ -312,9 +312,7 @@ const AIChatBox = () => {
                               Suất chiếu phù hợp
                             </div>
                             <div className="suggestion-chips">
-                              {message.suggestedShowtimes
-                                .slice(0, 3)
-                                .map((showtime) => (
+                              {message.suggestedShowtimes.map((showtime) => (
                                   <button
                                     key={`showtime-${showtime.id}`}
                                     className="suggestion-chip suggestion-chip-secondary"

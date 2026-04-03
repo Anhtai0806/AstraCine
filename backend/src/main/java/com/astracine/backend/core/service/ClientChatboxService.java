@@ -69,6 +69,9 @@ public class ClientChatboxService {
     private static final int MAX_SHOWTIME_CONTEXT = 12;
     private static final int MAX_FINAL_SUGGESTIONS = 3;
     private static final int BOOKING_SESSION_TTL_MINUTES = 30;
+    private static final Set<String> GENERIC_MOVIE_TOKENS = Set.of(
+            "phim", "movie", "rap", "ve", "suat", "chieu", "ngay", "mai", "hom", "nay",
+            "nao", "nhung", "co", "toi", "muon", "biet", "xem");
     private static final Pattern EXPLICIT_TIME_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*[:hHgG]\\s*(\\d{1,2})\\b");
     private static final Pattern HOUR_ONLY_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*(?:h|gio)\\b");
     private static final Pattern SEAT_CODE_PATTERN = Pattern.compile("\\b([A-Za-z])\\s*(\\d{1,2})\\b");
@@ -117,6 +120,11 @@ public class ClientChatboxService {
         BookingSession bookingSession = loadBookingSession(userId, sessionId);
         String normalizedMessage = normalize(request.getMessage());
 
+        if (bookingSession != null && shouldExitBookingFlow(bookingSession, normalizedMessage)) {
+            clearBookingSession(userId, sessionId);
+            bookingSession = null;
+        }
+
         if (bookingSession != null || isBookingIntent(normalizedMessage)) {
             return handleBookingConversation(request, userId, sessionId, bookingSession);
         }
@@ -135,6 +143,7 @@ public class ClientChatboxService {
         LocalDateTime now = LocalDateTime.now();
         String normalizedMessage = normalize(request.getMessage());
         String mergedConversation = mergeConversation(request);
+        String mergedUserConversation = mergeUserConversation(request);
 
         if (containsCancelIntent(normalizedMessage)) {
             rollbackBookingSession(userId, session);
@@ -177,9 +186,10 @@ public class ClientChatboxService {
                     sessionId);
         }
 
-        UserPreference preference = extractUserPreference(mergedConversation, now, movies);
+        UserPreference preference = extractUserPreference(mergedUserConversation, now, movies);
         List<Showtime> movieShowtimes = getUpcomingShowtimes(now, movieById, preference, session.getMovieId());
         List<Showtime> prioritizedShowtimes = prioritizeBookingShowtimes(movieShowtimes, preference);
+        boolean exactShowtimeMatch = hasExactShowtimeMatch(movieShowtimes, preference.targetTime());
         List<ChatShowtimeSuggestionDTO> showtimeSuggestions = prioritizedShowtimes.stream()
                 .limit(MAX_FINAL_SUGGESTIONS)
                 .map(showtime -> toShowtimeSuggestion(showtime, selectedMovie))
@@ -197,9 +207,13 @@ public class ClientChatboxService {
                     showtimeSuggestions.isEmpty()
                             ? "Hiện mình chưa thấy suất chiếu phù hợp cho phim " + selectedMovie.getTitle()
                                     + ". Bạn có thể đổi ngày/giờ khác hoặc chọn phim khác."
-                            : buildShowtimeQuestion(selectedMovie, showtimeSuggestions),
+                            : buildShowtimePrompt(selectedMovie, showtimeSuggestions, preference, exactShowtimeMatch),
                     false,
-                    showtimeSuggestions.isEmpty() ? "booking-no-showtime" : "booking-collect-showtime",
+                    showtimeSuggestions.isEmpty()
+                            ? "booking-no-showtime"
+                            : (preference.targetTime() != null && !exactShowtimeMatch
+                                    ? "booking-no-exact-showtime"
+                                    : "booking-collect-showtime"),
                     List.of(toMovieSuggestion(selectedMovie, 100)),
                     showtimeSuggestions,
                     sessionId,
@@ -235,8 +249,13 @@ public class ClientChatboxService {
                 .collect(Collectors.toMap(this::seatCode, seat -> seat, (left, right) -> left, LinkedHashMap::new));
 
         List<Long> parsedSeatIds = parseSeatIdsFromMessage(request.getMessage(), availableSeatMap);
-        if (!parsedSeatIds.isEmpty()) {
-            session.setSeatIds(parsedSeatIds);
+        if (mentionsSeatRemoval(normalizedMessage)) {
+            session.setSeatIds(removeSeatIds(session.getSeatIds(), parsedSeatIds));
+            session.setAwaitingConfirmation(false);
+        } else if (!parsedSeatIds.isEmpty()) {
+            session.setSeatIds(shouldAppendSeats(normalizedMessage)
+                    ? mergeSeatIds(session.getSeatIds(), parsedSeatIds)
+                    : parsedSeatIds);
             session.setAwaitingConfirmation(false);
         }
 
@@ -246,25 +265,33 @@ public class ClientChatboxService {
                     buildSeatQuestion(selectedMovie, selectedShowtime, availableSeatMap),
                     false,
                     "booking-collect-seats",
-                    List.of(toMovieSuggestion(selectedMovie, 100)),
-                    List.of(toShowtimeSuggestion(selectedShowtime, selectedMovie)),
+                    List.of(),
+                    List.of(),
                     sessionId,
                     toBookingState(session, movieById),
-                    activeComboSuggestions(),
+                    List.of(),
                     null,
                     null);
         }
 
         List<ComboCartItemDTO> comboSuggestions = activeComboSuggestions();
-        if (!session.isComboResolved()) {
+        List<ComboCartItemDTO> parsedCombos = parseCombosFromMessage(request.getMessage(), comboSuggestions);
+        if (!session.isComboResolved() || !parsedCombos.isEmpty() || mentionsComboSkip(normalizedMessage)) {
             if (containsComboSkipIntent(normalizedMessage)) {
                 session.setComboItems(new ArrayList<>());
                 session.setComboResolved(true);
+                session.setAwaitingConfirmation(false);
+            } else if (mentionsComboRemoval(normalizedMessage)) {
+                session.setComboItems(removeComboItems(session.getComboItems(), parsedCombos, normalizedMessage));
+                session.setComboResolved(true);
+                session.setAwaitingConfirmation(false);
             } else {
-                List<ComboCartItemDTO> parsedCombos = parseCombosFromMessage(request.getMessage(), comboSuggestions);
                 if (!parsedCombos.isEmpty()) {
-                    session.setComboItems(parsedCombos);
+                    session.setComboItems(shouldAppendCombos(normalizedMessage)
+                            ? mergeComboItems(session.getComboItems(), parsedCombos)
+                            : parsedCombos);
                     session.setComboResolved(true);
+                    session.setAwaitingConfirmation(false);
                 }
             }
         }
@@ -275,8 +302,8 @@ public class ClientChatboxService {
                     buildComboQuestion(comboSuggestions),
                     false,
                     "booking-collect-combos",
-                    List.of(toMovieSuggestion(selectedMovie, 100)),
-                    List.of(toShowtimeSuggestion(selectedShowtime, selectedMovie)),
+                    List.of(),
+                    List.of(),
                     sessionId,
                     toBookingState(session, movieById),
                     comboSuggestions,
@@ -293,11 +320,11 @@ public class ClientChatboxService {
                     buildConfirmationReply(selectedMovie, selectedShowtime, bookingState),
                     false,
                     "booking-confirmation",
-                    List.of(toMovieSuggestion(selectedMovie, 100)),
-                    List.of(toShowtimeSuggestion(selectedShowtime, selectedMovie)),
+                    List.of(),
+                    List.of(),
                     sessionId,
                     bookingState,
-                    comboSuggestions,
+                    List.of(),
                     null,
                     null);
         }
@@ -308,11 +335,11 @@ public class ClientChatboxService {
                     "Mình đã gom đủ thông tin đặt vé rồi. Nếu mọi thứ đã đúng, bạn nhắn `xác nhận` để mình tạo QR PayOS. Nếu cần đổi, bạn cứ nhắn lại phim, suất chiếu, ghế hoặc combo.",
                     false,
                     "booking-await-confirmation",
-                    List.of(toMovieSuggestion(selectedMovie, 100)),
-                    List.of(toShowtimeSuggestion(selectedShowtime, selectedMovie)),
+                    List.of(),
+                    List.of(),
                     sessionId,
                     bookingState,
-                    comboSuggestions,
+                    List.of(),
                     null,
                     null);
         }
@@ -417,6 +444,7 @@ public class ClientChatboxService {
         String currentMessage = request.getMessage().trim();
         LocalDateTime now = LocalDateTime.now();
         UserPreference preference = extractUserPreference(currentMessage, now, movies);
+        boolean movieListOnlyQuery = isMovieListOnlyQuery(currentMessage, preference);
 
         List<Showtime> allUpcomingShowtimes = getUpcomingShowtimes(now, movieById, preference,
                 preference.specificMovieId());
@@ -496,6 +524,27 @@ public class ClientChatboxService {
                 .map(showtime -> toShowtimeSuggestion(showtime, movieById.get(showtime.getMovieId())))
                 .collect(Collectors.toList());
 
+        if (movieListOnlyQuery) {
+            List<ChatMovieSuggestionDTO> movieListSuggestions = allUpcomingShowtimes.stream()
+                    .sorted(Comparator.comparing(Showtime::getStartTime))
+                    .map(Showtime::getMovieId)
+                    .distinct()
+                    .map(movieById::get)
+                    .filter(Objects::nonNull)
+                    .map(movie -> toMovieSuggestion(movie, movieScores.getOrDefault(movie.getId(), 0)))
+                    .collect(Collectors.toList());
+
+            return ChatResponse.builder()
+                    .reply(buildMovieOnlyReply(currentMessage, movieListSuggestions, preference))
+                    .usedAi(false)
+                    .source("local-movie-list")
+                    .suggestedMovies(movieListSuggestions)
+                    .suggestedShowtimes(List.of())
+                    .sessionId(sessionId)
+                    .suggestedCombos(List.of())
+                    .build();
+        }
+
         Map<Long, ChatMovieSuggestionDTO> candidateMovieMap = candidateMovies.stream()
                 .collect(Collectors.toMap(ChatMovieSuggestionDTO::getId, movie -> movie, (left, right) -> left,
                         LinkedHashMap::new));
@@ -509,7 +558,7 @@ public class ClientChatboxService {
                 buildPrompts(request,
                         buildDatabaseContext(candidateMovies, candidateShowtimes, now, preference, targetDate)));
 
-        if (geminiResult.success()) {
+        if (geminiResult != null && geminiResult.success()) {
             GeminiDecision decision = parseGeminiDecision(geminiResult.text());
             if (decision != null && decision.reply() != null && !decision.reply().isBlank()) {
                 return ChatResponse.builder()
@@ -530,7 +579,7 @@ public class ClientChatboxService {
 
         return ChatResponse.builder()
                 .reply(buildFallbackReply(request.getMessage(), fallbackMovies, fallbackShowtimes,
-                        geminiResult.errorMessage()))
+                        geminiResult == null ? "Gemini unavailable" : geminiResult.errorMessage()))
                 .usedAi(false)
                 .source("local-fallback")
                 .suggestedMovies(fallbackMovies)
@@ -571,7 +620,11 @@ public class ClientChatboxService {
 
     private List<Showtime> prioritizeBookingShowtimes(List<Showtime> showtimes, UserPreference preference) {
         if (preference.targetTime() != null) {
-            return prioritizeShowtimesAroundTargetTime(showtimes, preference.targetTime());
+            List<Showtime> prioritized = prioritizeShowtimesAroundTargetTime(showtimes, preference.targetTime());
+            if (!hasExactShowtimeMatch(showtimes, preference.targetTime()) && !prioritized.isEmpty()) {
+                return List.of(prioritized.get(0));
+            }
+            return prioritized;
         }
         return showtimes.stream().sorted(Comparator.comparing(Showtime::getStartTime)).toList();
     }
@@ -644,6 +697,31 @@ public class ClientChatboxService {
         return containsConfigured(normalizedMessage, "BOOKING");
     }
 
+    private boolean shouldExitBookingFlow(BookingSession session, String normalizedMessage) {
+        if (session == null || normalizedMessage == null || normalizedMessage.isBlank()) {
+            return false;
+        }
+        if (containsCancelIntent(normalizedMessage)
+                || containsConfirmIntent(normalizedMessage)
+                || containsPaidIntent(normalizedMessage)
+                || isBookingIntent(normalizedMessage)
+                || containsComboSkipIntent(normalizedMessage)
+                || SEAT_CODE_PATTERN.matcher(normalizedMessage).find()) {
+            return false;
+        }
+        return isInformationalShowtimeQuery(normalizedMessage);
+    }
+
+    private boolean isInformationalShowtimeQuery(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of(
+                "suat chieu nao",
+                "cac suat chieu",
+                "co nhung suat chieu",
+                "lich chieu",
+                "gio chieu",
+                "may suat"));
+    }
+
     private boolean containsCancelIntent(String normalizedMessage) {
         return containsConfigured(normalizedMessage, "CANCEL");
     }
@@ -691,6 +769,22 @@ public class ClientChatboxService {
                 + ". Bạn muốn xem suất nào? Bạn có thể trả lời theo giờ/ngày, ví dụ `tối mai 21h` hoặc chọn một trong các suất gợi ý bên dưới.";
     }
 
+    private String buildShowtimePrompt(Movie movie, List<ChatShowtimeSuggestionDTO> showtimes,
+            UserPreference preference, boolean exactShowtimeMatch) {
+        if (showtimes.isEmpty()) {
+            return "Hiện mình chưa thấy suất chiếu phù hợp cho phim " + movie.getTitle()
+                    + ". Bạn có thể đổi ngày/giờ khác hoặc chọn phim khác.";
+        }
+        if (preference.targetTime() != null && !exactShowtimeMatch) {
+            ChatShowtimeSuggestionDTO nearestShowtime = showtimes.get(0);
+            return "Hiện không có suất " + preference.targetTime().format(DateTimeFormatter.ofPattern("HH:mm"))
+                    + " cho phim " + movie.getTitle() + ". Suất gần nhất mình tìm thấy là lúc "
+                    + nearestShowtime.getStartTime().format(SHOWTIME_FORMATTER)
+                    + ". Bạn có thể chọn suất này hoặc nhắn giờ khác giúp mình.";
+        }
+        return buildShowtimeQuestion(movie, showtimes);
+    }
+
     private String buildSeatQuestion(Movie movie, Showtime showtime, Map<String, SeatStateDto> availableSeatMap) {
         String seatPreview = availableSeatMap.keySet().stream().limit(8).collect(Collectors.joining(", "));
         if (seatPreview.isBlank()) {
@@ -706,7 +800,12 @@ public class ClientChatboxService {
         if (comboSuggestions.isEmpty()) {
             return "Hiện mình chưa thấy combo bắp nước đang bán. Nếu bạn không cần combo, chỉ cần trả lời `không` để mình sang bước xác nhận.";
         }
-        return "Bạn có muốn thêm bắp nước không? Nếu có, bạn có thể nhắn như `1 " + comboSuggestions.get(0).getName()
+        String comboList = comboSuggestions.stream()
+                .map(combo -> "- " + combo.getName() + " (" + formatMoney(combo.getPrice().longValue()) + ")")
+                .collect(Collectors.joining("\n"));
+        return "Bạn có muốn thêm bắp nước không? Hiện có các combo sau:\n"
+                + comboList
+                + "\nBạn có thể nhắn như `1 " + comboSuggestions.get(0).getName()
                 + "`; nếu không cần thì chỉ cần trả lời `không`.";
     }
 
@@ -733,11 +832,10 @@ public class ClientChatboxService {
         if (prioritizedShowtimes.isEmpty()) {
             return null;
         }
-        boolean userSpecifiedTime = preference.targetTime() != null
-                || preference.preferredDate() != null
-                || preference.preferredWeekday() != null
-                || containsConfigured(normalizedMessage, "SHOWTIME_SELECTION");
-        if (prioritizedShowtimes.size() == 1 || userSpecifiedTime) {
+        if (preference.targetTime() != null && !hasExactShowtimeMatch(prioritizedShowtimes, preference.targetTime())) {
+            return null;
+        }
+        if (preference.targetTime() != null || prioritizedShowtimes.size() == 1) {
             return prioritizedShowtimes.get(0).getId();
         }
         return null;
@@ -756,11 +854,38 @@ public class ClientChatboxService {
         return new ArrayList<>(seatIds);
     }
 
+    private boolean shouldAppendSeats(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of("them ghe", "them cho"));
+    }
+
+    private boolean mentionsSeatRemoval(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of("bo ghe", "bo bot ghe", "xoa ghe", "xoa bot ghe"));
+    }
+
+    private List<Long> mergeSeatIds(List<Long> currentSeatIds, List<Long> addedSeatIds) {
+        LinkedHashSet<Long> merged = new LinkedHashSet<>();
+        if (currentSeatIds != null) {
+            merged.addAll(currentSeatIds);
+        }
+        merged.addAll(addedSeatIds);
+        return new ArrayList<>(merged);
+    }
+
+    private List<Long> removeSeatIds(List<Long> currentSeatIds, List<Long> removedSeatIds) {
+        LinkedHashSet<Long> remaining = new LinkedHashSet<>();
+        if (currentSeatIds != null) {
+            remaining.addAll(currentSeatIds);
+        }
+        if (removedSeatIds != null) {
+            remaining.removeAll(removedSeatIds);
+        }
+        return new ArrayList<>(remaining);
+    }
+
     private List<ComboCartItemDTO> activeComboSuggestions() {
         return comboRepository.findByStatus("ACTIVE").stream()
                 .filter(combo -> combo.getStockQuantity() != null && combo.getStockQuantity() > 0)
                 .sorted(Comparator.comparing(Combo::getName, String.CASE_INSENSITIVE_ORDER))
-                .limit(MAX_FINAL_SUGGESTIONS)
                 .map(combo -> new ComboCartItemDTO(combo.getId(), combo.getName(), 1, combo.getPrice(),
                         combo.getPrice()))
                 .collect(Collectors.toList());
@@ -786,6 +911,106 @@ public class ClientChatboxService {
                     subtotal));
         }
         return parsed;
+    }
+
+    private boolean shouldAppendCombos(String normalizedMessage) {
+        return normalizedMessage != null
+                && (normalizedMessage.startsWith("them ")
+                        || normalizedMessage.contains(" them ")
+                        || normalizedMessage.contains("them combo")
+                        || normalizedMessage.contains("them bap")
+                        || normalizedMessage.contains("them nuoc"));
+    }
+
+    private boolean mentionsComboSkip(String normalizedMessage) {
+        return normalizedMessage != null
+                && containsComboSkipIntent(normalizedMessage)
+                && containsAny(normalizedMessage, List.of("combo", "bap", "nuoc"));
+    }
+
+    private boolean mentionsComboRemoval(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of(
+                "bo combo",
+                "bo bot combo",
+                "xoa combo",
+                "xoa bot combo",
+                "bo bap",
+                "bo nuoc",
+                "bot combo"));
+    }
+
+    private List<ComboCartItemDTO> mergeComboItems(List<ComboCartItemDTO> currentItems, List<ComboCartItemDTO> addedItems) {
+        Map<Long, ComboCartItemDTO> merged = new LinkedHashMap<>();
+        if (currentItems != null) {
+            for (ComboCartItemDTO item : currentItems) {
+                merged.put(item.getComboId(), new ComboCartItemDTO(
+                        item.getComboId(),
+                        item.getName(),
+                        item.getQuantity(),
+                        item.getPrice(),
+                        item.getSubtotal()));
+            }
+        }
+        for (ComboCartItemDTO item : addedItems) {
+            ComboCartItemDTO existing = merged.get(item.getComboId());
+            if (existing == null) {
+                merged.put(item.getComboId(), item);
+                continue;
+            }
+            int quantity = (existing.getQuantity() == null ? 0 : existing.getQuantity())
+                    + (item.getQuantity() == null ? 0 : item.getQuantity());
+            BigDecimal price = existing.getPrice() != null ? existing.getPrice() : item.getPrice();
+            merged.put(item.getComboId(), new ComboCartItemDTO(
+                    item.getComboId(),
+                    item.getName(),
+                    quantity,
+                    price,
+                    price == null ? null : price.multiply(BigDecimal.valueOf(quantity))));
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    private List<ComboCartItemDTO> removeComboItems(List<ComboCartItemDTO> currentItems, List<ComboCartItemDTO> removedItems,
+            String normalizedMessage) {
+        Map<Long, ComboCartItemDTO> remaining = new LinkedHashMap<>();
+        if (currentItems != null) {
+            for (ComboCartItemDTO item : currentItems) {
+                remaining.put(item.getComboId(), new ComboCartItemDTO(
+                        item.getComboId(),
+                        item.getName(),
+                        item.getQuantity(),
+                        item.getPrice(),
+                        item.getSubtotal()));
+            }
+        }
+        for (ComboCartItemDTO item : removedItems) {
+            ComboCartItemDTO existing = remaining.get(item.getComboId());
+            if (existing == null) {
+                continue;
+            }
+            Integer removalQuantity = item.getQuantity() == null ? 0 : item.getQuantity();
+            if (removalQuantity <= 0 || shouldRemoveEntireCombo(normalizedMessage)) {
+                remaining.remove(item.getComboId());
+                continue;
+            }
+            int nextQuantity = (existing.getQuantity() == null ? 0 : existing.getQuantity()) - removalQuantity;
+            if (nextQuantity <= 0) {
+                remaining.remove(item.getComboId());
+                continue;
+            }
+            BigDecimal price = existing.getPrice();
+            remaining.put(item.getComboId(), new ComboCartItemDTO(
+                    existing.getComboId(),
+                    existing.getName(),
+                    nextQuantity,
+                    price,
+                    price == null ? null : price.multiply(BigDecimal.valueOf(nextQuantity))));
+        }
+        return new ArrayList<>(remaining.values());
+    }
+
+    private boolean shouldRemoveEntireCombo(String normalizedMessage) {
+        return normalizedMessage != null && !NUMBER_PATTERN.matcher(normalizedMessage).find();
     }
 
     private int extractQuantityForCombo(String normalizedMessage, String normalizedComboName) {
@@ -1264,6 +1489,48 @@ public class ClientChatboxService {
         return reply.toString();
     }
 
+    private String buildMovieOnlyReply(String userMessage, List<ChatMovieSuggestionDTO> suggestedMovies,
+            UserPreference preference) {
+        LocalDate targetDate = preference.preferredDate() == null ? LocalDate.now() : preference.preferredDate();
+        String dayLabel = targetDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        if (suggestedMovies.isEmpty()) {
+            return "Hiện mình chưa thấy phim nào có lịch chiếu vào ngày " + dayLabel + ".";
+        }
+
+        String prefix = normalize(userMessage).contains("ngay mai")
+                ? "Ngày mai, " + dayLabel + ", AstraCine có chiếu các phim sau:\n"
+                : "AstraCine hiện có các phim sau:\n";
+
+        return prefix + suggestedMovies.stream()
+                .map(movie -> "- " + movie.getTitle())
+                .collect(Collectors.joining("\n"));
+    }
+
+    private boolean isMovieListOnlyQuery(String currentMessage, UserPreference preference) {
+        String normalized = normalize(currentMessage);
+        if (preference.specificMovieId() != null) {
+            return false;
+        }
+        return containsAny(normalized, List.of(
+                "phim nao chieu",
+                "co phim nao chieu",
+                "nhung phim nao chieu",
+                "co nhung phim nao",
+                "lich chieu phim nao",
+                "ngay mai co phim nao chieu"));
+    }
+
+    private boolean hasExactShowtimeMatch(List<Showtime> showtimes, LocalTime targetTime) {
+        if (targetTime == null) {
+            return false;
+        }
+        return showtimes.stream()
+                .map(Showtime::getStartTime)
+                .filter(Objects::nonNull)
+                .map(LocalDateTime::toLocalTime)
+                .anyMatch(startTime -> startTime.equals(targetTime));
+    }
+
     private UserPreference extractUserPreference(String mergedConversation, LocalDateTime now, List<Movie> movies) {
         String normalized = normalize(mergedConversation);
 
@@ -1311,7 +1578,10 @@ public class ClientChatboxService {
         for (Movie movie : movies) {
             String normalizedTitle = normalize(movie.getTitle());
             int score = 0;
-            if (!normalizedTitle.isBlank() && normalizedConversation.contains(normalizedTitle))
+            boolean explicitTitle = !normalizedTitle.isBlank()
+                    && normalizedConversation.contains(normalizedTitle)
+                    && !GENERIC_MOVIE_TOKENS.contains(normalizedTitle);
+            if (explicitTitle)
                 score += 100;
 
             if (!normalizedTitle.isBlank()
@@ -1321,6 +1591,7 @@ public class ClientChatboxService {
 
             List<String> titleTokens = extractTokens(normalizedTitle).stream()
                     .filter(token -> token.length() >= 3)
+                    .filter(token -> !GENERIC_MOVIE_TOKENS.contains(token))
                     .collect(Collectors.toList());
 
             if (!titleTokens.isEmpty()) {
