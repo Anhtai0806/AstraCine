@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axiosClient from '../../services/axiosClient';
 import SeatGrid from '../../components/admin/SeatGrid';
 import './ShowtimeManager.css';
 
-const START_HOUR = 7;
-const END_HOUR = 31;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
+const CLEANUP_MINUTES = 15;
 const DEFAULT_AUTO_FORM = {
     scheduleDate: '',
     openingTime: '07:00',
@@ -35,6 +36,65 @@ const normalizeDateString = (value) => {
     return String(value).slice(0, 10);
 };
 
+const formatLocalDateTime = (value) => {
+    const date = value instanceof Date ? value : new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+const getDayBounds = (value) => {
+    const dayKey = formatDateKey(value);
+    const nextDay = new Date(`${dayKey}T00:00:00`);
+    nextDay.setDate(nextDay.getDate() + 1);
+    return {
+        dayStart: new Date(`${dayKey}T00:00:00`),
+        dayEnd: nextDay,
+    };
+};
+
+const overlapsDay = (showtime, value) => {
+    const { dayStart, dayEnd } = getDayBounds(value);
+    const start = new Date(showtime.startTime);
+    const end = new Date(showtime.endTime);
+
+    return start < dayEnd && end > dayStart;
+};
+
+const getTimelineCardMeta = (showtime, value) => {
+    const { dayStart, dayEnd } = getDayBounds(value);
+    const start = new Date(showtime.startTime);
+    const end = new Date(showtime.endTime);
+    const visibleStart = start < dayStart ? dayStart : start;
+    const visibleEnd = end > dayEnd ? dayEnd : end;
+    const startMinutes = visibleStart.getHours() * 60 + visibleStart.getMinutes();
+    const visibleMinutes = Math.max(15, Math.ceil((visibleEnd - visibleStart) / 60000));
+    const boundedStartMinutes = Math.max(0, Math.min(startMinutes, TOTAL_MINUTES));
+    const boundedDuration = Math.max(15, Math.min(visibleMinutes, TOTAL_MINUTES - boundedStartMinutes));
+    const startsBeforeDay = start < dayStart;
+    const endsAfterDay = end > dayEnd;
+    const isCompact = boundedDuration <= 60;
+    const isTiny = boundedDuration <= 35;
+    const needsReadableBoost = (startsBeforeDay || endsAfterDay) && boundedDuration <= 45;
+
+    return {
+        style: {
+            left: `${(boundedStartMinutes / TOTAL_MINUTES) * 100}%`,
+            width: `${(boundedDuration / TOTAL_MINUTES) * 100}%`,
+            minWidth: needsReadableBoost ? '94px' : undefined,
+        },
+        startsBeforeDay,
+        endsAfterDay,
+        isCompact,
+        isTiny,
+        needsReadableBoost,
+    };
+};
+
 const isMovieAvailableOnDate = (movie, scheduleDate) => {
     if (!movie || movie.status === 'STOPPED' || !scheduleDate) return false;
 
@@ -52,17 +112,30 @@ const isMovieAvailableOnDate = (movie, scheduleDate) => {
 const ShowtimeManager = () => {
     const [view, setView] = useState('timeline');
     const [date, setDate] = useState(new Date());
+    const timelineWrapperRef = useRef(null);
+    const previewKeyCounterRef = useRef(0);
 
     const [movies, setMovies] = useState([]);
     const [rooms, setRooms] = useState([]);
     const [showtimes, setShowtimes] = useState([]);
 
     const [modal, setModal] = useState(null);
-    const [createForm, setCreateForm] = useState({ id: null, movieId: '', roomId: '', startTime: '', date: '' });
+    const [createForm, setCreateForm] = useState({
+        id: null,
+        previewKey: null,
+        isPreview: false,
+        movieId: '',
+        roomId: '',
+        startTime: '',
+        date: '',
+    });
     const [autoForm, setAutoForm] = useState(DEFAULT_AUTO_FORM);
     const [selectedSeats, setSelectedSeats] = useState(null);
     const [roomCols, setRoomCols] = useState(10);
     const [loading, setLoading] = useState(false);
+    const [previewShowtimes, setPreviewShowtimes] = useState([]);
+    const [previewRequest, setPreviewRequest] = useState(null);
+    const [previewMessage, setPreviewMessage] = useState('');
 
     useEffect(() => {
         loadData();
@@ -77,6 +150,69 @@ const ShowtimeManager = () => {
         () => activeMovies.filter((movie) => isMovieAvailableOnDate(movie, autoForm.scheduleDate)),
         [activeMovies, autoForm.scheduleDate]
     );
+    const displayedShowtimes = useMemo(
+        () => [...showtimes, ...previewShowtimes],
+        [showtimes, previewShowtimes]
+    );
+
+    const nextPreviewKey = () => {
+        previewKeyCounterRef.current += 1;
+        return `preview-${Date.now()}-${previewKeyCounterRef.current}`;
+    };
+
+    const attachPreviewKey = (showtime) => ({
+        ...showtime,
+        previewKey: showtime.previewKey || nextPreviewKey(),
+    });
+
+    const sortShowtimesByStartTime = (items) => [...items].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+    const buildPreviewShowtimeDraft = (formState) => {
+        const movie = movies.find((item) => String(item.id) === String(formState.movieId));
+        const room = rooms.find((item) => String(item.id) === String(formState.roomId));
+
+        if (!movie || !room) {
+            throw new Error('Không tìm thấy phim hoặc phòng chiếu để cập nhật bản xem trước');
+        }
+
+        const startTime = `${formState.date}T${formState.startTime}:00`;
+        const endDate = new Date(startTime);
+        endDate.setMinutes(endDate.getMinutes() + (movie.durationMinutes || 0));
+
+        return {
+            id: null,
+            previewKey: formState.previewKey || nextPreviewKey(),
+            movieId: Number(movie.id),
+            roomId: Number(room.id),
+            startTime,
+            endTime: formatLocalDateTime(endDate),
+            status: 'PREVIEW',
+            movieTitle: movie.title,
+            roomName: room.name,
+            movieDuration: movie.durationMinutes,
+        };
+    };
+
+    const validatePreviewDraft = (draft, excludedPreviewKey = null) => {
+        const draftStart = new Date(draft.startTime);
+        const draftEnd = new Date(draft.endTime);
+        const cleanupMs = CLEANUP_MINUTES * 60 * 1000;
+
+        const hasConflict = displayedShowtimes.some((showtime) => {
+            if (Number(showtime.roomId) !== Number(draft.roomId)) return false;
+            if (showtime.status === 'PREVIEW' && showtime.previewKey === excludedPreviewKey) return false;
+
+            const showtimeStart = new Date(showtime.startTime).getTime();
+            const showtimeEnd = new Date(showtime.endTime).getTime();
+
+            return draftStart.getTime() < showtimeEnd + cleanupMs
+                && draftEnd.getTime() + cleanupMs > showtimeStart;
+        });
+
+        if (hasConflict) {
+            throw new Error('Suất chiếu xem trước đang bị trùng phòng hoặc chưa đủ 15 phút dọn dẹp');
+        }
+    };
 
     useEffect(() => {
         if (!createForm.movieId) return;
@@ -143,28 +279,35 @@ const ShowtimeManager = () => {
         });
     };
 
-    const getTimelineStyle = (startStr, duration) => {
-        const dateValue = new Date(startStr);
-        let hour = dateValue.getHours();
-        if (hour < START_HOUR) hour += 24;
-
-        const startMinutes = (hour * 60 + dateValue.getMinutes()) - START_HOUR * 60;
-        const left = (startMinutes / TOTAL_MINUTES) * 100;
-        const width = ((duration + 15) / TOTAL_MINUTES) * 100;
-
-        return { left: `${left}%`, width: `${width}%` };
-    };
-
     const handleNav = (direction) => {
         const newDate = new Date(date);
-        if (view === 'timeline') newDate.setDate(newDate.getDate() + direction);
-        else newDate.setMonth(newDate.getMonth() + direction);
+        if (view === 'timeline') {
+            newDate.setDate(newDate.getDate() + direction);
+        } else {
+            newDate.setMonth(newDate.getMonth() + direction);
+        }
         setDate(newDate);
+
+        if (view === 'timeline' && timelineWrapperRef.current) {
+            const nextScrollLeft = direction > 0
+                ? 0
+                : timelineWrapperRef.current.scrollWidth - timelineWrapperRef.current.clientWidth;
+
+            requestAnimationFrame(() => {
+                if (!timelineWrapperRef.current) return;
+                timelineWrapperRef.current.scrollTo({
+                    left: Math.max(0, nextScrollLeft),
+                    behavior: 'smooth',
+                });
+            });
+        }
     };
 
     const openCreateModal = (roomId = rooms[0]?.id || '', time = '') => {
         setCreateForm({
             id: null,
+            previewKey: null,
+            isPreview: Boolean(previewRequest),
             movieId: '',
             roomId,
             startTime: time,
@@ -176,6 +319,8 @@ const ShowtimeManager = () => {
     const openEditModal = (showtime) => {
         setCreateForm({
             id: showtime.id,
+            previewKey: showtime.previewKey || null,
+            isPreview: showtime.status === 'PREVIEW',
             movieId: String(showtime.movieId),
             roomId: String(showtime.roomId),
             startTime: showtime.startTime.split('T')[1]?.slice(0, 5) || '',
@@ -188,16 +333,35 @@ const ShowtimeManager = () => {
         if (event.target.className !== 'tl-track') return;
         const rect = event.target.getBoundingClientRect();
         const percent = (event.clientX - rect.left) / rect.width;
-        const rawMinutes = percent * TOTAL_MINUTES + START_HOUR * 60;
+        const rawMinutes = Math.min(Math.max(percent, 0), 0.9999) * TOTAL_MINUTES;
         const roundedMinutes = roundToQuarter(rawMinutes);
-        let hour = Math.floor(roundedMinutes / 60);
-        const minute = roundedMinutes % 60;
-        if (hour >= 24) hour -= 24;
+        const safeMinutes = Math.min(roundedMinutes, TOTAL_MINUTES - 15);
+        const hour = Math.floor(safeMinutes / 60);
+        const minute = safeMinutes % 60;
         openCreateModal(String(roomId), `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
     };
 
     const handleCreateSubmit = async (event) => {
         event.preventDefault();
+
+        const shouldSaveToPreview = createForm.isPreview || (previewRequest && !createForm.id);
+
+        if (shouldSaveToPreview) {
+            try {
+                const draft = buildPreviewShowtimeDraft(createForm);
+                validatePreviewDraft(draft, createForm.previewKey);
+                setPreviewShowtimes((prev) => {
+                    const nextItems = prev.filter((showtime) => showtime.previewKey !== createForm.previewKey);
+                    return sortShowtimesByStartTime([...nextItems, draft]);
+                });
+                setModal(null);
+                alert(createForm.previewKey ? 'Đã cập nhật suất chiếu xem trước' : 'Đã thêm suất chiếu vào bản xem trước');
+            } catch (error) {
+                alert(getErrorMessage(error, 'Không thể cập nhật bản xem trước'));
+            }
+            return;
+        }
+
         try {
             const payload = {
                 movieId: Number(createForm.movieId),
@@ -221,6 +385,14 @@ const ShowtimeManager = () => {
     };
 
     const handleDeleteShowtime = async () => {
+        if (createForm.isPreview) {
+            if (!window.confirm('Bạn có chắc muốn xóa suất chiếu khỏi bản xem trước?')) return;
+            setPreviewShowtimes((prev) => prev.filter((showtime) => showtime.previewKey !== createForm.previewKey));
+            setModal(null);
+            alert('Đã xóa suất chiếu khỏi bản xem trước');
+            return;
+        }
+
         if (!createForm.id) return;
         if (!window.confirm('Bạn có chắc muốn xóa suất chiếu này?')) return;
 
@@ -273,6 +445,12 @@ const ShowtimeManager = () => {
         setModal({ type: 'auto' });
     };
 
+    const clearPreview = () => {
+        setPreviewShowtimes([]);
+        setPreviewRequest(null);
+        setPreviewMessage('');
+    };
+
     const toggleSelection = (key, id) => {
         setAutoForm((prev) => ({
             ...prev,
@@ -293,12 +471,35 @@ const ShowtimeManager = () => {
                 roomIds: autoForm.roomIds,
             };
 
-            const response = await axiosClient.post('/admin/showtimes/generate', payload);
-            alert(response.data?.message || 'Đã tạo lịch tự động');
+            const response = await axiosClient.post('/admin/showtimes/generate/preview', payload);
+            setPreviewShowtimes(sortShowtimesByStartTime((response.data?.createdShowtimes || []).map(attachPreviewKey)));
+            setPreviewRequest(payload);
+            setPreviewMessage(response.data?.message || 'Đã tạo xem trước lịch chiếu');
+            setDate(new Date(`${payload.scheduleDate}T00:00:00`));
+            setView('timeline');
             setModal(null);
+        } catch (error) {
+            alert(getErrorMessage(error, 'Không thể xem trước lịch chiếu tự động'));
+        }
+    };
+
+    const handleSavePreview = async () => {
+        if (!previewRequest || !previewShowtimes.length) return;
+
+        try {
+            const response = await axiosClient.post('/admin/showtimes/generate/confirm', {
+                scheduleDate: previewRequest.scheduleDate,
+                showtimes: previewShowtimes.map((showtime) => ({
+                    movieId: showtime.movieId,
+                    roomId: showtime.roomId,
+                    startTime: showtime.startTime,
+                })),
+            });
+            alert(response.data?.message || 'Đã lưu lịch chiếu tự động');
+            clearPreview();
             await loadData();
         } catch (error) {
-            alert(getErrorMessage(error, 'Không thể tạo lịch chiếu tự động'));
+            alert(getErrorMessage(error, 'Không thể lưu lịch chiếu xem trước'));
         }
     };
 
@@ -325,11 +526,10 @@ const ShowtimeManager = () => {
     };
 
     const renderTimeline = () => {
-        const dateKey = formatDateKey(date);
-        const todaysShowtimes = showtimes.filter((showtime) => showtime.startTime.startsWith(dateKey));
+        const todaysShowtimes = displayedShowtimes.filter((showtime) => overlapsDay(showtime, date));
 
         return (
-            <div className="timeline-wrapper">
+            <div className="timeline-wrapper" ref={timelineWrapperRef}>
                 <div className="timeline-body">
                     <div className="tl-header-row">
                         <div className="tl-corner">Phòng / Giờ</div>
@@ -357,22 +557,31 @@ const ShowtimeManager = () => {
                             >
                                 {todaysShowtimes
                                     .filter((showtime) => showtime.roomId === room.id)
-                                    .map((showtime) => (
-                                        <div
-                                            key={showtime.id}
-                                            className={`show-card c-${showtime.movieId % 5}`}
-                                            style={getTimelineStyle(showtime.startTime, showtime.movieDuration || 120)}
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                openEditModal(showtime);
-                                            }}
-                                        >
-                                            <div className="show-card-title">{showtime.movieTitle}</div>
-                                            <div className="show-card-time">
-                                                {showtime.startTime.split('T')[1].slice(0, 5)} - {showtime.endTime.split('T')[1].slice(0, 5)}
+                                    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+                                    .map((showtime) => {
+                                        const meta = getTimelineCardMeta(showtime, date);
+                                        const isPreview = showtime.status === 'PREVIEW';
+                                        const showtimeKey = showtime.id ?? `preview-${showtime.roomId}-${showtime.movieId}-${showtime.startTime}`;
+
+                                        return (
+                                            <div
+                                                key={showtimeKey}
+                                                className={`show-card c-${showtime.movieId % 5} ${isPreview ? 'is-preview' : ''} ${meta.isCompact ? 'is-compact' : ''} ${meta.isTiny ? 'is-tiny' : ''} ${meta.startsBeforeDay ? 'is-continued-left' : ''} ${meta.endsAfterDay ? 'is-continued-right' : ''} ${meta.needsReadableBoost ? 'is-readable-boost' : ''}`}
+                                                style={meta.style}
+                                                title={`${isPreview ? '[Xem trước] ' : ''}${showtime.movieTitle}\n${showtime.startTime.split('T')[1].slice(0, 5)} - ${showtime.endTime.split('T')[1].slice(0, 5)}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    openEditModal(showtime);
+                                                }}
+                                            >
+                                                {isPreview && <div className="show-card-badge">Preview</div>}
+                                                <div className="show-card-title">{showtime.movieTitle}</div>
+                                                <div className="show-card-time">
+                                                    {showtime.startTime.split('T')[1].slice(0, 5)} - {showtime.endTime.split('T')[1].slice(0, 5)}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                             </div>
                         </div>
                     ))}
@@ -397,7 +606,7 @@ const ShowtimeManager = () => {
                             const dayKey = formatDateKey(day);
                             const isCurrentMonth = day.getMonth() === date.getMonth();
                             const isToday = formatDateKey(new Date()) === dayKey;
-                            const count = showtimes.filter((showtime) => showtime.startTime.startsWith(dayKey)).length;
+                            const count = displayedShowtimes.filter((showtime) => overlapsDay(showtime, day)).length;
 
                             return (
                                 <div
@@ -454,6 +663,23 @@ const ShowtimeManager = () => {
                 </div>
             </div>
 
+            {previewRequest && (
+                <div className="preview-banner">
+                    <div className="preview-banner-copy">
+                        <strong>Chế độ xem trước đang bật</strong>
+                        <span>{previewMessage || 'Kiểm tra timeline, nếu ổn hãy lưu xuống database.'}</span>
+                    </div>
+                    <div className="preview-banner-actions">
+                        <button type="button" className="btn-outline" onClick={clearPreview}>
+                            Hủy xem trước
+                        </button>
+                        <button type="button" className="btn-create" onClick={handleSavePreview}>
+                            Lưu xuống Database
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {loading ? <div className="empty-state">Đang tải dữ liệu lịch chiếu...</div> : view === 'timeline' ? renderTimeline() : renderCalendar()}
 
             {modal?.type === 'create' && (
@@ -462,8 +688,16 @@ const ShowtimeManager = () => {
                         <div className="create-modal-header">
                             <div className="create-modal-header-icon">🎬</div>
                             <div>
-                                <h3>{createForm.id ? 'Cập Nhật Suất Chiếu' : 'Thêm Suất Chiếu Mới'}</h3>
-                                <p className="create-modal-subtitle">Tăng tốc thao tác admin với tạo, sửa, xóa ngay trên timeline</p>
+                                <h3>
+                                    {createForm.isPreview
+                                        ? (createForm.previewKey ? 'Chỉnh Sửa Suất Chiếu Xem Trước' : 'Thêm Suất Chiếu Xem Trước')
+                                        : (createForm.id ? 'Cập Nhật Suất Chiếu' : 'Thêm Suất Chiếu Mới')}
+                                </h3>
+                                <p className="create-modal-subtitle">
+                                    {createForm.isPreview
+                                        ? 'Các thay đổi chỉ áp dụng cho bản xem trước, chưa lưu xuống database'
+                                        : 'Tăng tốc thao tác admin với tạo, sửa, xóa ngay trên timeline'}
+                                </p>
                             </div>
                             <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
                         </div>
@@ -485,7 +719,7 @@ const ShowtimeManager = () => {
                                     </select>
                                     {!createAvailableMovies.length && (
                                         <div className="info-note">
-                                            Khong co phim nao phu hop voi ngay da chon.
+                                            Không có phim nào phù hợp với ngày đã chọn.
                                         </div>
                                     )}
                                 </div>
@@ -537,15 +771,19 @@ const ShowtimeManager = () => {
 
                                 <div className="modal-action-row">
                                     <button type="submit" className="create-form-submit">
-                                        {createForm.id ? 'Lưu Thay Đổi' : 'Tạo Lịch Chiếu'}
+                                        {createForm.isPreview
+                                            ? (createForm.previewKey ? 'Cập Nhật Bản Xem Trước' : 'Thêm Vào Bản Xem Trước')
+                                            : (createForm.id ? 'Lưu Thay Đổi' : 'Tạo Lịch Chiếu')}
                                     </button>
-                                    {createForm.id && (
+                                    {(createForm.id || createForm.isPreview) && (
                                         <>
-                                            <button type="button" className="btn-outline" onClick={() => openSeatModal({ id: createForm.id })}>
-                                                Xem Ghế
-                                            </button>
+                                            {createForm.id && !createForm.isPreview && (
+                                                <button type="button" className="btn-outline" onClick={() => openSeatModal({ id: createForm.id })}>
+                                                    Xem Ghế
+                                                </button>
+                                            )}
                                             <button type="button" className="btn-danger" onClick={handleDeleteShowtime}>
-                                                Xóa
+                                                {createForm.isPreview ? 'Loại Khỏi Xem Trước' : 'Xóa'}
                                             </button>
                                         </>
                                     )}
@@ -562,8 +800,8 @@ const ShowtimeManager = () => {
                         <div className="create-modal-header">
                             <div className="create-modal-header-icon">⚙</div>
                             <div>
-                                <h3>Tạo Lịch Tự Động</h3>
-                                <p className="create-modal-subtitle">Lấp đầy khung giờ trống, tránh trùng phòng và tránh cùng phim chiếu liên tiếp</p>
+                                <h3>Xem Trước Lịch Tự Động</h3>
+                                <p className="create-modal-subtitle">Tạo một phương án sắp lịch trước, admin duyệt xong mới lưu xuống database</p>
                             </div>
                             <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
                         </div>
@@ -618,7 +856,7 @@ const ShowtimeManager = () => {
                                 </div>
                                 {!autoAvailableMovies.length && (
                                     <div className="info-note">
-                                        Khong co phim nao phu hop voi ngay da chon.
+                                        Không có phim nào phù hợp với ngày đã chọn.
                                     </div>
                                 )}
 
@@ -638,11 +876,11 @@ const ShowtimeManager = () => {
                                 </div>
 
                                 <div className="info-note">
-                                    Khi tạo tự động, hệ thống sẽ giữ nguyên các suất đã có và chỉ chèn thêm suất mới vào những khoảng trống phù hợp. Thuật toán ưu tiên chia đều phim, giữ 15 phút dọn rạp giữa 2 suất.
+                                    Hệ thống sẽ tạo bản xem trước trên timeline, giữ nguyên các suất đã có và chỉ chèn thêm suất mới vào khoảng trống phù hợp. Khi admin bấm lưu, dữ liệu mới được ghi xuống database.
                                 </div>
 
                                 <button type="submit" className="create-form-submit" disabled={!autoForm.movieIds.length || !autoForm.roomIds.length}>
-                                    Tạo Lịch
+                                    Xem Trước Lịch
                                 </button>
                             </form>
                         </div>
@@ -668,3 +906,4 @@ const ShowtimeManager = () => {
 };
 
 export default ShowtimeManager;
+

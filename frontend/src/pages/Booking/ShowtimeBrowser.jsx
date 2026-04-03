@@ -31,6 +31,24 @@ function parseDate(iso) {
     return d;
 }
 
+function normalizeDateString(value) {
+    if (!value) return "";
+    return String(value).slice(0, 10);
+}
+
+function isMovieAvailableOnDate(movie, selectedDate) {
+    if (!movie || movie.status === "STOPPED" || !selectedDate) return false;
+
+    const releaseDate = normalizeDateString(movie.releaseDate);
+    const endDate = normalizeDateString(movie.endDate);
+
+    if (!releaseDate) return false;
+    if (selectedDate < releaseDate) return false;
+    if (endDate && selectedDate > endDate) return false;
+
+    return true;
+}
+
 export default function ShowtimeBrowser() {
     const nav = useNavigate();
     const location = useLocation();
@@ -46,7 +64,7 @@ export default function ShowtimeBrowser() {
     // filter state — default to today
     const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local time
     const [date, setDate] = useState(todayStr);
-    const [activeSlotId, setActiveSlotId] = useState("ALL");
+    const [activeSlotId, _setActiveSlotId] = useState("ALL");
 
     // Build 7-day array starting from today
     const sevenDays = useMemo(() => {
@@ -155,10 +173,18 @@ export default function ShowtimeBrowser() {
     const groupedByMovie = useMemo(() => {
         // Build a map: movieTitle → { movie info, showtimes[] }
         const map = new Map(); // key: movie title (string)
+        const moviesById = new Map();
+        const moviesByTitle = new Map();
+
+        for (const movie of nowShowingMovies) {
+            moviesById.set(String(movie.id), movie);
+            moviesByTitle.set(movie.title, movie);
+        }
 
         // Seed map with all NOW_SHOWING movies (ensures empty-showtime films appear)
         for (const m of nowShowingMovies) {
             if (movieId && String(m.id) !== String(movieId)) continue;
+            if (!isMovieAvailableOnDate(m, date)) continue;
             if (!map.has(m.title)) {
                 map.set(m.title, { movieTitle: m.title, posterUrl: m.posterUrl, showtimes: [] });
             }
@@ -167,6 +193,13 @@ export default function ShowtimeBrowser() {
         // Attach filtered showtimes to matching movies
         for (const s of filtered) {
             const title = s.movieTitle || `Phim #${s.movieId}`;
+            const matchedMovie =
+                moviesById.get(String(s.movieId))
+                || moviesByTitle.get(title);
+
+            if (matchedMovie && !isMovieAvailableOnDate(matchedMovie, date)) {
+                continue;
+            }
             if (!map.has(title)) {
                 // showtime belongs to a movie not in NOW_SHOWING list — still show it
                 map.set(title, { movieTitle: title, posterUrl: null, showtimes: [] });
@@ -182,7 +215,7 @@ export default function ShowtimeBrowser() {
         }
 
         return Array.from(map.values());
-    }, [filtered, nowShowingMovies, movieId]);
+    }, [filtered, nowShowingMovies, movieId, date]);
 
     const handlePickShowtime = (s, movieTitle) => {
         // 1. Validate suất chiếu chưa qua

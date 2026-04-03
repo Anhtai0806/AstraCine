@@ -167,6 +167,38 @@
     border-color: #fda4af;
 }
 
+.preview-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 24px;
+    background: linear-gradient(90deg, #ecfeff 0%, #f8fafc 100%);
+    border-bottom: 1px solid #bae6fd;
+}
+
+.preview-banner-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.preview-banner-copy strong {
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.preview-banner-copy span {
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.preview-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 /* --- 2. TIMELINE VIEW --- */
 .timeline-wrapper {
     flex: 1;
@@ -227,7 +259,7 @@
 /* Rows */
 .tl-room-row {
     display: flex;
-    height: 80px;
+    height: 92px;
     border-bottom: 1px solid var(--border);
     position: relative;
 }
@@ -274,36 +306,135 @@
 /* Event Card */
 .show-card {
     position: absolute;
-    top: 8px;
-    bottom: 8px;
-    border-radius: 6px;
-    padding: 8px 12px;
+    top: 7px;
+    bottom: 7px;
+    border-radius: 10px;
+    padding: 10px 12px;
     color: white;
     font-size: 0.8rem;
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    justify-content: flex-start;
+    gap: 4px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.2s, z-index 0.2s;
+    transition: transform 0.2s, z-index 0.2s, box-shadow 0.2s;
 }
 
 .show-card:hover {
     z-index: 50;
     transform: scale(1.02);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.22);
+}
+
+.show-card.is-preview {
+    border: 1px dashed rgba(255, 255, 255, 0.75);
+    box-shadow: 0 10px 22px rgba(14, 116, 144, 0.2);
+}
+
+.show-card.is-preview:hover {
+    transform: none;
+    box-shadow: 0 12px 24px rgba(14, 116, 144, 0.24);
+}
+
+.show-card-badge {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .show-card-title {
-    font-weight: 700;
+    font-weight: 800;
+    line-height: 1.15;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .show-card-time {
-    opacity: 0.9;
+    opacity: 0.95;
+    font-size: 0.75rem;
+    line-height: 1.15;
+    font-weight: 700;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.show-card.is-compact {
+    padding: 8px 10px;
+    border-radius: 9px;
+    gap: 3px;
+}
+
+.show-card.is-compact .show-card-title {
+    font-size: 0.76rem;
+    -webkit-line-clamp: 3;
+}
+
+.show-card.is-compact .show-card-time {
+    font-size: 0.67rem;
+}
+
+.show-card.is-tiny {
+    padding: 7px 8px;
+    gap: 2px;
+}
+
+.show-card.is-tiny .show-card-title {
     font-size: 0.72rem;
-    margin-top: 4px;
+    -webkit-line-clamp: 3;
+}
+
+.show-card.is-tiny .show-card-time {
+    font-size: 0.62rem;
+}
+
+.show-card.is-readable-boost {
+    z-index: 2;
+}
+
+.show-card.is-continued-left {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.show-card.is-continued-left::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0));
+    pointer-events: none;
+}
+
+.show-card.is-continued-right {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.show-card.is-continued-right::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    background: linear-gradient(270deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0));
+    pointer-events: none;
 }
 
 /* --- 3. CALENDAR MONTH VIEW (GRID 7x6) --- */
