@@ -26,4 +26,7 @@ public interface ShowtimeSeatRepository extends JpaRepository<ShowtimeSeat, Long
 
     Optional<ShowtimeSeat> findByShowtimeIdAndSeatId(Long showtimeId, Long seatId);
 
+    @Query("SELECT DISTINCT ss.showtime.id FROM ShowtimeSeat ss WHERE ss.status IN :statuses")
+    List<Long> findShowtimeIdsWithBookings(@Param("statuses") List<SeatBookingStatus> statuses);
+
 }

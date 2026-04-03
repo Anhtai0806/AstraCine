@@ -110,7 +110,7 @@ public class ShowtimeService {
                 try {
                     validateShowtimeRules(room.getId(), movie.getId(), startTime, movie.getDurationMinutes(), null);
                     Showtime saved = saveShowtime(movie, room, startTime);
-                    created.add(mapToResponse(saved));
+                    created.add(mapToResponse(saved, false));
                 } catch (Exception e) {
                     skipped.add(current + " " + time + ": " + e.getMessage());
                 }
@@ -134,6 +134,97 @@ public class ShowtimeService {
                 message,
                 created,
                 skipped);
+    }
+
+    public List<ShowtimeDTO.Response> previewBulkShowtimes(ShowtimeDTO.BulkCreateRequest request) {
+        if (request.getEndDate().isBefore(request.getStartDate())) {
+            throw new RuntimeException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        }
+        if (request.getStartTimes() == null || request.getStartTimes().isEmpty()) {
+            throw new RuntimeException("Phải chọn ít nhất một khung giờ chiếu");
+        }
+
+        Room room = getActiveRoom(request.getRoomId());
+        Movie movie = movieRepository.findById(request.getMovieId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phim với ID: " + request.getMovieId()));
+
+        if (movie.getStatus() != MovieStatus.NOW_SHOWING) {
+            throw new RuntimeException("Chỉ có thể xếp lịch cho phim đang chiếu");
+        }
+
+        List<ShowtimeDTO.Response> previews = new ArrayList<>();
+        List<LocalTime> sortedTimes = request.getStartTimes().stream().sorted().collect(Collectors.toList());
+        long tempIdCounter = -1;
+
+        LocalDate current = request.getStartDate();
+        while (!current.isAfter(request.getEndDate())) {
+            boolean movieValid = true;
+            if (movie.getReleaseDate() != null && movie.getReleaseDate().isAfter(current)) movieValid = false;
+            if (movie.getEndDate() != null && movie.getEndDate().isBefore(current)) movieValid = false;
+            if (!movieValid) {
+                current = current.plusDays(1);
+                continue;
+            }
+
+            for (LocalTime time : sortedTimes) {
+                LocalDateTime startTime = current.atTime(time);
+                if (!startTime.isAfter(LocalDateTime.now())) continue;
+
+                try {
+                    validateShowtimeRules(room.getId(), movie.getId(), startTime, movie.getDurationMinutes(), null);
+                    
+                    LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
+                    LocalDateTime overlapStart = startTime.minusMinutes(CLEANUP_MINUTES);
+                    LocalDateTime overlapEnd = endTime.plusMinutes(CLEANUP_MINUTES);
+                    
+                    boolean selfOverlap = previews.stream().anyMatch(p -> 
+                        p.getRoomId().equals(room.getId()) && 
+                        p.getStartTime().isBefore(overlapEnd) && 
+                        p.getEndTime().isAfter(overlapStart)
+                    );
+
+                    if (selfOverlap) {
+                        throw new RuntimeException("Trùng lịch hoặc chưa đủ 15 phút dọn dẹp (với suất chiếu nháp vừa tạo).");
+                    }
+
+                    ShowtimeDTO.Response response = new ShowtimeDTO.Response();
+                    response.setId(tempIdCounter--);
+                    response.setMovieId(movie.getId());
+                    response.setRoomId(room.getId());
+                    response.setStartTime(startTime);
+                    response.setEndTime(endTime);
+                    response.setStatus(ShowtimeStatus.OPEN.name());
+                    response.setRoomName(room.getName());
+                    response.setMovieTitle(movie.getTitle());
+                    response.setMovieDuration(movie.getDurationMinutes());
+                    response.setHasBookings(false);
+                    previews.add(response);
+                } catch (Exception ignored) { }
+            }
+            current = current.plusDays(1);
+        }
+        return previews;
+    }
+
+    public void batchSaveShowtimes(ShowtimeDTO.BatchSaveRequest request) {
+        if (request.getDeletes() != null) {
+            for (Long id : request.getDeletes()) {
+                try { deleteShowtime(id); } catch (Exception ignored) {}
+            }
+        }
+        if (request.getCreates() != null) {
+            for (ShowtimeDTO.CreateRequest create : request.getCreates()) {
+                try { createShowtime(create); } catch (Exception ignored) {}
+            }
+        }
+        if (request.getUpdates() != null) {
+            for (ShowtimeDTO.UpdateRequest update : request.getUpdates()) {
+                try {
+                    ShowtimeDTO.CreateRequest cr = new ShowtimeDTO.CreateRequest(update.getMovieId(), update.getRoomId(), update.getStartTime());
+                    updateShowtime(update.getId(), cr);
+                } catch (Exception ignored) {}
+            }
+        }
     }
 
     public Showtime updateShowtime(Long showtimeId, ShowtimeDTO.CreateRequest request) {
@@ -246,8 +337,10 @@ public class ShowtimeService {
 
     @Transactional(readOnly = true)
     public List<ShowtimeDTO.Response> getAllShowtimes() {
+        List<Long> lockedIds = showtimeSeatRepository.findShowtimeIdsWithBookings(List.of(SeatBookingStatus.HELD, SeatBookingStatus.SOLD));
+        java.util.Set<Long> lockedIdSet = new java.util.HashSet<>(lockedIds);
         return showtimeRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(entity -> mapToResponse(entity, lockedIdSet.contains(entity.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -389,7 +482,7 @@ public class ShowtimeService {
                 .orElse("Unknown Movie");
     }
 
-    private ShowtimeDTO.Response mapToResponse(Showtime entity) {
+    private ShowtimeDTO.Response mapToResponse(Showtime entity, boolean hasBookings) {
         ShowtimeDTO.Response dto = new ShowtimeDTO.Response();
         dto.setId(entity.getId());
         dto.setMovieId(entity.getMovieId());
@@ -400,6 +493,7 @@ public class ShowtimeService {
         dto.setRoomName(entity.getRoom().getName());
         dto.setMovieTitle(getMovieTitle(entity.getMovieId()));
         dto.setMovieDuration(getMovieDuration(entity.getMovieId()));
+        dto.setHasBookings(hasBookings);
         return dto;
     }
 

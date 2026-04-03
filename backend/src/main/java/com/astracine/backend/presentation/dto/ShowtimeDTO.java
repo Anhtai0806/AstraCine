@@ -45,6 +45,7 @@ public class ShowtimeDTO {
         private String movieTitle;
         private String roomName;
         private Integer movieDuration;
+        private Boolean hasBookings;
     }
 
     @Data
@@ -114,5 +115,32 @@ public class ShowtimeDTO {
         private String message;
         private List<Response> createdShowtimes;
         private List<String> skippedReasons;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateRequest {
+        @NotNull(message = "ID suất chiếu không được để trống")
+        private Long id;
+
+        @NotNull(message = "ID phim không được để trống")
+        private Long movieId;
+
+        @NotNull(message = "ID phòng không được để trống")
+        private Long roomId;
+
+        @NotNull(message = "Thời gian bắt đầu không được để trống")
+        @Future(message = "Thời gian bắt đầu phải trong tương lai")
+        private LocalDateTime startTime;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchSaveRequest {
+        private List<CreateRequest> creates;
+        private List<UpdateRequest> updates;
+        private List<Long> deletes;
     }
 }

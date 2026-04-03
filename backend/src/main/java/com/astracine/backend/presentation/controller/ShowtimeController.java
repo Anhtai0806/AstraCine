@@ -32,6 +32,19 @@ public class ShowtimeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.bulkCreateShowtimes(request));
     }
 
+    @PostMapping("/bulk/preview")
+    public ResponseEntity<List<ShowtimeDTO.Response>> previewBulkShowtimes(
+            @Valid @RequestBody ShowtimeDTO.BulkCreateRequest request) {
+        return ResponseEntity.ok(showtimeService.previewBulkShowtimes(request));
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<Void> batchSaveShowtimes(
+            @Valid @RequestBody ShowtimeDTO.BatchSaveRequest request) {
+        showtimeService.batchSaveShowtimes(request);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Showtime> updateShowtime(@PathVariable Long id,
                                                    @Valid @RequestBody ShowtimeDTO.CreateRequest request) {

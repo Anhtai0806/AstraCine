@@ -51,6 +51,9 @@ const ShowtimeManager = () => {
     const [movies, setMovies] = useState([]);
     const [rooms, setRooms] = useState([]);
     const [showtimes, setShowtimes] = useState([]);
+    const [draftShowtimes, setDraftShowtimes] = useState([]);
+    const [pendingChanges, setPendingChanges] = useState({ creates: [], updates: [], deletes: [] });
+    const [isSaving, setIsSaving] = useState(false);
 
     const [modal, setModal] = useState(null);
     const [createForm, setCreateForm] = useState({ id: null, movieId: '', roomId: '', startTime: '', date: '' });
@@ -78,6 +81,8 @@ const ShowtimeManager = () => {
             setMovies(movieRes.data || []);
             setRooms(roomRes.data || []);
             setShowtimes(showtimeRes.data || []);
+            setDraftShowtimes(showtimeRes.data || []);
+            setPendingChanges({ creates: [], updates: [], deletes: [] });
         } catch (error) {
             alert(getErrorMessage(error, 'Không thể tải dữ liệu lịch chiếu'));
         } finally {
@@ -154,63 +159,121 @@ const ShowtimeManager = () => {
 
     const handleCreateSubmit = async (event) => {
         event.preventDefault();
-        try {
-            const payload = {
-                movieId: Number(createForm.movieId),
-                roomId: Number(createForm.roomId),
-                startTime: `${createForm.date}T${createForm.startTime}:00`,
-            };
 
-            if (createForm.id) {
-                await axiosClient.put(`/admin/showtimes/${createForm.id}`, payload);
-                alert('Đã cập nhật suất chiếu');
+        if (createForm.id && isShowtimeLocked(createForm.id)) {
+            alert('Không thể sửa suất chiếu đã chiếu hoặc đã có vé bán/giữ.');
+            return;
+        }
+
+        const payload = {
+            movieId: Number(createForm.movieId),
+            roomId: Number(createForm.roomId),
+            startTime: `${createForm.date}T${createForm.startTime}:00`,
+        };
+
+        const movie = movies.find(m => m.id === payload.movieId);
+        const room = rooms.find(r => r.id === payload.roomId);
+
+        if (createForm.id) {
+            const isTemp = String(createForm.id).startsWith('temp_');
+            if (isTemp) {
+                setPendingChanges(prev => ({
+                    ...prev,
+                    creates: prev.creates.map(c => c.tempId === createForm.id ? { tempId: createForm.id, ...payload } : c)
+                }));
             } else {
-                await axiosClient.post('/admin/showtimes', payload);
-                alert('Đã tạo lịch chiếu');
+                const originalId = Number(createForm.id);
+                setPendingChanges(prev => {
+                    const newUpdates = prev.updates.filter(u => u.id !== originalId);
+                    return { ...prev, updates: [...newUpdates, { id: originalId, ...payload }] };
+                });
             }
 
-            setModal(null);
-            await loadData();
-        } catch (error) {
-            alert(getErrorMessage(error, 'Không thể lưu suất chiếu'));
+            setDraftShowtimes(prev => prev.map(s => String(s.id) === String(createForm.id) ? {
+                ...s, movieId: payload.movieId, roomId: payload.roomId,
+                startTime: payload.startTime, endTime: payload.startTime,
+                movieTitle: movie?.title, movieDuration: movie?.durationMinutes
+            } : s));
+        } else {
+            const newTempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            setPendingChanges(prev => ({
+                ...prev, creates: [...prev.creates, { tempId: newTempId, ...payload }]
+            }));
+            setDraftShowtimes(prev => [...prev, {
+                id: newTempId, movieId: payload.movieId, roomId: payload.roomId,
+                startTime: payload.startTime, endTime: payload.startTime,
+                movieTitle: movie?.title, roomName: room?.name, movieDuration: movie?.durationMinutes, status: 'OPEN'
+            }]);
         }
+        setModal(null);
+    };
+
+    const isShowtimeLocked = (showtimeId) => {
+        if (!showtimeId) return false;
+        if (String(showtimeId).startsWith('temp_')) return false;
+        const st = draftShowtimes.find(s => String(s.id) === String(showtimeId));
+        if (!st) return false;
+        if (st.hasBookings) return true;
+        if (new Date(st.startTime) <= new Date()) return true;
+        return false;
     };
 
     const handleDeleteShowtime = async () => {
         if (!createForm.id) return;
-        if (!window.confirm('Bạn có chắc muốn xóa suất chiếu này?')) return;
 
-        try {
-            await axiosClient.delete(`/admin/showtimes/${createForm.id}`);
-            alert('Đã xóa suất chiếu');
-            setModal(null);
-            await loadData();
-        } catch (error) {
-            alert(getErrorMessage(error, 'Không thể xóa suất chiếu'));
+        if (isShowtimeLocked(createForm.id)) {
+            alert('Không thể xóa suất chiếu đã chiếu hoặc đã có vé bán/giữ.');
+            return;
         }
+
+        const isTemp = String(createForm.id).startsWith('temp_');
+
+        setPendingChanges(prev => {
+            if (isTemp) return { ...prev, creates: prev.creates.filter(c => c.tempId !== createForm.id) };
+            const originalId = Number(createForm.id);
+            return {
+                ...prev,
+                deletes: [...prev.deletes, originalId],
+                updates: prev.updates.filter(u => u.id !== originalId)
+            };
+        });
+
+        setDraftShowtimes(prev => prev.filter(s => String(s.id) !== String(createForm.id)));
+        setModal(null);
     };
 
     const handleDeleteDayShowtimes = async () => {
         const scheduleDate = formatDateKey(date);
-        const dayShowtimes = showtimes.filter((showtime) => showtime.startTime.startsWith(scheduleDate));
+        const dayShowtimes = draftShowtimes.filter((showtime) => showtime.startTime.startsWith(scheduleDate));
 
         if (!dayShowtimes.length) {
             alert('Không có lịch chiếu nào trong ngày được chọn');
             return;
         }
 
-        if (!window.confirm(`Bạn có chắc muốn xóa toàn bộ ${dayShowtimes.length} suất chiếu trong ngày ${scheduleDate}?`)) {
+        const uneditable = dayShowtimes.filter(s => s.hasBookings || new Date(s.startTime) <= new Date());
+        if (uneditable.length === dayShowtimes.length) {
+            alert('Tất cả suất chiếu trong ngày này đã trôi qua hoặc đã bán vé, không thể xóa.');
             return;
         }
 
-        try {
-            await axiosClient.delete('/admin/showtimes', { params: { scheduleDate } });
-            alert('Đã xóa toàn bộ lịch chiếu trong ngày');
-            setModal(null);
-            await loadData();
-        } catch (error) {
-            alert(getErrorMessage(error, 'Không thể xóa toàn bộ lịch chiếu trong ngày'));
-        }
+        const confirmMsg = uneditable.length > 0
+            ? `Xóa ${dayShowtimes.length - uneditable.length} suất chiếu hợp lệ (bỏ qua ${uneditable.length} suất không thể xóa)?`
+            : `Xóa toàn bộ ${dayShowtimes.length} suất chiếu trong ngày khỏi bản nháp?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        const editableDayShowtimes = dayShowtimes.filter(s => !(s.hasBookings || new Date(s.startTime) <= new Date()));
+        const newDeletes = editableDayShowtimes.filter(s => !String(s.id).startsWith('temp_')).map(s => s.id);
+
+        setPendingChanges(prev => ({
+            ...prev,
+            deletes: [...prev.deletes, ...newDeletes],
+            creates: prev.creates.filter(c => !editableDayShowtimes.some(ds => String(ds.id) === String(c.tempId))),
+            updates: prev.updates.filter(u => !editableDayShowtimes.some(ds => ds.id === u.id))
+        }));
+
+        setDraftShowtimes(prev => prev.filter(s => !editableDayShowtimes.some(eds => String(eds.id) === String(s.id))));
     };
 
 
@@ -253,6 +316,24 @@ const ShowtimeManager = () => {
         }
     };
 
+    const handleSaveChanges = async () => {
+        setIsSaving(true);
+        try {
+            const payload = {
+                creates: pendingChanges.creates.map(c => ({ movieId: c.movieId, roomId: c.roomId, startTime: c.startTime })),
+                updates: pendingChanges.updates,
+                deletes: pendingChanges.deletes
+            };
+            await axiosClient.post('/admin/showtimes/batch', payload);
+            alert('Đã lưu tất cả thay đổi thành công!');
+            await loadData();
+        } catch (error) {
+            alert(getErrorMessage(error, 'Lỗi khi lưu thay đổi'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const openSeatModal = async (showtime) => {
         try {
             const response = await axiosClient.get(`/admin/showtimes/${showtime.id}/seats`);
@@ -277,7 +358,7 @@ const ShowtimeManager = () => {
 
     const renderTimeline = () => {
         const dateKey = formatDateKey(date);
-        const todaysShowtimes = showtimes.filter((showtime) => showtime.startTime.startsWith(dateKey));
+        const todaysShowtimes = draftShowtimes.filter((showtime) => showtime.startTime.startsWith(dateKey));
 
         return (
             <div className="timeline-wrapper">
@@ -348,7 +429,7 @@ const ShowtimeManager = () => {
                             const dayKey = formatDateKey(day);
                             const isCurrentMonth = day.getMonth() === date.getMonth();
                             const isToday = formatDateKey(new Date()) === dayKey;
-                            const count = showtimes.filter((showtime) => showtime.startTime.startsWith(dayKey)).length;
+                            const count = draftShowtimes.filter((showtime) => showtime.startTime.startsWith(dayKey)).length;
 
                             return (
                                 <div
@@ -399,6 +480,17 @@ const ShowtimeManager = () => {
                 </div>
 
                 <div className="header-actions">
+                    {(pendingChanges.creates.length > 0 || pendingChanges.updates.length > 0 || pendingChanges.deletes.length > 0) && (
+                        <div className="sync-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, backgroundColor: '#fef3c7', padding: '6px 12px', borderRadius: 6 }}>
+                            <span style={{ color: '#d97706', fontWeight: 'bold' }}>
+                                ⚠️ Có {pendingChanges.creates.length + pendingChanges.updates.length + pendingChanges.deletes.length} thay đổi chưa lưu
+                            </span>
+                            <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12, border: 'none', background: 'none', color: '#d97706', cursor: 'pointer' }} onClick={() => { if (window.confirm('Hủy bỏ toàn bộ nháp?')) loadData(); }}>Hủy</button>
+                            <button style={{ padding: '4px 12px', fontSize: 13, backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }} onClick={handleSaveChanges} disabled={isSaving}>
+                                {isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                            </button>
+                        </div>
+                    )}
                     <button className="btn-bulk" onClick={openBulkModal}>
                         <FiClipboard size={16} /> Bulk Create
                     </button>
@@ -406,7 +498,7 @@ const ShowtimeManager = () => {
                         <FiTrash2 size={16} /> Xóa Lịch Trong Ngày
                     </button>
                     <button className="btn-create" onClick={() => openCreateModal()}>
-                        <FiPlus size={18} /> Tạo Mới
+                        <FiPlus size={18} /> Mới
                     </button>
                 </div>
             </div>
@@ -439,7 +531,7 @@ const ShowtimeManager = () => {
                                     >
                                         <option value="">-- Chọn phim --</option>
                                         {activeMovies.map((movie) => (
-                                            <option key={movie.id} value={movie.id}>{movie.title}</option>
+                                            <option key={movie.id} value={movie.id}>{movie.title} {movie.durationMinutes ? `(${movie.durationMinutes} phút)` : ''}</option>
                                         ))}
                                     </select>
                                     {!activeMovies.length && (
@@ -494,18 +586,28 @@ const ShowtimeManager = () => {
                                     Hệ thống sẽ tự động đảm bảo phòng không trùng lịch, có 15 phút dọn dẹp và không để 1 phòng chiếu cùng phim liên tiếp.
                                 </div>
 
+                                {createForm.id && (draftShowtimes.find(s => String(s.id) === String(createForm.id))?.hasBookings || new Date(createForm.date + 'T' + createForm.startTime) <= new Date()) && (
+                                    <div className="info-note" style={{ color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}>
+                                        ⚠️ Suất chiếu này đã lịch sử hoặc có vé, nên không thể Sửa/Xóa.
+                                    </div>
+                                )}
+
                                 <div className="modal-action-row">
-                                    <button type="submit" className="create-form-submit">
-                                        {createForm.id ? 'Lưu Thay Đổi' : 'Tạo Lịch Chiếu'}
-                                    </button>
+                                    {(!createForm.id || !(draftShowtimes.find(s => String(s.id) === String(createForm.id))?.hasBookings || new Date(createForm.date + 'T' + createForm.startTime) <= new Date())) && (
+                                        <button type="submit" className="create-form-submit">
+                                            {createForm.id ? 'Cập Nhật Nháp' : 'Thêm Bản Nháp'}
+                                        </button>
+                                    )}
                                     {createForm.id && (
                                         <>
                                             <button type="button" className="btn-outline" onClick={() => openSeatModal({ id: createForm.id })}>
                                                 Xem Ghế
                                             </button>
-                                            <button type="button" className="btn-danger" onClick={handleDeleteShowtime}>
-                                                Xóa
-                                            </button>
+                                            {!(draftShowtimes.find(s => String(s.id) === String(createForm.id))?.hasBookings || new Date(createForm.date + 'T' + createForm.startTime) <= new Date()) && (
+                                                <button type="button" className="btn-danger" onClick={handleDeleteShowtime}>
+                                                    Xóa
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>
@@ -551,7 +653,7 @@ const ShowtimeManager = () => {
                                         <label className="create-form-label">Chọn Phim</label>
                                         <select className="create-form-select" value={bulkForm.movieId} onChange={(e) => setBulkForm({ ...bulkForm, movieId: e.target.value })} required>
                                             <option value="">-- Chọn phim --</option>
-                                            {activeMovies.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                                            {activeMovies.map((m) => <option key={m.id} value={m.id}>{m.title} {m.durationMinutes ? `(${m.durationMinutes} phút)` : ''}</option>)}
                                         </select>
                                     </div>
                                     <div className="create-form-group">
