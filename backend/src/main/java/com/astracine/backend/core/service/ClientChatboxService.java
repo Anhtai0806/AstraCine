@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+﻿package com.astracine.backend.core.service;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
@@ -445,6 +445,18 @@ public class ClientChatboxService {
         LocalDateTime now = LocalDateTime.now();
         UserPreference preference = extractUserPreference(currentMessage, now, movies);
         boolean movieListOnlyQuery = isMovieListOnlyQuery(currentMessage, preference);
+
+        if (isSmallTalkOrOffTopic(currentMessage, movies)) {
+            return ChatResponse.builder()
+                    .reply(buildOutOfDomainReply(currentMessage))
+                    .usedAi(false)
+                    .source("out-of-domain")
+                    .suggestedMovies(List.of())
+                    .suggestedShowtimes(List.of())
+                    .sessionId(sessionId)
+                    .suggestedCombos(List.of())
+                    .build();
+        }
 
         List<Showtime> allUpcomingShowtimes = getUpcomingShowtimes(now, movieById, preference,
                 preference.specificMovieId());
@@ -1519,6 +1531,60 @@ public class ClientChatboxService {
                 "lich chieu phim nao",
                 "ngay mai co phim nao chieu"));
     }
+    private String buildOutOfDomainReply(String currentMessage) {
+        String normalized = normalize(currentMessage);
+        if (containsAny(normalized, List.of("xin chao", "chao", "hello", "hi", "helo"))) {
+            return "Chào bạn! Mình có thể hỗ trợ tư vấn phim, lịch chiếu và đặt vé. Bạn có thể nhắn như `phim nào đang chiếu`, `hôm nay có suất nào` hoặc `đặt vé Avatar 3`.";
+        }
+        if (containsAny(normalized, List.of(
+                "toi buon", "hom nay toi buon", "chan qua", "met qua", "co don", "tam trang", "stress", "buon qua"))) {
+            return "Mình hiểu rồi. Nếu bạn muốn đổi mood một chút, mình có thể gợi ý phim phù hợp, lịch chiếu hôm nay hoặc hỗ trợ đặt vé ngay trong khung chat này.";
+        }
+        if (containsAny(normalized, List.of("cam on", "thank", "thanks", "thank you"))) {
+            return "Mình luôn sẵn sàng hỗ trợ. Khi cần xem phim, lịch chiếu hoặc đặt vé, bạn cứ nhắn mình nhé.";
+        }
+        if (containsAny(normalized, List.of("tam biet", "bye", "bai bai", "hen gap lai"))) {
+            return "Mình luôn ở đây nếu bạn muốn xem lịch chiếu, chọn phim hoặc đặt vé. Hẹn gặp lại bạn nhé.";
+        }
+        return "Mình có thể hỗ trợ tư vấn phim, lịch chiếu và đặt vé. Nếu bạn muốn, bạn có thể nhắn như `hôm nay có phim gì hay`, `phim nào đang chiếu` hoặc `đặt vé Avatar 3`.";
+    }
+
+
+    private boolean isSmallTalkOrOffTopic(String currentMessage, List<Movie> movies) {
+        String normalized = normalize(currentMessage);
+        if (normalized.isBlank()) {
+            return true;
+        }
+        if (containsAny(normalized, List.of(
+                "phim", "ve", "suat", "chieu", "lich", "rap", "ghe", "combo",
+                "dat ve", "mua ve", "thanh toan", "goi y", "nen xem", "coming soon"))) {
+            return false;
+        }
+        if (extractSpecificMovieId(normalized, movies) != null || resolveGenreKeyword(normalized) != null) {
+            return false;
+        }
+        return containsAny(normalized, List.of(
+                "toi buon",
+                "hom nay toi buon",
+                "chan qua",
+                "met qua",
+                "co don",
+                "tam trang",
+                "buon qua",
+                "stress",
+                "xin chao",
+                "chao",
+                "hello",
+                "hi",
+                "helo",
+                "cam on",
+                "thanks",
+                "thank you",
+                "tam biet",
+                "bye",
+                "hen gap lai",
+                "bai bai"));
+    }
 
     private boolean hasExactShowtimeMatch(List<Showtime> showtimes, LocalTime targetTime) {
         if (targetTime == null) {
@@ -1726,29 +1792,13 @@ public class ClientChatboxService {
         return value == null ? "Không rõ" : String.valueOf(value);
     }
 
-    private boolean containsConfigured(String text, String keywordGroup) {
-        return containsAny(text, INTENT_KEYWORDS.getOrDefault(keywordGroup, List.of()));
-    }
-
-    private String resolveGenreKeyword(String normalizedText) {
-        return GENRE_KEYWORDS.entrySet().stream()
-                .filter(entry -> containsAny(normalizedText, entry.getValue()))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
-    }
-
     private boolean containsAny(String text, List<String> keywords) {
         if (text == null || text.isBlank()) {
             return false;
-        }
-        for (String keyword : keywords) {
-            String normalizedKeyword = normalize(keyword);
-            if (normalizedKeyword.isBlank()) {
-                continue;
             }
             String paddedText = " " + text + " ";
-            String paddedKeyword = " " + normalizedKeyword + " ";
+        for (String keyword : keywords) {
+            String paddedKeyword = " " + keyword + " ";
             if (paddedText.contains(paddedKeyword))
                 return true;
         }
