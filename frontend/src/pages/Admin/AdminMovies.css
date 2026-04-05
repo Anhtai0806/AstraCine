@@ -152,6 +152,7 @@
     letter-spacing: 0.5px;
     border: none;
     text-align: left;
+    color: white;
 }
 
 .custom-table tbody tr {

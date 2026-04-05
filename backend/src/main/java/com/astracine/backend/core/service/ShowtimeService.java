@@ -1,4 +1,4 @@
-﻿package com.astracine.backend.core.service;
+package com.astracine.backend.core.service;
 
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Room;

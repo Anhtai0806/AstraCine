@@ -72,17 +72,23 @@ public class ClientChatboxService {
     private static final Set<String> GENERIC_MOVIE_TOKENS = Set.of(
             "phim", "movie", "rap", "ve", "suat", "chieu", "ngay", "mai", "hom", "nay",
             "nao", "nhung", "co", "toi", "muon", "biet", "xem");
-    private static final Pattern EXPLICIT_TIME_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*[:hHgG]\\s*(\\d{1,2})\\b");
+    private static final Pattern EXPLICIT_TIME_PATTERN = Pattern
+            .compile("\\b([01]?\\d|2[0-3])\\s*[:hHgG]\\s*(\\d{1,2})\\b");
     private static final Pattern HOUR_ONLY_PATTERN = Pattern.compile("\\b([01]?\\d|2[0-3])\\s*(?:h|gio)\\b");
     private static final Pattern SEAT_CODE_PATTERN = Pattern.compile("\\b([A-Za-z])\\s*(\\d{1,2})\\b");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\b(\\d{1,2})\\b");
+    private static final Pattern COMBO_INDEX_SELECTION_PATTERN = Pattern
+            .compile("\\b(?:(\\d+)\\s*(?:x\\s*)?)?combo\\s*(\\d{1,2})\\b");
     private static final Map<String, List<String>> INTENT_KEYWORDS = Map.ofEntries(
-            Map.entry("BOOKING", List.of("dat ve", "mua ve", "book ve", "giu ghe", "chon ghe", "dat cho", "thanh toan", "qr", "payos")),
+            Map.entry("BOOKING",
+                    List.of("dat ve", "mua ve", "book ve", "giu ghe", "chon ghe", "dat cho", "thanh toan", "qr",
+                            "payos")),
             Map.entry("CANCEL", List.of("huy", "thoi khong dat", "bo qua", "cancel")),
             Map.entry("CONFIRM", List.of("xac nhan", "dong y", "oke", "ok", "chot don")),
             Map.entry("PAID", List.of("da thanh toan", "da chuyen khoan", "xong", "thanh toan xong")),
-            Map.entry("SKIP_COMBO", List.of("khong", "ko", "khong combo", "khong can combo", "khong lay combo", "khong bap nuoc",
-                    "khong can bap nuoc", "khong mua", "khong can", "thoi khong")),
+            Map.entry("SKIP_COMBO",
+                    List.of("khong", "ko", "khong combo", "khong can combo", "khong lay combo", "khong bap nuoc",
+                            "khong can bap nuoc", "khong mua", "khong can", "thoi khong")),
             Map.entry("SHOWTIME_SELECTION", List.of("suat", "gio", "hom nay", "ngay mai", "thu")),
             Map.entry("NOW_SHOWING", List.of("dang chieu", "hom nay", "xem ngay", "suat chieu", "lich chieu")),
             Map.entry("COMING_SOON", List.of("sap chieu", "coming soon", "chuan bi chieu")),
@@ -92,7 +98,8 @@ public class ClientChatboxService {
             Map.entry("TOMORROW", List.of("ngay mai", "toi mai", "sang mai", "trua mai", "chieu mai")),
             Map.entry("TIME_SLOT_MORNING", List.of("buoi sang", "vao sang", "suat sang", "sang mai", "sang nay")),
             Map.entry("TIME_SLOT_NOON", List.of("buoi trua", "vao trua", "suat trua", "trua mai", "trua nay")),
-            Map.entry("TIME_SLOT_AFTERNOON", List.of("buoi chieu", "vao chieu", "suat buoi chieu", "chieu mai", "chieu nay")),
+            Map.entry("TIME_SLOT_AFTERNOON",
+                    List.of("buoi chieu", "vao chieu", "suat buoi chieu", "chieu mai", "chieu nay")),
             Map.entry("TIME_SLOT_EVENING", List.of("buoi toi", "vao toi", "suat toi", "toi mai", "toi nay")));
     private static final Map<String, List<String>> GENRE_KEYWORDS = Map.ofEntries(
             Map.entry("horror", List.of("kinh di", "horror")),
@@ -244,9 +251,46 @@ public class ClientChatboxService {
         }
 
         List<SeatStateDto> seatStates = seatHoldService.getSeatStates(selectedShowtime.getId());
+        Map<String, SeatStateDto> seatStateByCode = seatStates.stream()
+                .collect(Collectors.toMap(this::seatCode, seat -> seat, (left, right) -> left, LinkedHashMap::new));
         Map<String, SeatStateDto> availableSeatMap = seatStates.stream()
                 .filter(seat -> seat.getStatus() == SeatBookingStatus.AVAILABLE)
                 .collect(Collectors.toMap(this::seatCode, seat -> seat, (left, right) -> left, LinkedHashMap::new));
+
+        List<String> parsedSeatCodes = parseSeatCodesFromMessage(request.getMessage());
+        List<String> soldSeatCodes = new ArrayList<>();
+        List<String> heldSeatCodes = new ArrayList<>();
+        List<String> unknownSeatCodes = new ArrayList<>();
+        for (String seatCode : parsedSeatCodes) {
+            SeatStateDto seat = seatStateByCode.get(seatCode);
+            if (seat == null) {
+                unknownSeatCodes.add(seatCode);
+                continue;
+            }
+            if (seat.getStatus() == SeatBookingStatus.SOLD) {
+                soldSeatCodes.add(seatCode);
+            } else if (seat.getStatus() == SeatBookingStatus.HELD) {
+                heldSeatCodes.add(seatCode);
+            }
+        }
+
+        if (mentionsSeatChange(normalizedMessage)) {
+            session.setSeatIds(new ArrayList<>());
+            session.setAwaitingConfirmation(false);
+            saveBookingSession(userId, session);
+            return bookingResponse(
+                    "Mình đã chuyển lại bước chọn ghế để bạn chọn lại. "
+                            + buildSeatQuestion(selectedMovie, selectedShowtime, availableSeatMap),
+                    false,
+                    "booking-reset-seats",
+                    List.of(),
+                    List.of(),
+                    sessionId,
+                    toBookingState(session, movieById),
+                    List.of(),
+                    null,
+                    null);
+        }
 
         List<Long> parsedSeatIds = parseSeatIdsFromMessage(request.getMessage(), availableSeatMap);
         if (mentionsSeatRemoval(normalizedMessage)) {
@@ -261,8 +305,12 @@ public class ClientChatboxService {
 
         if (session.getSeatIds() == null || session.getSeatIds().isEmpty()) {
             saveBookingSession(userId, session);
+            String seatQuestion = buildSeatQuestion(selectedMovie, selectedShowtime, availableSeatMap);
+            String seatWarning = buildSeatValidationWarning(parsedSeatCodes, soldSeatCodes, heldSeatCodes,
+                    unknownSeatCodes);
+            String reply = seatWarning == null ? seatQuestion : seatWarning + " " + seatQuestion;
             return bookingResponse(
-                    buildSeatQuestion(selectedMovie, selectedShowtime, availableSeatMap),
+                    reply,
                     false,
                     "booking-collect-seats",
                     List.of(),
@@ -275,14 +323,37 @@ public class ClientChatboxService {
         }
 
         List<ComboCartItemDTO> comboSuggestions = activeComboSuggestions();
+        if (mentionsComboChange(normalizedMessage)) {
+            session.setComboItems(new ArrayList<>());
+            session.setComboResolved(false);
+            session.setAwaitingConfirmation(false);
+            saveBookingSession(userId, session);
+            return bookingResponse(
+                    buildComboQuestion(comboSuggestions),
+                    false,
+                    "booking-reset-combos",
+                    List.of(),
+                    List.of(),
+                    sessionId,
+                    toBookingState(session, movieById),
+                    comboSuggestions,
+                    null,
+                    null);
+        }
+
         List<ComboCartItemDTO> parsedCombos = parseCombosFromMessage(request.getMessage(), comboSuggestions);
-        if (!session.isComboResolved() || !parsedCombos.isEmpty() || mentionsComboSkip(normalizedMessage)) {
+        if (!session.isComboResolved() || !parsedCombos.isEmpty() || mentionsComboSkip(normalizedMessage)
+                || mentionsComboRemoval(normalizedMessage)) {
             if (containsComboSkipIntent(normalizedMessage)) {
                 session.setComboItems(new ArrayList<>());
                 session.setComboResolved(true);
                 session.setAwaitingConfirmation(false);
             } else if (mentionsComboRemoval(normalizedMessage)) {
-                session.setComboItems(removeComboItems(session.getComboItems(), parsedCombos, normalizedMessage));
+                if (parsedCombos.isEmpty()) {
+                    session.setComboItems(new ArrayList<>());
+                } else {
+                    session.setComboItems(removeComboItems(session.getComboItems(), parsedCombos, normalizedMessage));
+                }
                 session.setComboResolved(true);
                 session.setAwaitingConfirmation(false);
             } else {
@@ -812,12 +883,16 @@ public class ClientChatboxService {
         if (comboSuggestions.isEmpty()) {
             return "Hiện mình chưa thấy combo bắp nước đang bán. Nếu bạn không cần combo, chỉ cần trả lời `không` để mình sang bước xác nhận.";
         }
-        String comboList = comboSuggestions.stream()
-                .map(combo -> "- " + combo.getName() + " (" + formatMoney(combo.getPrice().longValue()) + ")")
+        String comboList = java.util.stream.IntStream.range(0, comboSuggestions.size())
+                .mapToObj(i -> {
+                    ComboCartItemDTO combo = comboSuggestions.get(i);
+                    return (i + 1) + ". " + combo.getName() + " (" + formatMoney(combo.getPrice().longValue()) + ")";
+                })
                 .collect(Collectors.joining("\n"));
         return "Bạn có muốn thêm bắp nước không? Hiện có các combo sau:\n"
                 + comboList
-                + "\nBạn có thể nhắn như `1 " + comboSuggestions.get(0).getName()
+                + "\nBạn có thể nhắn theo số thứ tự, ví dụ `2 combo 1` hoặc `combo 1`."
+                + "\nBạn vẫn có thể nhắn theo tên đầy đủ, ví dụ `1 " + comboSuggestions.get(0).getName()
                 + "`; nếu không cần thì chỉ cần trả lời `không`.";
     }
 
@@ -854,10 +929,8 @@ public class ClientChatboxService {
     }
 
     private List<Long> parseSeatIdsFromMessage(String rawMessage, Map<String, SeatStateDto> availableSeatMap) {
-        Matcher matcher = SEAT_CODE_PATTERN.matcher(rawMessage == null ? "" : rawMessage);
         LinkedHashSet<Long> seatIds = new LinkedHashSet<>();
-        while (matcher.find()) {
-            String code = matcher.group(1).toUpperCase(Locale.ROOT) + matcher.group(2);
+        for (String code : parseSeatCodesFromMessage(rawMessage)) {
             SeatStateDto seat = availableSeatMap.get(code);
             if (seat != null) {
                 seatIds.add(seat.getSeatId());
@@ -866,12 +939,53 @@ public class ClientChatboxService {
         return new ArrayList<>(seatIds);
     }
 
+    private List<String> parseSeatCodesFromMessage(String rawMessage) {
+        Matcher matcher = SEAT_CODE_PATTERN.matcher(rawMessage == null ? "" : rawMessage);
+        LinkedHashSet<String> seatCodes = new LinkedHashSet<>();
+        while (matcher.find()) {
+            seatCodes.add(matcher.group(1).toUpperCase(Locale.ROOT) + matcher.group(2));
+        }
+        return new ArrayList<>(seatCodes);
+    }
+
+    private String buildSeatValidationWarning(List<String> parsedSeatCodes, List<String> soldSeatCodes,
+            List<String> heldSeatCodes, List<String> unknownSeatCodes) {
+        if (parsedSeatCodes == null || parsedSeatCodes.isEmpty()) {
+            return null;
+        }
+
+        List<String> notices = new ArrayList<>();
+        if (soldSeatCodes != null && !soldSeatCodes.isEmpty()) {
+            notices.add("Ghế " + String.join(", ", soldSeatCodes) + " đã được bán.");
+        }
+        if (heldSeatCodes != null && !heldSeatCodes.isEmpty()) {
+            notices.add("Ghế " + String.join(", ", heldSeatCodes) + " đang được giữ.");
+        }
+        if (unknownSeatCodes != null && !unknownSeatCodes.isEmpty()) {
+            notices.add("Không tìm thấy ghế: " + String.join(", ", unknownSeatCodes) + ".");
+        }
+
+        if (notices.isEmpty()) {
+            return null;
+        }
+        return String.join(" ", notices) + " Bạn vui lòng chọn ghế khác còn trống.";
+    }
+
     private boolean shouldAppendSeats(String normalizedMessage) {
         return containsAny(normalizedMessage, List.of("them ghe", "them cho"));
     }
 
     private boolean mentionsSeatRemoval(String normalizedMessage) {
         return containsAny(normalizedMessage, List.of("bo ghe", "bo bot ghe", "xoa ghe", "xoa bot ghe"));
+    }
+
+    private boolean mentionsSeatChange(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of(
+                "doi ghe",
+                "chon lai ghe",
+                "chon lai cho",
+                "doi cho",
+                "doi vi tri"));
     }
 
     private List<Long> mergeSeatIds(List<Long> currentSeatIds, List<Long> addedSeatIds) {
@@ -905,7 +1019,18 @@ public class ClientChatboxService {
 
     private List<ComboCartItemDTO> parseCombosFromMessage(String rawMessage, List<ComboCartItemDTO> suggestions) {
         String normalizedMessage = normalize(rawMessage);
-        List<ComboCartItemDTO> parsed = new ArrayList<>();
+        Map<Long, ComboCartItemDTO> parsedById = new LinkedHashMap<>();
+
+        Matcher comboIndexMatcher = COMBO_INDEX_SELECTION_PATTERN.matcher(normalizedMessage);
+        while (comboIndexMatcher.find()) {
+            int quantity = comboIndexMatcher.group(1) == null ? 1 : Math.max(Integer.parseInt(comboIndexMatcher.group(1)), 1);
+            int comboIndex = Integer.parseInt(comboIndexMatcher.group(2));
+            if (comboIndex < 1 || comboIndex > suggestions.size()) {
+                continue;
+            }
+            ComboCartItemDTO suggestion = suggestions.get(comboIndex - 1);
+            appendParsedCombo(parsedById, suggestion, quantity);
+        }
 
         for (ComboCartItemDTO suggestion : suggestions) {
             String normalizedName = normalize(suggestion.getName());
@@ -914,15 +1039,30 @@ public class ClientChatboxService {
             }
 
             int quantity = extractQuantityForCombo(normalizedMessage, normalizedName);
-            BigDecimal subtotal = suggestion.getPrice().multiply(BigDecimal.valueOf(quantity));
-            parsed.add(new ComboCartItemDTO(
-                    suggestion.getComboId(),
-                    suggestion.getName(),
-                    quantity,
-                    suggestion.getPrice(),
-                    subtotal));
+            appendParsedCombo(parsedById, suggestion, quantity);
         }
-        return parsed;
+        return new ArrayList<>(parsedById.values());
+    }
+
+    private void appendParsedCombo(Map<Long, ComboCartItemDTO> parsedById, ComboCartItemDTO suggestion, int quantity) {
+        if (suggestion == null || suggestion.getComboId() == null) {
+            return;
+        }
+        int safeQuantity = Math.max(quantity, 1);
+        ComboCartItemDTO existing = parsedById.get(suggestion.getComboId());
+        int totalQuantity = safeQuantity;
+        if (existing != null && existing.getQuantity() != null) {
+            totalQuantity += existing.getQuantity();
+        }
+        BigDecimal subtotal = suggestion.getPrice() == null
+                ? null
+                : suggestion.getPrice().multiply(BigDecimal.valueOf(totalQuantity));
+        parsedById.put(suggestion.getComboId(), new ComboCartItemDTO(
+                suggestion.getComboId(),
+                suggestion.getName(),
+                totalQuantity,
+                suggestion.getPrice(),
+                subtotal));
     }
 
     private boolean shouldAppendCombos(String normalizedMessage) {
@@ -940,6 +1080,14 @@ public class ClientChatboxService {
                 && containsAny(normalizedMessage, List.of("combo", "bap", "nuoc"));
     }
 
+    private boolean mentionsComboChange(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of(
+                "doi combo",
+                "chon lai combo",
+                "doi bap nuoc",
+                "chon lai bap nuoc"));
+    }
+
     private boolean mentionsComboRemoval(String normalizedMessage) {
         return containsAny(normalizedMessage, List.of(
                 "bo combo",
@@ -951,7 +1099,8 @@ public class ClientChatboxService {
                 "bot combo"));
     }
 
-    private List<ComboCartItemDTO> mergeComboItems(List<ComboCartItemDTO> currentItems, List<ComboCartItemDTO> addedItems) {
+    private List<ComboCartItemDTO> mergeComboItems(List<ComboCartItemDTO> currentItems,
+            List<ComboCartItemDTO> addedItems) {
         Map<Long, ComboCartItemDTO> merged = new LinkedHashMap<>();
         if (currentItems != null) {
             for (ComboCartItemDTO item : currentItems) {
@@ -982,7 +1131,8 @@ public class ClientChatboxService {
         return new ArrayList<>(merged.values());
     }
 
-    private List<ComboCartItemDTO> removeComboItems(List<ComboCartItemDTO> currentItems, List<ComboCartItemDTO> removedItems,
+    private List<ComboCartItemDTO> removeComboItems(List<ComboCartItemDTO> currentItems,
+            List<ComboCartItemDTO> removedItems,
             String normalizedMessage) {
         Map<Long, ComboCartItemDTO> remaining = new LinkedHashMap<>();
         if (currentItems != null) {
@@ -1531,6 +1681,7 @@ public class ClientChatboxService {
                 "lich chieu phim nao",
                 "ngay mai co phim nao chieu"));
     }
+
     private String buildOutOfDomainReply(String currentMessage) {
         String normalized = normalize(currentMessage);
         if (containsAny(normalized, List.of("xin chao", "chao", "hello", "hi", "helo"))) {
@@ -1548,7 +1699,6 @@ public class ClientChatboxService {
         }
         return "Mình có thể hỗ trợ tư vấn phim, lịch chiếu và đặt vé. Nếu bạn muốn, bạn có thể nhắn như `hôm nay có phim gì hay`, `phim nào đang chiếu` hoặc `đặt vé Avatar 3`.";
     }
-
 
     private boolean isSmallTalkOrOffTopic(String currentMessage, List<Movie> movies) {
         String normalized = normalize(currentMessage);
@@ -1651,7 +1801,8 @@ public class ClientChatboxService {
                 score += 100;
 
             if (!normalizedTitle.isBlank()
-                    && (normalizedTitle.contains(normalizedConversation) || normalizedConversation.contains(normalizedTitle))) {
+                    && (normalizedTitle.contains(normalizedConversation)
+                            || normalizedConversation.contains(normalizedTitle))) {
                 score += 30;
             }
 
@@ -1781,6 +1932,18 @@ public class ClientChatboxService {
         return prioritized;
     }
 
+    private boolean containsConfigured(String text, String keywordGroup) {
+        return containsAny(text, INTENT_KEYWORDS.getOrDefault(keywordGroup, List.of()));
+    }
+
+    private String resolveGenreKeyword(String normalizedText) {
+        return GENRE_KEYWORDS.entrySet().stream()
+                .filter(entry -> containsAny(normalizedText, entry.getValue()))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
     private String safeText(String value, int maxLength) {
         if (value == null || value.isBlank())
             return "Không có mô tả";
@@ -1795,8 +1958,8 @@ public class ClientChatboxService {
     private boolean containsAny(String text, List<String> keywords) {
         if (text == null || text.isBlank()) {
             return false;
-            }
-            String paddedText = " " + text + " ";
+        }
+        String paddedText = " " + text + " ";
         for (String keyword : keywords) {
             String paddedKeyword = " " + keyword + " ";
             if (paddedText.contains(paddedKeyword))
