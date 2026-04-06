@@ -255,7 +255,8 @@ public class ShowtimeService {
                 recordSlotUsage(slotMovieUsage, generatedShowtime.getStartTime(), selectedMovie.getId());
 
                 state.previousMovieId = selectedMovie.getId();
-                state.cursor = generatedShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES);
+                state.cursor = roundUpToFiveMinuteMark(
+                        generatedShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES));
                 progress = true;
             }
         } while (progress);
@@ -340,10 +341,12 @@ public class ShowtimeService {
                 .collect(Collectors.toList());
 
         Showtime previousShowtime = findPreviousShowtime(existingShowtimes, windowStart);
-        LocalDateTime staggeredStart = windowStart.plusMinutes((long) roomIndex * ROOM_STAGGER_MINUTES);
+        LocalDateTime staggeredStart = roundUpToFiveMinuteMark(
+                windowStart.plusMinutes((long) roomIndex * ROOM_STAGGER_MINUTES));
         LocalDateTime initialCursor = previousShowtime == null
                 ? staggeredStart
-                : max(staggeredStart, previousShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES));
+                : max(staggeredStart,
+                        roundUpToFiveMinuteMark(previousShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES)));
 
         return new RoomGenerationState(
                 room,
@@ -366,7 +369,9 @@ public class ShowtimeService {
                 return;
             }
 
-            state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
+            state.cursor = max(
+                    state.cursor,
+                    roundUpToFiveMinuteMark(nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES)));
             state.previousMovieId = nextAnchor.getMovieId();
             state.nextAnchorIndex++;
 
@@ -382,7 +387,9 @@ public class ShowtimeService {
             return;
         }
 
-        state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
+        state.cursor = max(
+                state.cursor,
+                roundUpToFiveMinuteMark(nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES)));
         state.previousMovieId = nextAnchor.getMovieId();
         state.nextAnchorIndex++;
     }
@@ -594,6 +601,19 @@ public class ShowtimeService {
         return end;
     }
 
+    static LocalDateTime roundUpToFiveMinuteMark(LocalDateTime value) {
+        int minute = value.getMinute();
+        int remainder = minute % 5;
+        if (remainder == 0 && value.getSecond() == 0 && value.getNano() == 0) {
+            return value.withSecond(0).withNano(0);
+        }
+
+        int minutesToAdd = remainder == 0 ? 5 : 5 - remainder;
+        return value.plusMinutes(minutesToAdd)
+                .withSecond(0)
+                .withNano(0);
+    }
+
     private TimeSlot resolveTimeSlot(LocalDateTime startTime) {
         return timeSlotRepository.findMatchingByTime(startTime.toLocalTime()).stream()
                 .findFirst()
@@ -647,10 +667,8 @@ public class ShowtimeService {
     }
 
     private void deleteShowtimeSeats(Long showtimeId) {
-        List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtimeId);
-        if (!showtimeSeats.isEmpty()) {
-            showtimeSeatRepository.deleteAll(showtimeSeats);
-        }
+        showtimeSeatRepository.deleteByShowtimeId(showtimeId);
+        showtimeSeatRepository.flush();
     }
 
     private Integer getMovieDuration(Long movieId) {
