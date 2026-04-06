@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import movieApi from '../../api/movieApi';
 import './MovieDetail.css';
 
+const getMovieDuration = (movie) => {
+    const duration = movie?.durationMinutes ?? movie?.duration ?? 0;
+    const parsedDuration = Number(duration);
+    return Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : 0;
+};
+
 const MovieDetailPage = () => {
     const { movieId } = useParams();
     const navigate = useNavigate();
@@ -40,8 +46,9 @@ const MovieDetailPage = () => {
 
     // Format duration
     const formatDuration = (mins) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
+        const safeMinutes = Number(mins) || 0;
+        const h = Math.floor(safeMinutes / 60);
+        const m = safeMinutes % 60;
         return `${h}h ${m}m`;
     };
 
@@ -70,7 +77,7 @@ const MovieDetailPage = () => {
                             <div className="movie-meta">
                                 <span className="movie-age-tag">{movie.ageRating || 'P'}</span>
                                 <span className="movie-duration">
-                                    <i className="fas fa-clock"></i> {formatDuration(movie.duration || 0)}
+                                    <i className="fas fa-clock"></i> {formatDuration(getMovieDuration(movie))}
                                 </span>
                                 <span className="movie-release-date">
                                     <i className="fas fa-calendar-alt"></i> {formatDate(movie.releaseDate)}

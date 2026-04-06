@@ -44,6 +44,14 @@ public class Movie {
     @Column(name = "status", length = 20)
     private MovieStatus status = MovieStatus.NOW_SHOWING;
 
+    /**
+     * Độ ưu tiên (độ hot) của phim, từ 1 (ít phổ biến) đến 5 (siêu hot).
+     * Được dùng trong thuật toán tạo lịch tự động để quyết định mức độ
+     * ưu tiên khi xếp phim liên tiếp trong cùng một phòng chiếu.
+     */
+    @Column(name = "priority", nullable = false)
+    private Integer priority = 3;
+
     @Column(name = "poster_url", columnDefinition = "TEXT")
     private String posterUrl;
 

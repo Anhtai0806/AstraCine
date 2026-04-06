@@ -34,6 +34,7 @@ build/
 
 # Backend
 backend/src/main/resources/application.properties
+backend/.mvn/
 
 # Frontend
 frontend/.vite/
