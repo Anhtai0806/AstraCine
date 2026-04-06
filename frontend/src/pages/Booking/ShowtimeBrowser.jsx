@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { showtimeApi } from "../../api/showtimeApi.js";
 import { timeSlotApi } from "../../api/timeSlotApi.js";
 import movieApi from "../../api/movieApi.js";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "./ShowtimeBrowser.css";
 
 function formatDateTime(iso) {
@@ -65,12 +66,14 @@ export default function ShowtimeBrowser() {
     const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local time
     const [date, setDate] = useState(todayStr);
     const [activeSlotId, _setActiveSlotId] = useState("ALL");
+    const [pageOffset, setPageOffset] = useState(0); // 0 = first page (today + 6 days)
 
-    // Build 7-day array starting from today
-    const sevenDays = useMemo(() => {
+    // Build 7-day array based on pageOffset
+    const visibleDays = useMemo(() => {
         const days = [];
         const DAY_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-        for (let i = 0; i < 7; i++) {
+        const startIndex = pageOffset * 7;
+        for (let i = startIndex; i < startIndex + 7; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
             const yyyy = d.getFullYear();
@@ -83,7 +86,7 @@ export default function ShowtimeBrowser() {
             });
         }
         return days;
-    }, []);
+    }, [pageOffset]);
 
     useEffect(() => {
         // Load all showtimes (sử dụng public endpoint)
@@ -274,18 +277,38 @@ export default function ShowtimeBrowser() {
                 </div>
             )} */}
 
-            {/* 7-day picker */}
-            <div className="day-picker">
-                {sevenDays.map((d) => (
-                    <button
-                        key={d.value}
-                        className={`day-btn${date === d.value ? " active" : ""}`}
-                        onClick={() => setDate(d.value)}
-                    >
-                        <span className="day-label">{d.label}</span>
-                        <span className="day-date">{d.dayMonth}</span>
-                    </button>
-                ))}
+            {/* 7-day picker with navigation arrows */}
+            <div className="day-picker-wrapper">
+                <button
+                    className="day-nav-btn"
+                    onClick={() => setPageOffset((p) => Math.max(0, p - 1))}
+                    disabled={pageOffset === 0}
+                    title="Tuần trước"
+                >
+                    <FaChevronLeft />
+                </button>
+
+                <div className="day-picker">
+                    {visibleDays.map((d) => (
+                        <button
+                            key={d.value}
+                            className={`day-btn${date === d.value ? " active" : ""}`}
+                            onClick={() => setDate(d.value)}
+                        >
+                            <span className="day-label">{d.label}</span>
+                            <span className="day-date">{d.dayMonth}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    className="day-nav-btn"
+                    onClick={() => setPageOffset((p) => Math.min(1, p + 1))}
+                    disabled={pageOffset >= 1}
+                    title="Tuần sau"
+                >
+                    <FaChevronRight />
+                </button>
             </div>
 
             {error ? <pre className="error">{JSON.stringify(error, null, 2)}</pre> : null}
