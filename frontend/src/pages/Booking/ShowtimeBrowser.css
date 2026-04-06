@@ -82,12 +82,50 @@
     box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
 }
 
-/* Day Picker — 7 ngày */
+/* Day Picker wrapper with arrows */
+.day-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 28px;
+}
+
+.day-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #2a2f45;
+    background: #1a1f2e;
+    color: #e8ecf4;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.day-arrow:hover:not(:disabled) {
+    border-color: #f5c518;
+    color: #f5c518;
+    background: #1e2740;
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(245, 197, 24, 0.2);
+}
+
+.day-arrow:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
 .day-picker {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 10px;
-    margin: 0 0 28px;
+    flex: 1;
 }
 
 .day-btn {
@@ -395,8 +433,8 @@ input[type="time"] {
 }
 
 .staff-booking-note {
-  margin: -6px 0 20px;
-  color: #475569;
-  max-width: 860px;
-  line-height: 1.6;
+    margin: -6px 0 20px;
+    color: #475569;
+    max-width: 860px;
+    line-height: 1.6;
 }

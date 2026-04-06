@@ -173,6 +173,26 @@ const ShowtimeManager = () => {
 
         const movie = movies.find(m => m.id === payload.movieId);
         const room = rooms.find(r => r.id === payload.roomId);
+        const duration = movie?.durationMinutes || 120;
+        const CLEANUP = 15;
+
+        // Validate trùng lịch với tất cả draft (DB + nháp) cùng phòng
+        const newStart = new Date(payload.startTime).getTime();
+        const newEnd = newStart + (duration + CLEANUP) * 60000;
+
+        const overlap = draftShowtimes.find(s => {
+            if (createForm.id && String(s.id) === String(createForm.id)) return false; // bỏ qua chính nó khi edit
+            if (s.roomId !== payload.roomId) return false;
+            const sStart = new Date(s.startTime).getTime();
+            const sDuration = s.movieDuration || 120;
+            const sEnd = sStart + (sDuration + CLEANUP) * 60000;
+            return newStart < sEnd && newEnd > sStart;
+        });
+
+        if (overlap) {
+            alert(`Trùng lịch với "${overlap.movieTitle}" (${overlap.startTime.split('T')[1]?.slice(0,5)}) trong cùng phòng. Vui lòng chọn giờ khác.`);
+            return;
+        }
 
         if (createForm.id) {
             const isTemp = String(createForm.id).startsWith('temp_');
@@ -286,6 +306,28 @@ const ShowtimeManager = () => {
     const addBulkTime = () => {
         if (!bulkForm.newTime) return;
         if (bulkForm.startTimes.includes(bulkForm.newTime)) return;
+
+        const selectedMovie = movies.find(m => String(m.id) === String(bulkForm.movieId));
+        const duration = selectedMovie?.durationMinutes || 0;
+        const buffer = Number(bulkForm.bufferMinutes) || 15;
+
+        if (duration > 0) {
+            const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+            const newStart = toMin(bulkForm.newTime);
+            const newEnd = newStart + duration + buffer;
+
+            const overlap = bulkForm.startTimes.some(t => {
+                const existStart = toMin(t);
+                const existEnd = existStart + duration + buffer;
+                return newStart < existEnd && newEnd > existStart;
+            });
+
+            if (overlap) {
+                alert('Khung giờ này bị trùng với khung giờ đã thêm. Vui lòng chọn giờ khác.');
+                return;
+            }
+        }
+
         setBulkForm(prev => ({ ...prev, startTimes: [...prev.startTimes, prev.newTime].sort(), newTime: '' }));
     };
 
@@ -306,9 +348,34 @@ const ShowtimeManager = () => {
                 startTimes: bulkForm.startTimes,
                 bufferMinutes: Number(bulkForm.bufferMinutes) || 15,
             };
-            const response = await axiosClient.post('/admin/showtimes/bulk', payload);
-            setBulkResult(response.data);
-            await loadData();
+            const response = await axiosClient.post('/admin/showtimes/bulk/preview', payload);
+            const result = response.data;
+            const previews = result.createdShowtimes || [];
+
+            if (previews.length === 0) {
+                setBulkResult(result);
+                return;
+            }
+
+            // Gắn temp ID và đẩy vào draft + pendingChanges
+            const newDrafts = previews.map(p => ({
+                ...p,
+                id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                hasBookings: false,
+            }));
+
+            setDraftShowtimes(prev => [...prev, ...newDrafts]);
+            setPendingChanges(prev => ({
+                ...prev,
+                creates: [...prev.creates, ...newDrafts.map(d => ({
+                    tempId: d.id,
+                    movieId: d.movieId,
+                    roomId: d.roomId,
+                    startTime: d.startTime,
+                }))]
+            }));
+
+            setBulkResult({ ...result, message: result.message + ' Nhấn "Lưu Thay Đổi" để xác nhận.' });
         } catch (error) {
             alert(getErrorMessage(error, 'Không thể tạo lịch hàng loạt'));
         } finally {
@@ -688,16 +755,34 @@ const ShowtimeManager = () => {
                                     <input type="time" step="900" className="create-form-input" value={bulkForm.newTime} onChange={(e) => setBulkForm({ ...bulkForm, newTime: e.target.value })} />
                                     <button type="button" className="btn-secondary" onClick={addBulkTime}>+ Thêm</button>
                                 </div>
-                                {bulkForm.startTimes.length > 0 && (
-                                    <div className="selection-grid" style={{ marginBottom: 8 }}>
-                                        {bulkForm.startTimes.map((t) => (
-                                            <div key={t} className="selection-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'default' }}>
-                                                <span style={{ fontWeight: 700 }}>🕐 {t}</span>
-                                                <button type="button" onClick={() => removeBulkTime(t)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.1rem', cursor: 'pointer', padding: '0 4px' }}>✕</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                {bulkForm.startTimes.length > 0 && (() => {
+                                    const selectedMovie = movies.find(m => String(m.id) === String(bulkForm.movieId));
+                                    const duration = selectedMovie?.durationMinutes || 0;
+                                    const buffer = Number(bulkForm.bufferMinutes) || 15;
+
+                                    const calcEndTime = (timeStr) => {
+                                        if (!duration || !timeStr) return null;
+                                        const [h, m] = timeStr.split(':').map(Number);
+                                        const totalMin = h * 60 + m + duration + buffer;
+                                        const endH = Math.floor(totalMin / 60) % 24;
+                                        const endM = totalMin % 60;
+                                        return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+                                    };
+
+                                    return (
+                                        <div className="selection-grid" style={{ marginBottom: 8 }}>
+                                            {bulkForm.startTimes.map((t) => {
+                                                const endTime = calcEndTime(t);
+                                                return (
+                                                    <div key={t} className="selection-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'default' }}>
+                                                        <span style={{ fontWeight: 700 }}>🕐 {t}{endTime ? ` - ${endTime}` : ''}</span>
+                                                        <button type="button" onClick={() => removeBulkTime(t)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.1rem', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
                                 {!bulkForm.startTimes.length && <div className="info-note">Chưa thêm khung giờ nào. Hãy chọn giờ và nhấn "+ Thêm".</div>}
 
                                 {bulkResult && (

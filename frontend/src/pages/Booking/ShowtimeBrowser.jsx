@@ -48,11 +48,16 @@ export default function ShowtimeBrowser() {
     const [date, setDate] = useState(todayStr);
     const [activeSlotId, setActiveSlotId] = useState("ALL");
 
-    // Build 7-day array starting from today
-    const sevenDays = useMemo(() => {
+    // Build 14-day array starting from today
+    const DAYS_PER_PAGE = 7;
+    const TOTAL_DAYS = 14;
+    const [dayPage, setDayPage] = useState(0);
+    const maxDayPage = Math.ceil(TOTAL_DAYS / DAYS_PER_PAGE) - 1;
+
+    const allDays = useMemo(() => {
         const days = [];
         const DAY_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < TOTAL_DAYS; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
             const yyyy = d.getFullYear();
@@ -66,6 +71,8 @@ export default function ShowtimeBrowser() {
         }
         return days;
     }, []);
+
+    const visibleDays = allDays.slice(dayPage * DAYS_PER_PAGE, (dayPage + 1) * DAYS_PER_PAGE);
 
     useEffect(() => {
         // Load all showtimes (sử dụng public endpoint)
@@ -241,18 +248,34 @@ export default function ShowtimeBrowser() {
                 </div>
             )} */}
 
-            {/* 7-day picker */}
-            <div className="day-picker">
-                {sevenDays.map((d) => (
-                    <button
-                        key={d.value}
-                        className={`day-btn${date === d.value ? " active" : ""}`}
-                        onClick={() => setDate(d.value)}
-                    >
-                        <span className="day-label">{d.label}</span>
-                        <span className="day-date">{d.dayMonth}</span>
-                    </button>
-                ))}
+            {/* Day picker with arrows */}
+            <div className="day-picker-wrapper">
+                <button
+                    className="day-arrow"
+                    onClick={() => setDayPage(p => Math.max(0, p - 1))}
+                    disabled={dayPage === 0}
+                >
+                    ‹
+                </button>
+                <div className="day-picker">
+                    {visibleDays.map((d) => (
+                        <button
+                            key={d.value}
+                            className={`day-btn${date === d.value ? " active" : ""}`}
+                            onClick={() => setDate(d.value)}
+                        >
+                            <span className="day-label">{d.label}</span>
+                            <span className="day-date">{d.dayMonth}</span>
+                        </button>
+                    ))}
+                </div>
+                <button
+                    className="day-arrow"
+                    onClick={() => setDayPage(p => Math.min(maxDayPage, p + 1))}
+                    disabled={dayPage >= maxDayPage}
+                >
+                    ›
+                </button>
             </div>
 
             {error ? <pre className="error">{JSON.stringify(error, null, 2)}</pre> : null}

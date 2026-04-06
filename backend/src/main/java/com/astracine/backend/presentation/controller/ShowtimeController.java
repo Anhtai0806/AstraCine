@@ -33,7 +33,7 @@ public class ShowtimeController {
     }
 
     @PostMapping("/bulk/preview")
-    public ResponseEntity<List<ShowtimeDTO.Response>> previewBulkShowtimes(
+    public ResponseEntity<ShowtimeDTO.BulkCreateResponse> previewBulkShowtimes(
             @Valid @RequestBody ShowtimeDTO.BulkCreateRequest request) {
         return ResponseEntity.ok(showtimeService.previewBulkShowtimes(request));
     }

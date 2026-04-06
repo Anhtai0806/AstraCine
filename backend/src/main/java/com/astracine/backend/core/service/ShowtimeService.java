@@ -136,7 +136,7 @@ public class ShowtimeService {
                 skipped);
     }
 
-    public List<ShowtimeDTO.Response> previewBulkShowtimes(ShowtimeDTO.BulkCreateRequest request) {
+    public ShowtimeDTO.BulkCreateResponse previewBulkShowtimes(ShowtimeDTO.BulkCreateRequest request) {
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new RuntimeException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
         }
@@ -153,6 +153,7 @@ public class ShowtimeService {
         }
 
         List<ShowtimeDTO.Response> previews = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
         List<LocalTime> sortedTimes = request.getStartTimes().stream().sorted().collect(Collectors.toList());
         long tempIdCounter = -1;
 
@@ -162,13 +163,17 @@ public class ShowtimeService {
             if (movie.getReleaseDate() != null && movie.getReleaseDate().isAfter(current)) movieValid = false;
             if (movie.getEndDate() != null && movie.getEndDate().isBefore(current)) movieValid = false;
             if (!movieValid) {
+                skipped.add(current + ": Phim không khả dụng trong ngày này");
                 current = current.plusDays(1);
                 continue;
             }
 
             for (LocalTime time : sortedTimes) {
                 LocalDateTime startTime = current.atTime(time);
-                if (!startTime.isAfter(LocalDateTime.now())) continue;
+                if (!startTime.isAfter(LocalDateTime.now())) {
+                    skipped.add(current + " " + time + ": Thời gian đã qua");
+                    continue;
+                }
 
                 try {
                     validateShowtimeRules(room.getId(), movie.getId(), startTime, movie.getDurationMinutes(), null);
@@ -184,7 +189,7 @@ public class ShowtimeService {
                     );
 
                     if (selfOverlap) {
-                        throw new RuntimeException("Trùng lịch hoặc chưa đủ 15 phút dọn dẹp (với suất chiếu nháp vừa tạo).");
+                        throw new RuntimeException("Trùng với suất chiếu nháp khác trong cùng đợt tạo");
                     }
 
                     ShowtimeDTO.Response response = new ShowtimeDTO.Response();
@@ -199,11 +204,24 @@ public class ShowtimeService {
                     response.setMovieDuration(movie.getDurationMinutes());
                     response.setHasBookings(false);
                     previews.add(response);
-                } catch (Exception ignored) { }
+                } catch (Exception e) {
+                    skipped.add(current + " " + time + ": " + e.getMessage());
+                }
             }
             current = current.plusDays(1);
         }
-        return previews;
+
+        String message;
+        if (previews.isEmpty()) {
+            message = "Không tạo được suất chiếu nào. Tất cả khung giờ đều bị trùng hoặc không hợp lệ.";
+        } else if (skipped.isEmpty()) {
+            message = "Tạo thành công " + previews.size() + " suất chiếu nháp!";
+        } else {
+            message = "Tạo được " + previews.size() + " suất chiếu, bỏ qua " + skipped.size() + " khung giờ bị trùng.";
+        }
+
+        return new ShowtimeDTO.BulkCreateResponse(
+                previews.size(), skipped.size(), message, previews, skipped);
     }
 
     public void batchSaveShowtimes(ShowtimeDTO.BatchSaveRequest request) {
