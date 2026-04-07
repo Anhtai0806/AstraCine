@@ -89,6 +89,15 @@ const AdminLayout = () => {
                     </NavLink>
 
                     <NavLink
+                        to="/admin/combos"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
+                    </NavLink>
+
+                    <NavLink
                         to="/admin/showtimes"
                         className={({ isActive }) =>
                             isActive ? "nav-link active" : "nav-link"
@@ -142,14 +151,7 @@ const AdminLayout = () => {
                         <FaMoneyBillWave className="icon-admin-layout" /> Bảng lương Nhân viên
                     </NavLink>
 
-                    <NavLink
-                        to="/admin/combos"
-                        className={({ isActive }) =>
-                            isActive ? "nav-link active" : "nav-link"
-                        }
-                    >
-                        <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
-                    </NavLink>
+
                 </nav>
 
                 <div className="logout-section">

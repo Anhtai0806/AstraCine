@@ -1,5 +1,6 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.payment;
 
+import com.astracine.backend.core.service.SeatHoldService;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
 import com.astracine.backend.presentation.exception.HoldNotFoundException;
@@ -152,7 +153,8 @@ public class PayOSService {
             } catch (Exception ignored) {
             }
 
-            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode + "&status=PAID";
+            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
+                    + "&status=PAID";
             return PayOSCreateResponse.builder()
                     .orderCode(orderCode)
                     .checkoutUrl(returnUrlWithParams)

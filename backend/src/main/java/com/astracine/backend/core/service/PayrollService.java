@@ -32,8 +32,7 @@ public class PayrollService {
             "COUNTER", new BigDecimal("24000"),
             "CHECKIN", new BigDecimal("22000"),
             "CONCESSION", new BigDecimal("23000"),
-            "MULTI", new BigDecimal("26000")
-    );
+            "MULTI", new BigDecimal("26000"));
 
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
@@ -47,13 +46,15 @@ public class PayrollService {
         for (Attendance attendance : attendances) {
             User staff = attendance.getStaff();
             StaffAccumulator acc = byStaff.computeIfAbsent(staff.getId(), id -> new StaffAccumulator(staff));
-            acc.consume(attendance, resolvePayrollMinutes(attendance), resolveRate(attendance.getAssignment().getAssignedPosition()));
+            acc.consume(attendance, resolvePayrollMinutes(attendance),
+                    resolveRate(attendance.getAssignment().getAssignedPosition()));
         }
 
         List<PayrollDTO.PayrollStaffSummaryItem> items = byStaff.values().stream()
                 .map(StaffAccumulator::toSummaryItem)
                 .sorted(Comparator.comparing(PayrollDTO.PayrollStaffSummaryItem::getGrossAmount).reversed()
-                        .thenComparing(PayrollDTO.PayrollStaffSummaryItem::getStaffUsername, String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(PayrollDTO.PayrollStaffSummaryItem::getStaffUsername,
+                                String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
         int totalMinutes = items.stream().mapToInt(PayrollDTO.PayrollStaffSummaryItem::getTotalMinutes).sum();
@@ -69,11 +70,11 @@ public class PayrollService {
                 minutesToHours(totalMinutes),
                 totalGross,
                 buildRates(),
-                items
-        );
+                items);
     }
 
-    public PayrollDTO.PayrollStaffDetailResponse getPayrollForStaff(Long staffId, LocalDate fromDate, LocalDate toDate) {
+    public PayrollDTO.PayrollStaffDetailResponse getPayrollForStaff(Long staffId, LocalDate fromDate,
+            LocalDate toDate) {
         validateRange(fromDate, toDate);
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
@@ -93,16 +94,17 @@ public class PayrollService {
 
         List<Attendance> attendances = attendanceRepository.findPayrollAttendanceBetween(fromDate, toDate)
                 .stream()
-                .filter(attendance -> attendance.getStaff() != null && currentUser.getId().equals(attendance.getStaff().getId()))
+                .filter(attendance -> attendance.getStaff() != null
+                        && currentUser.getId().equals(attendance.getStaff().getId()))
                 .toList();
 
         return buildDetailResponse(currentUser, fromDate, toDate, attendances);
     }
 
     private PayrollDTO.PayrollStaffDetailResponse buildDetailResponse(User staff,
-                                                                      LocalDate fromDate,
-                                                                      LocalDate toDate,
-                                                                      List<Attendance> attendances) {
+            LocalDate fromDate,
+            LocalDate toDate,
+            List<Attendance> attendances) {
         List<PayrollDTO.PayrollAssignmentLineResponse> lines = new ArrayList<>();
         int totalMinutes = 0;
         BigDecimal grossAmount = BigDecimal.ZERO;
@@ -116,15 +118,18 @@ public class PayrollService {
                     attendance.getAssignment().getId(),
                     attendance.getBusinessDate(),
                     attendance.getAssignment().getAssignedPosition(),
-                    attendance.getAssignment().getShiftTemplate() != null ? attendance.getAssignment().getShiftTemplate().getCode() : null,
-                    attendance.getAssignment().getShiftTemplate() != null ? attendance.getAssignment().getShiftTemplate().getName() : null,
+                    attendance.getAssignment().getShiftTemplate() != null
+                            ? attendance.getAssignment().getShiftTemplate().getCode()
+                            : null,
+                    attendance.getAssignment().getShiftTemplate() != null
+                            ? attendance.getAssignment().getShiftTemplate().getName()
+                            : null,
                     attendance.getAssignment().getShiftStart(),
                     attendance.getAssignment().getShiftEnd(),
                     attendance.getAssignment().getStatus(),
                     workingMinutes,
                     hourlyRate,
-                    amount
-            ));
+                    amount));
 
             totalMinutes += workingMinutes;
             grossAmount = grossAmount.add(amount);
@@ -145,8 +150,7 @@ public class PayrollService {
                 grossAmount,
                 buildRates(),
                 lines,
-                "Lương hiện được tính theo attendance thực tế. Ca vắng được tính 0 phút."
-        );
+                "Lương hiện được tính theo attendance thực tế. Ca vắng được tính 0 phút.");
     }
 
     private List<PayrollDTO.PayrollRateResponse> buildRates() {
@@ -155,8 +159,7 @@ public class PayrollService {
                 .map(entry -> new PayrollDTO.PayrollRateResponse(
                         entry.getKey(),
                         entry.getValue(),
-                        entry.getValue().divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP)
-                ))
+                        entry.getValue().divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP)))
                 .toList();
     }
 
@@ -165,7 +168,8 @@ public class PayrollService {
             return 0;
         }
         return switch (attendance.getStatus()) {
-            case COMPLETED, ADJUSTED, MISSED_CHECKOUT, CHECKED_IN -> attendance.getWorkedMinutes() == null ? 0 : attendance.getWorkedMinutes();
+            case COMPLETED, ADJUSTED, MISSED_CHECKOUT, CHECKED_IN ->
+                attendance.getWorkedMinutes() == null ? 0 : attendance.getWorkedMinutes();
             case ABSENT, PENDING -> 0;
         };
     }
@@ -235,21 +239,20 @@ public class PayrollService {
             this.totalMinutes += workingMinutes;
             this.grossAmount = this.grossAmount.add(
                     hourlyRate.multiply(BigDecimal.valueOf(workingMinutes))
-                            .divide(BigDecimal.valueOf(60), 0, RoundingMode.HALF_UP)
-            );
+                            .divide(BigDecimal.valueOf(60), 0, RoundingMode.HALF_UP));
         }
 
         private PayrollDTO.PayrollStaffSummaryItem toSummaryItem() {
             return new PayrollDTO.PayrollStaffSummaryItem(
                     staff.getId(),
-                    staff.getFullName() != null && !staff.getFullName().isBlank() ? staff.getFullName() : staff.getUsername(),
+                    staff.getFullName() != null && !staff.getFullName().isBlank() ? staff.getFullName()
+                            : staff.getUsername(),
                     staff.getUsername(),
                     staff.getStaffPosition(),
                     assignmentCount,
                     totalMinutes,
                     BigDecimal.valueOf(totalMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP),
-                    grossAmount
-            );
+                    grossAmount);
         }
     }
 }

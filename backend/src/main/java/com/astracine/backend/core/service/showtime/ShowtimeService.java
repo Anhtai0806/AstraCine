@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.showtime;
 
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Room;
@@ -169,16 +169,16 @@ public class ShowtimeService {
                 createdShowtimes);
     }
 
-    private ShowtimeDTO.GenerateResponse generateShowtimesInternal(ShowtimeDTO.GenerateRequest request, boolean persist) {
+    private ShowtimeDTO.GenerateResponse generateShowtimesInternal(ShowtimeDTO.GenerateRequest request,
+            boolean persist) {
         LocalDate scheduleDate = request.getScheduleDate();
         LocalTime openingTime = request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime();
         LocalTime closingTime = request.getClosingTime() == null ? DEFAULT_CLOSING_TIME : request.getClosingTime();
-        LocalDateTime windowStart = scheduleDate.atTime(
-                openingTime);
         LocalDateTime windowEnd = resolveWindowEnd(
                 scheduleDate,
                 openingTime,
                 closingTime);
+        LocalDateTime windowStart = resolveFutureWindowStart(scheduleDate, openingTime, windowEnd);
 
         List<Movie> movies = resolveMoviesForGeneration(request.getMovieIds(), scheduleDate);
         if (movies.isEmpty()) {
@@ -397,7 +397,8 @@ public class ShowtimeService {
     /**
      * Chọn phim bằng thuật toán chấm điểm mềm (soft rule).
      *
-     * <p>Luật chiếu liên tiếp không còn là hard filter, mà được trừ điểm tùy theo
+     * <p>
+     * Luật chiếu liên tiếp không còn là hard filter, mà được trừ điểm tùy theo
      * priority để vẫn ưu tiên phim hot nhưng tránh lặp quá cứng giữa các suất.
      */
     private Movie chooseBestMovieForSlot(RoomGenerationState state,
@@ -481,7 +482,8 @@ public class ShowtimeService {
         return dto;
     }
 
-    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal timeSlotMultiplier, BigDecimal roomMultiplier) {
+    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal timeSlotMultiplier,
+            BigDecimal roomMultiplier) {
         List<Seat> originalSeats = seatRepository.findByRoomIdAndStatus(roomId, SeatStatus.ACTIVE);
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
         BigDecimal effectiveRoomMultiplier = roomMultiplier != null ? roomMultiplier : BigDecimal.ONE;
@@ -517,7 +519,8 @@ public class ShowtimeService {
 
     /**
      * [SOFT RULE - Option B] Kiểm tra cảnh báo khi chiếu cùng phim liên tiếp.
-     * Không ném exception, chỉ trả về message cảnh báo hoặc null nếu không có vấn đề.
+     * Không ném exception, chỉ trả về message cảnh báo hoặc null nếu không có vấn
+     * đề.
      */
     private String checkConsecutiveMovieWarning(Long roomId, Long movieId,
             LocalDateTime startTime, Long excludedShowtimeId) {
@@ -601,7 +604,22 @@ public class ShowtimeService {
         return end;
     }
 
-    static LocalDateTime roundUpToFiveMinuteMark(LocalDateTime value) {
+    private LocalDateTime resolveFutureWindowStart(LocalDate scheduleDate, LocalTime openingTime, LocalDateTime windowEnd) {
+        LocalDateTime requestedStart = scheduleDate.atTime(openingTime);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (!now.isBefore(windowEnd) && now.isAfter(requestedStart)) {
+            return windowEnd;
+        }
+
+        if (!now.isBefore(requestedStart)) {
+            return roundUpToFiveMinuteMark(now.plusSeconds(1));
+        }
+
+        return roundUpToFiveMinuteMark(requestedStart);
+    }
+
+    public static LocalDateTime roundUpToFiveMinuteMark(LocalDateTime value) {
         int minute = value.getMinute();
         int remainder = minute % 5;
         if (remainder == 0 && value.getSecond() == 0 && value.getNano() == 0) {
@@ -731,4 +749,3 @@ public class ShowtimeService {
         }
     }
 }
-

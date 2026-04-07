@@ -132,7 +132,8 @@ public class AttendanceService {
                 fromDate.atStartOfDay(),
                 toDate.plusDays(1).atStartOfDay());
 
-        Map<Long, Attendance> attendanceMap = attendanceRepository.findDetailedForStaffBetweenDates(currentUser.getId(), fromDate, toDate)
+        Map<Long, Attendance> attendanceMap = attendanceRepository
+                .findDetailedForStaffBetweenDates(currentUser.getId(), fromDate, toDate)
                 .stream()
                 .collect(Collectors.toMap(a -> a.getAssignment().getId(), Function.identity()));
 
@@ -153,13 +154,18 @@ public class AttendanceService {
         List<AttendanceDTO.AttendanceItemResponse> items = assignments.stream()
                 .map(assignment -> mapItem(assignment, attendanceMap.get(assignment.getId()), null))
                 .sorted(Comparator.comparing(AttendanceDTO.AttendanceItemResponse::getScheduledStart)
-                        .thenComparing(AttendanceDTO.AttendanceItemResponse::getStaffName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                        .thenComparing(AttendanceDTO.AttendanceItemResponse::getStaffName,
+                                Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
 
-        int checkedInCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.CHECKED_IN).count();
-        int completedCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.COMPLETED || i.getAttendanceStatus() == AttendanceStatus.ADJUSTED).count();
+        int checkedInCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.CHECKED_IN)
+                .count();
+        int completedCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.COMPLETED
+                || i.getAttendanceStatus() == AttendanceStatus.ADJUSTED).count();
         int absentCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.ABSENT).count();
-        int pendingCount = (int) items.stream().filter(i -> i.getAttendanceStatus() == AttendanceStatus.PENDING || i.getAttendanceStatus() == null).count();
+        int pendingCount = (int) items.stream()
+                .filter(i -> i.getAttendanceStatus() == AttendanceStatus.PENDING || i.getAttendanceStatus() == null)
+                .count();
 
         return new AttendanceDTO.AdminAttendanceDayResponse(
                 businessDate,
@@ -168,12 +174,11 @@ public class AttendanceService {
                 completedCount,
                 absentCount,
                 pendingCount,
-                items
-        );
+                items);
     }
 
     public AttendanceDTO.AttendanceItemResponse adjustAttendance(Long attendanceId,
-                                                                 AttendanceDTO.AdjustAttendanceRequest request) {
+            AttendanceDTO.AdjustAttendanceRequest request) {
         Attendance attendance = attendanceRepository.findDetailedById(attendanceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy attendance"));
 
@@ -184,9 +189,12 @@ public class AttendanceService {
         ScheduleAssignment assignment = attendance.getAssignment();
         attendance.setCheckInTime(request.getCheckInTime());
         attendance.setCheckOutTime(request.getCheckOutTime());
-        attendance.setWorkedMinutes(calculateWorkedMinutes(assignment, request.getCheckInTime(), request.getCheckOutTime()));
-        attendance.setLateMinutes((int) Math.max(0, Duration.between(assignment.getShiftStart(), request.getCheckInTime()).toMinutes()));
-        attendance.setEarlyLeaveMinutes((int) Math.max(0, Duration.between(request.getCheckOutTime(), assignment.getShiftEnd()).toMinutes()));
+        attendance.setWorkedMinutes(
+                calculateWorkedMinutes(assignment, request.getCheckInTime(), request.getCheckOutTime()));
+        attendance.setLateMinutes(
+                (int) Math.max(0, Duration.between(assignment.getShiftStart(), request.getCheckInTime()).toMinutes()));
+        attendance.setEarlyLeaveMinutes(
+                (int) Math.max(0, Duration.between(request.getCheckOutTime(), assignment.getShiftEnd()).toMinutes()));
         attendance.setStatus(AttendanceStatus.ADJUSTED);
         attendance.setNote(trimToNull(request.getNote()));
         attendance.setApprovedBy(getCurrentUser().getId());
@@ -258,10 +266,12 @@ public class AttendanceService {
     }
 
     private int calculateWorkedMinutes(ScheduleAssignment assignment,
-                                       LocalDateTime checkInTime,
-                                       LocalDateTime checkOutTime) {
-        LocalDateTime effectiveStart = checkInTime.isAfter(assignment.getShiftStart()) ? checkInTime : assignment.getShiftStart();
-        LocalDateTime effectiveEnd = checkOutTime.isBefore(assignment.getShiftEnd()) ? checkOutTime : assignment.getShiftEnd();
+            LocalDateTime checkInTime,
+            LocalDateTime checkOutTime) {
+        LocalDateTime effectiveStart = checkInTime.isAfter(assignment.getShiftStart()) ? checkInTime
+                : assignment.getShiftStart();
+        LocalDateTime effectiveEnd = checkOutTime.isBefore(assignment.getShiftEnd()) ? checkOutTime
+                : assignment.getShiftEnd();
         long rawMinutes = Math.max(0, Duration.between(effectiveStart, effectiveEnd).toMinutes());
         int breakMinutes = Optional.ofNullable(assignment.getShiftTemplate())
                 .map(ShiftTemplate::getBreakMinutes)
@@ -271,14 +281,15 @@ public class AttendanceService {
     }
 
     private AttendanceDTO.AttendanceItemResponse mapItem(ScheduleAssignment assignment,
-                                                         Attendance attendance,
-                                                         Long currentStaffId) {
+            Attendance attendance,
+            Long currentStaffId) {
         ShiftTemplate template = assignment.getShiftTemplate();
         AttendanceStatus status = attendance == null ? AttendanceStatus.PENDING : attendance.getStatus();
         LocalDateTime now = LocalDateTime.now();
         boolean isOwner = currentStaffId != null && Objects.equals(currentStaffId, assignment.getStaff().getId());
         boolean canCheckIn = isOwner
-                && (assignment.getStatus() == ScheduleAssignmentStatus.PUBLISHED || assignment.getStatus() == ScheduleAssignmentStatus.CONFIRMED)
+                && (assignment.getStatus() == ScheduleAssignmentStatus.PUBLISHED
+                        || assignment.getStatus() == ScheduleAssignmentStatus.CONFIRMED)
                 && (attendance == null || attendance.getCheckInTime() == null)
                 && (attendance == null || attendance.getStatus() != AttendanceStatus.ABSENT)
                 && !now.isBefore(assignment.getShiftStart().minusMinutes(EARLY_CHECK_IN_MINUTES))
@@ -314,8 +325,7 @@ public class AttendanceService {
                 attendance == null ? null : attendance.getCheckInDistanceMeters(),
                 attendance == null ? Boolean.FALSE : attendance.getAutoMarkedAbsent(),
                 canCheckIn,
-                canCheckOut
-        );
+                canCheckOut);
     }
 
     private double distanceInMeters(double lat1, double lng1, double lat2, double lng2) {
