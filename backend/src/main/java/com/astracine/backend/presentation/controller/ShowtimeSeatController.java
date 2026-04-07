@@ -4,6 +4,8 @@ import com.astracine.backend.core.service.SeatHoldService;
 import com.astracine.backend.presentation.dto.seat.SeatStateDto;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,8 +22,13 @@ public class ShowtimeSeatController {
     }
 
     @GetMapping("/{showtimeId}/seat-states")
-    public ResponseEntity<List<SeatStateDto>> getSeatStates(@PathVariable Long showtimeId) {
-        return ResponseEntity.ok(seatHoldService.getSeatStates(showtimeId));
-    }
+    public ResponseEntity<List<SeatStateDto>> getSeatStates(
+            @PathVariable Long showtimeId,
+            @AuthenticationPrincipal UserDetails user,
+            @RequestHeader(value = "X-User-Id", required = false) String guestUserId) {
+        String userId = user != null ? user.getUsername()
+                : (guestUserId != null && !guestUserId.isBlank() ? guestUserId : null);
 
+        return ResponseEntity.ok(seatHoldService.getSeatStates(showtimeId, userId));
+    }
 }
