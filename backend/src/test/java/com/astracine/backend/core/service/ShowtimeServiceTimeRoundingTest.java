@@ -2,6 +2,8 @@ package com.astracine.backend.core.service;
 
 import org.junit.jupiter.api.Test;
 
+import com.astracine.backend.core.service.showtime.ShowtimeService;
+
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

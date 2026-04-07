@@ -1,6 +1,6 @@
 package com.astracine.backend.presentation.controller.client;
 
-import com.astracine.backend.core.service.ShowtimeService;
+import com.astracine.backend.core.service.showtime.ShowtimeService;
 import com.astracine.backend.presentation.dto.ShowtimeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -1,6 +1,6 @@
 package com.astracine.backend.presentation.controller.client;
 
-import com.astracine.backend.core.service.InvoiceService;
+import com.astracine.backend.core.service.payment.InvoiceService;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 
 import lombok.RequiredArgsConstructor;

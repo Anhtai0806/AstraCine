@@ -1,6 +1,6 @@
 package com.astracine.backend.presentation.controller;
 
-import com.astracine.backend.core.service.ShowtimeService;
+import com.astracine.backend.core.service.showtime.ShowtimeService;
 import com.astracine.backend.presentation.dto.ShowtimeDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

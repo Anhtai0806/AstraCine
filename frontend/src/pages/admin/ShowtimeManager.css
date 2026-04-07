@@ -129,6 +129,13 @@
     transform: translateY(-1px);
 }
 
+.btn-create:disabled,
+.btn-outline:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
+    transform: none;
+}
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -197,6 +204,28 @@
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.preview-save-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.button-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: preview-save-spin 0.75s linear infinite;
+}
+
+@keyframes preview-save-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* --- 2. TIMELINE VIEW --- */
@@ -337,6 +366,15 @@
 .show-card.is-preview:hover {
     transform: none;
     box-shadow: 0 12px 24px rgba(14, 116, 144, 0.24);
+}
+
+.show-card.is-past {
+    opacity: 0.48;
+    filter: saturate(0.78);
+}
+
+.show-card.is-past:hover {
+    opacity: 0.66;
 }
 
 .show-card-badge {
@@ -907,6 +945,48 @@
     max-height: calc(100vh - 48px);
 }
 
+.cleanup-modal {
+    width: 720px;
+    max-height: calc(100vh - 48px);
+}
+
+.cleanup-all-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid #fecdd3;
+    background: #fff1f2;
+    color: #9f1239;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.cleanup-all-toggle input {
+    accent-color: #be123c;
+}
+
+.cleanup-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+}
+
+.cleanup-selection-grid.is-disabled {
+    opacity: 0.62;
+    pointer-events: none;
+}
+
+.cleanup-selection-grid .selection-card {
+    padding: 10px 12px;
+}
+
+.cleanup-info-note {
+    margin-bottom: 0;
+}
+
 .selection-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -979,6 +1059,18 @@
 
 .btn-danger:hover {
     background: #b91c1c;
+}
+
+.cleanup-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.cleanup-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .empty-state {

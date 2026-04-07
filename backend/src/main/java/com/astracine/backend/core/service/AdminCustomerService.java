@@ -1,6 +1,5 @@
 package com.astracine.backend.core.service;
 
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -19,22 +18,22 @@ public class AdminCustomerService {
     private final UserRepository userRepository;
 
     // get all customers
-   public Page<AdminUserManagementResponse> getAllCustomers(int page, int size, String keyword) {
+    public Page<AdminUserManagementResponse> getAllCustomers(int page, int size, String keyword) {
 
-    Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size);
 
-    Page<User> users;
+        Page<User> users;
 
-    if (keyword != null && !keyword.isBlank()) {
-        users = userRepository.searchCustomers(keyword, pageable);
-    } else {
-        users = userRepository.findCustomers(pageable);
+        if (keyword != null && !keyword.isBlank()) {
+            users = userRepository.searchCustomers(keyword, pageable);
+        } else {
+            users = userRepository.findCustomers(pageable);
+        }
+
+        return users.map(this::mapToResponse);
     }
 
-    return users.map(this::mapToResponse);
-}
-
-    //Lock customer account
+    // Lock customer account
     @Transactional
     public String lockCustomer(Long userId, String reason) {
 
@@ -57,7 +56,7 @@ public class AdminCustomerService {
         return "Customer locked successfully";
     }
 
-    //Unlock customer account
+    // Unlock customer account
     @Transactional
     public String unlockCustomer(Long userId) {
         User user = userRepository.findById(userId)

@@ -3,7 +3,6 @@ package com.astracine.backend.core.service;
 import com.astracine.backend.core.entity.ScheduleAssignment;
 import com.astracine.backend.core.entity.ShiftTemplate;
 import com.astracine.backend.core.entity.User;
-import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.repository.ScheduleAssignmentRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.staff.PayrollDTO;
@@ -34,8 +33,7 @@ public class PayrollService {
             "COUNTER", new BigDecimal("24000"),
             "CHECKIN", new BigDecimal("22000"),
             "CONCESSION", new BigDecimal("23000"),
-            "MULTI", new BigDecimal("26000")
-    );
+            "MULTI", new BigDecimal("26000"));
 
     private final ScheduleAssignmentRepository scheduleAssignmentRepository;
     private final UserRepository userRepository;
@@ -45,8 +43,7 @@ public class PayrollService {
 
         List<ScheduleAssignment> assignments = scheduleAssignmentRepository.findPayrollAssignmentsBetween(
                 fromDate.atStartOfDay(),
-                toDate.plusDays(1).atStartOfDay()
-        );
+                toDate.plusDays(1).atStartOfDay());
 
         Map<Long, StaffAccumulator> byStaff = new LinkedHashMap<>();
         for (ScheduleAssignment assignment : assignments) {
@@ -58,7 +55,8 @@ public class PayrollService {
         List<PayrollDTO.PayrollStaffSummaryItem> items = byStaff.values().stream()
                 .map(StaffAccumulator::toSummaryItem)
                 .sorted(Comparator.comparing(PayrollDTO.PayrollStaffSummaryItem::getGrossAmount).reversed()
-                        .thenComparing(PayrollDTO.PayrollStaffSummaryItem::getStaffUsername, String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(PayrollDTO.PayrollStaffSummaryItem::getStaffUsername,
+                                String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
         int totalMinutes = items.stream().mapToInt(PayrollDTO.PayrollStaffSummaryItem::getTotalMinutes).sum();
@@ -74,11 +72,11 @@ public class PayrollService {
                 minutesToHours(totalMinutes),
                 totalGross,
                 buildRates(),
-                items
-        );
+                items);
     }
 
-    public PayrollDTO.PayrollStaffDetailResponse getPayrollForStaff(Long staffId, LocalDate fromDate, LocalDate toDate) {
+    public PayrollDTO.PayrollStaffDetailResponse getPayrollForStaff(Long staffId, LocalDate fromDate,
+            LocalDate toDate) {
         validateRange(fromDate, toDate);
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
@@ -86,8 +84,7 @@ public class PayrollService {
         List<ScheduleAssignment> assignments = scheduleAssignmentRepository.findPayrollAssignmentsForStaffBetween(
                 staffId,
                 fromDate.atStartOfDay(),
-                toDate.plusDays(1).atStartOfDay()
-        );
+                toDate.plusDays(1).atStartOfDay());
 
         return buildDetailResponse(staff, fromDate, toDate, assignments);
     }
@@ -100,16 +97,15 @@ public class PayrollService {
         List<ScheduleAssignment> assignments = scheduleAssignmentRepository.findPayrollAssignmentsForStaffBetween(
                 currentUser.getId(),
                 fromDate.atStartOfDay(),
-                toDate.plusDays(1).atStartOfDay()
-        );
+                toDate.plusDays(1).atStartOfDay());
 
         return buildDetailResponse(currentUser, fromDate, toDate, assignments);
     }
 
     private PayrollDTO.PayrollStaffDetailResponse buildDetailResponse(User staff,
-                                                                      LocalDate fromDate,
-                                                                      LocalDate toDate,
-                                                                      List<ScheduleAssignment> assignments) {
+            LocalDate fromDate,
+            LocalDate toDate,
+            List<ScheduleAssignment> assignments) {
         List<PayrollDTO.PayrollAssignmentLineResponse> lines = new ArrayList<>();
         int totalMinutes = 0;
         BigDecimal grossAmount = BigDecimal.ZERO;
@@ -130,8 +126,7 @@ public class PayrollService {
                     assignment.getStatus(),
                     workingMinutes,
                     hourlyRate,
-                    amount
-            ));
+                    amount));
 
             totalMinutes += workingMinutes;
             grossAmount = grossAmount.add(amount);
@@ -152,8 +147,7 @@ public class PayrollService {
                 grossAmount,
                 buildRates(),
                 lines,
-                "Lương hiện được tính theo ca đã publish/confirm. Chưa bao gồm chấm công thực tế, phụ cấp, thưởng, phạt hay khấu trừ."
-        );
+                "Lương hiện được tính theo ca đã publish/confirm. Chưa bao gồm chấm công thực tế, phụ cấp, thưởng, phạt hay khấu trừ.");
     }
 
     private List<PayrollDTO.PayrollRateResponse> buildRates() {
@@ -162,8 +156,7 @@ public class PayrollService {
                 .map(entry -> new PayrollDTO.PayrollRateResponse(
                         entry.getKey(),
                         entry.getValue(),
-                        entry.getValue().divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP)
-                ))
+                        entry.getValue().divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP)))
                 .toList();
     }
 
@@ -240,21 +233,20 @@ public class PayrollService {
             this.totalMinutes += workingMinutes;
             this.grossAmount = this.grossAmount.add(
                     hourlyRate.multiply(BigDecimal.valueOf(workingMinutes))
-                            .divide(BigDecimal.valueOf(60), 0, RoundingMode.HALF_UP)
-            );
+                            .divide(BigDecimal.valueOf(60), 0, RoundingMode.HALF_UP));
         }
 
         private PayrollDTO.PayrollStaffSummaryItem toSummaryItem() {
             return new PayrollDTO.PayrollStaffSummaryItem(
                     staff.getId(),
-                    staff.getFullName() != null && !staff.getFullName().isBlank() ? staff.getFullName() : staff.getUsername(),
+                    staff.getFullName() != null && !staff.getFullName().isBlank() ? staff.getFullName()
+                            : staff.getUsername(),
                     staff.getUsername(),
                     staff.getStaffPosition(),
                     assignmentCount,
                     totalMinutes,
                     BigDecimal.valueOf(totalMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP),
-                    grossAmount
-            );
+                    grossAmount);
         }
     }
 }

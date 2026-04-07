@@ -215,7 +215,21 @@ const AdminPromotions = () => {
                 }
             }
 
-            setError(err?.response?.data?.message || 'Failed to save promotion. Please try again.');
+            const backendMessage = err?.response?.data?.message || '';
+            if (
+                typeof backendMessage === 'string' &&
+                (backendMessage.toLowerCase().includes('already exists') ||
+                    backendMessage.toLowerCase().includes('already exist') ||
+                    backendMessage.toLowerCase().includes('đã tồn tại') ||
+                    backendMessage.toLowerCase().includes('da ton tai') ||
+                    backendMessage.toLowerCase().includes('trùng mã') ||
+                    backendMessage.toLowerCase().includes('trung ma'))
+            ) {
+                showFieldError(codeRef, 'Mã khuyến mãi đã tồn tại.');
+                return;
+            }
+
+            setError(backendMessage || 'Failed to save promotion. Please try again.');
             console.error(err);
         }
     };

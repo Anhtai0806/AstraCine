@@ -42,8 +42,7 @@ function isMovieAvailableOnDate(movie, selectedDate) {
     const releaseDate = normalizeDateString(movie.releaseDate);
     const endDate = normalizeDateString(movie.endDate);
 
-    if (!releaseDate) return false;
-    if (selectedDate < releaseDate) return false;
+    if (releaseDate && selectedDate < releaseDate) return false;
     if (endDate && selectedDate > endDate) return false;
 
     return true;
@@ -171,8 +170,8 @@ export default function ShowtimeBrowser() {
      * If a movieId route param is present, only show that movie.
      */
     const groupedByMovie = useMemo(() => {
-        // Build a map: movieTitle → { movie info, showtimes[] }
-        const map = new Map(); // key: movie title (string)
+        // Build a map with stable keys to avoid overriding movies with same title.
+        const map = new Map(); // key: movie:<id> | title:<name>
         const moviesById = new Map();
         const moviesByTitle = new Map();
 
@@ -185,26 +184,43 @@ export default function ShowtimeBrowser() {
         for (const m of nowShowingMovies) {
             if (movieId && String(m.id) !== String(movieId)) continue;
             if (!isMovieAvailableOnDate(m, date)) continue;
-            if (!map.has(m.title)) {
-                map.set(m.title, { movieTitle: m.title, posterUrl: m.posterUrl, showtimes: [] });
+            const key = `movie:${m.id}`;
+            if (!map.has(key)) {
+                map.set(key, {
+                    movieKey: key,
+                    movieTitle: m.title,
+                    posterUrl: m.posterUrl,
+                    showtimes: [],
+                });
             }
         }
 
         // Attach filtered showtimes to matching movies
         for (const s of filtered) {
             const title = s.movieTitle || `Phim #${s.movieId}`;
+            const sourceMovieId = s?.movieId ?? s?.movieID ?? s?.movie_id ?? s?.movie?.id ?? null;
             const matchedMovie =
-                moviesById.get(String(s.movieId))
+                (sourceMovieId !== null ? moviesById.get(String(sourceMovieId)) : null)
                 || moviesByTitle.get(title);
 
             if (matchedMovie && !isMovieAvailableOnDate(matchedMovie, date)) {
                 continue;
             }
-            if (!map.has(title)) {
-                // showtime belongs to a movie not in NOW_SHOWING list — still show it
-                map.set(title, { movieTitle: title, posterUrl: null, showtimes: [] });
+
+            const key = matchedMovie
+                ? `movie:${matchedMovie.id}`
+                : (sourceMovieId !== null ? `movie:${sourceMovieId}` : `title:${title}`);
+
+            if (!map.has(key)) {
+                // showtime belongs to a movie not in NOW_SHOWING list � still show it
+                map.set(key, {
+                    movieKey: key,
+                    movieTitle: matchedMovie?.title || title,
+                    posterUrl: matchedMovie?.posterUrl || null,
+                    showtimes: [],
+                });
             }
-            map.get(title).showtimes.push(s);
+            map.get(key).showtimes.push(s);
         }
 
         // Sort showtimes within each movie by startTime
@@ -303,8 +319,8 @@ export default function ShowtimeBrowser() {
                             </tr>
                         </thead>
                         <tbody>
-                            {groupedByMovie.map(({ movieTitle, posterUrl, showtimes }) => (
-                                <tr key={movieTitle} className="schedule-row">
+                            {groupedByMovie.map(({ movieKey, movieTitle, posterUrl, showtimes }) => (
+                                <tr key={movieKey} className="schedule-row">
                                     <td className="col-movie">
                                         <div className="movie-name-cell">
                                             {posterUrl && (
