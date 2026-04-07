@@ -67,34 +67,12 @@ public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssi
         JOIN FETCH sa.plan p
         JOIN FETCH sa.staff s
         LEFT JOIN FETCH sa.shiftTemplate st
-        WHERE sa.staff.id = :staffId
-          AND sa.shiftStart < :toTime
-          AND sa.shiftEnd > :fromTime
+        WHERE sa.shiftStart <= :latestCheckInDeadline
           AND sa.status IN (
               com.astracine.backend.core.enums.ScheduleAssignmentStatus.PUBLISHED,
               com.astracine.backend.core.enums.ScheduleAssignmentStatus.CONFIRMED
           )
         ORDER BY sa.shiftStart ASC
         """)
-    List<ScheduleAssignment> findPayrollAssignmentsForStaffBetween(@Param("staffId") Long staffId,
-                                                                   @Param("fromTime") LocalDateTime fromTime,
-                                                                   @Param("toTime") LocalDateTime toTime);
-
-
-    @Query("""
-        SELECT sa
-        FROM ScheduleAssignment sa
-        JOIN FETCH sa.plan p
-        JOIN FETCH sa.staff s
-        LEFT JOIN FETCH sa.shiftTemplate st
-        WHERE sa.shiftStart < :toTime
-          AND sa.shiftEnd > :fromTime
-          AND sa.status IN (
-              com.astracine.backend.core.enums.ScheduleAssignmentStatus.PUBLISHED,
-              com.astracine.backend.core.enums.ScheduleAssignmentStatus.CONFIRMED
-          )
-        ORDER BY sa.shiftStart ASC, s.fullName ASC
-        """)
-    List<ScheduleAssignment> findPayrollAssignmentsBetween(@Param("fromTime") LocalDateTime fromTime,
-                                                           @Param("toTime") LocalDateTime toTime);
+    List<ScheduleAssignment> findAssignmentsEligibleForAutoAbsent(@Param("latestCheckInDeadline") LocalDateTime latestCheckInDeadline);
 }

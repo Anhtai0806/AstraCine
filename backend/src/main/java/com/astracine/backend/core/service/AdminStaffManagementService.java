@@ -2,6 +2,7 @@ package com.astracine.backend.core.service;
 
 import com.astracine.backend.core.entity.Role;
 import com.astracine.backend.core.entity.User;
+import com.astracine.backend.core.enums.EmploymentType;
 import com.astracine.backend.core.repository.RoleRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.admin.AdminStaffDecisionRequest;
@@ -26,7 +27,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class AdminStaffManagementService {
 
-    private static final Pattern STAFF_USERNAME_PATTERN = Pattern.compile("^staff(\\d+)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern STAFF_USERNAME_PATTERN =
+            Pattern.compile("^staff(\\d+)$", Pattern.CASE_INSENSITIVE);
     private static final String STAFF_ROLE_NAME = "ROLE_STAFF";
 
     private final UserRepository userRepository;
@@ -59,6 +61,9 @@ public class AdminStaffManagementService {
         user.setStaffApplicationStatus("AVAILABLE");
         user.setStaffTemporaryPassword(temporaryPassword);
         user.setStaffCredentialsIssuedAt(LocalDateTime.now());
+        user.setEmploymentType(EmploymentType.FULL_TIME);
+        user.setSeasonalOnly(false);
+        user.setNoShowStrikeCount(0);
         user.getRoles().add(staffRole);
 
         User saved = userRepository.save(user);
@@ -73,7 +78,14 @@ public class AdminStaffManagementService {
         ensureStaffUser(user);
 
         switch (action) {
-            case "UPDATE_POSITION" -> user.setStaffPosition(normalizeStaffPosition(request.getStaffPosition(), false));
+            case "UPDATE_POSITION" -> {
+                user.setStaffPosition(normalizeStaffPosition(request.getStaffPosition(), false));
+                user.setEmploymentType(normalizeEmploymentType(request.getEmploymentType()));
+                user.setSeasonalOnly(Boolean.TRUE.equals(request.getSeasonalOnly()));
+                user.setSeasonalStartDate(request.getSeasonalStartDate());
+                user.setSeasonalEndDate(request.getSeasonalEndDate());
+                validateSeasonalConfig(user);
+            }
             case "REVOKE" -> resetToBlankStaffAccount(user);
             default -> throw new RuntimeException("Action không hợp lệ. Dùng UPDATE_POSITION hoặc REVOKE");
         }
@@ -103,6 +115,11 @@ public class AdminStaffManagementService {
         user.setStaffApplicationStatus("AVAILABLE");
         user.setStaffTemporaryPassword(temporaryPassword);
         user.setStaffCredentialsIssuedAt(LocalDateTime.now());
+        user.setEmploymentType(EmploymentType.FULL_TIME);
+        user.setSeasonalOnly(false);
+        user.setSeasonalStartDate(null);
+        user.setSeasonalEndDate(null);
+        user.setNoShowStrikeCount(0);
     }
 
     private boolean matchesKeyword(User user, String keyword) {
@@ -113,6 +130,7 @@ public class AdminStaffManagementService {
                 || contains(user.getDesiredPosition(), keyword)
                 || contains(user.getStaffPosition(), keyword)
                 || contains(user.getStaffApplicationStatus(), keyword)
+                || contains(user.getEmploymentType() == null ? null : user.getEmploymentType().name(), keyword)
                 || user.getRoles().stream().map(Role::getName).anyMatch(role -> contains(role, keyword));
     }
 
@@ -144,6 +162,11 @@ public class AdminStaffManagementService {
                 .desiredPosition(user.getDesiredPosition())
                 .staffApplicationStatus(user.getStaffApplicationStatus())
                 .staffPosition(user.getStaffPosition())
+                .employmentType(user.getEmploymentType() == null ? EmploymentType.FULL_TIME.name() : user.getEmploymentType().name())
+                .seasonalOnly(Boolean.TRUE.equals(user.getSeasonalOnly()))
+                .seasonalStartDate(user.getSeasonalStartDate())
+                .seasonalEndDate(user.getSeasonalEndDate())
+                .noShowStrikeCount(user.getNoShowStrikeCount() == null ? 0 : user.getNoShowStrikeCount())
                 .staff(roles.contains(STAFF_ROLE_NAME))
                 .blankStaffAccount(blankStaffAccount)
                 .staffTemporaryPassword(user.getStaffTemporaryPassword())
@@ -156,6 +179,35 @@ public class AdminStaffManagementService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private EmploymentType normalizeEmploymentType(String value) {
+        if (value == null || value.isBlank()) {
+            return EmploymentType.FULL_TIME;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "FULL_TIME" -> EmploymentType.FULL_TIME;
+            case "PART_TIME" -> EmploymentType.PART_TIME;
+            default -> throw new RuntimeException("Loại nhân viên không hợp lệ.");
+        };
+    }
+
+    private void validateSeasonalConfig(User user) {
+        if (!Boolean.TRUE.equals(user.getSeasonalOnly())) {
+            user.setSeasonalStartDate(null);
+            user.setSeasonalEndDate(null);
+            return;
+        }
+        if (user.getEmploymentType() != EmploymentType.PART_TIME) {
+            throw new RuntimeException("Nhân viên seasonal phải là PART_TIME.");
+        }
+        if (user.getSeasonalStartDate() == null || user.getSeasonalEndDate() == null) {
+            throw new RuntimeException("Nhân viên seasonal phải có ngày bắt đầu và kết thúc.");
+        }
+        if (user.getSeasonalEndDate().isBefore(user.getSeasonalStartDate())) {
+            throw new RuntimeException("Ngày kết thúc seasonal không được nhỏ hơn ngày bắt đầu.");
+        }
     }
 
     private String generateNextStaffUsername() {

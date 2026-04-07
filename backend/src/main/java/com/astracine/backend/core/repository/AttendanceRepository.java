@@ -60,4 +60,21 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findDetailedForStaffBetweenDates(@Param("staffId") Long staffId,
                                                       @Param("fromDate") LocalDate fromDate,
                                                       @Param("toDate") LocalDate toDate);
+
+    @Query("""
+            SELECT a FROM Attendance a
+            JOIN FETCH a.assignment ass
+            JOIN FETCH ass.plan p
+            JOIN FETCH ass.staff s
+            LEFT JOIN FETCH ass.shiftTemplate st
+            WHERE a.businessDate BETWEEN :fromDate AND :toDate
+              AND ass.status IN (
+                  com.astracine.backend.core.enums.ScheduleAssignmentStatus.PUBLISHED,
+                  com.astracine.backend.core.enums.ScheduleAssignmentStatus.CONFIRMED,
+                  com.astracine.backend.core.enums.ScheduleAssignmentStatus.ABSENT
+              )
+            ORDER BY a.businessDate ASC, ass.shiftStart ASC, s.fullName ASC
+            """)
+    List<Attendance> findPayrollAttendanceBetween(@Param("fromDate") LocalDate fromDate,
+                                                  @Param("toDate") LocalDate toDate);
 }

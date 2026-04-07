@@ -50,6 +50,24 @@ const getErrorMessage = (error, fallback) =>
   error?.message ||
   fallback;
 
+const getCurrentPosition = () =>
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Trình duyệt không hỗ trợ định vị GPS."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => reject(error),
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  });
+
 export default function StaffAttendance() {
   const { user } = useAuth();
   const [fromDate, setFromDate] = useState(formatDate(new Date()));
@@ -86,23 +104,31 @@ export default function StaffAttendance() {
     }, {});
   }, [items]);
 
-  const summary = useMemo(() => ({
-    total: items.length,
-    checkedIn: items.filter((item) => item.attendanceStatus === "CHECKED_IN").length,
-    completed: items.filter((item) => item.attendanceStatus === "COMPLETED" || item.attendanceStatus === "ADJUSTED").length,
-    absent: items.filter((item) => item.attendanceStatus === "ABSENT").length,
-  }), [items]);
+  const summary = useMemo(
+    () => ({
+      total: items.length,
+      checkedIn: items.filter((item) => item.attendanceStatus === "CHECKED_IN").length,
+      completed: items.filter((item) => item.attendanceStatus === "COMPLETED" || item.attendanceStatus === "ADJUSTED").length,
+      absent: items.filter((item) => item.attendanceStatus === "ABSENT").length,
+    }),
+    [items]
+  );
 
   const handleCheckIn = async (assignmentId) => {
     try {
       setActionKey(`in-${assignmentId}`);
       setError("");
       setSuccess("");
-      await staffAttendanceApi.checkIn(assignmentId);
-      setSuccess("Check-in thành công.");
+
+      const position = await getCurrentPosition();
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+
+      await staffAttendanceApi.checkIn(assignmentId, latitude, longitude);
+      setSuccess("Check-in GPS thành công.");
       await loadAttendance(fromDate, toDate);
     } catch (err) {
-      setError(getErrorMessage(err, "Không thể check-in cho ca này."));
+      setError(getErrorMessage(err, "Không thể check-in GPS cho ca này."));
     } finally {
       setActionKey("");
     }
@@ -130,7 +156,8 @@ export default function StaffAttendance() {
           <div className="staff-attendance-kicker">Attendance</div>
           <h1>Chấm công ca làm của {user?.fullName || user?.username}</h1>
           <p>
-            Check-in và check-out theo từng assignment đã publish. Dữ liệu này sẽ là đầu vào chuẩn cho payroll sau này.
+            Check-in GPS là bắt buộc. Quá 15 phút chưa check-in thì hệ thống tự đánh vắng.
+            Dữ liệu attendance thực tế sẽ được dùng để tính payroll.
           </p>
         </div>
         <div className="staff-attendance-filter">
@@ -168,7 +195,7 @@ export default function StaffAttendance() {
             </div>
             <div className="attendance-list">
               {dateItems.map((item) => (
-                <article className="attendance-card" key={`${item.assignmentId}-${item.attendanceId || 'new'}`}>
+                <article className="attendance-card" key={`${item.assignmentId}-${item.attendanceId || "new"}`}>
                   <div className="attendance-main">
                     <div>
                       <div className="attendance-role">{item.assignedPosition}</div>
@@ -176,7 +203,7 @@ export default function StaffAttendance() {
                       <p>{formatDateTime(item.scheduledStart)} - {formatDateTime(item.scheduledEnd)}</p>
                       <div className="attendance-sub">Check-in: {formatDateTime(item.checkInTime)} · Check-out: {formatDateTime(item.checkOutTime)}</div>
                     </div>
-                    <span className={`attendance-status ${(item.attendanceStatus || 'PENDING').toLowerCase()}`}>
+                    <span className={`attendance-status ${(item.attendanceStatus || "PENDING").toLowerCase()}`}>
                       {attendanceLabels[item.attendanceStatus] || item.attendanceStatus || attendanceLabels.PENDING}
                     </span>
                   </div>
@@ -187,6 +214,16 @@ export default function StaffAttendance() {
                     <span>Về sớm: <strong>{item.earlyLeaveMinutes ?? 0}</strong></span>
                   </div>
 
+                  {item.gpsVerified && (
+                    <p className="attendance-note">
+                      GPS hợp lệ · khoảng cách {Math.round(item.checkInDistanceMeters || 0)}m
+                    </p>
+                  )}
+
+                  {item.autoMarkedAbsent && (
+                    <p className="attendance-note">Tự động vắng do quá 15 phút chưa check-in.</p>
+                  )}
+
                   {item.note && <p className="attendance-note">Ghi chú: {item.note}</p>}
 
                   <div className="attendance-actions">
@@ -196,7 +233,7 @@ export default function StaffAttendance() {
                       disabled={!item.canCheckIn || actionKey === `in-${item.assignmentId}`}
                       onClick={() => handleCheckIn(item.assignmentId)}
                     >
-                      {actionKey === `in-${item.assignmentId}` ? "Đang xử lý..." : "Check-in"}
+                      {actionKey === `in-${item.assignmentId}` ? "Đang xử lý..." : "Check-in GPS"}
                     </button>
                     <button
                       type="button"

@@ -17,21 +17,18 @@ public class StaffAttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/check-in")
-    public ResponseEntity<AttendanceDTO.AttendanceItemResponse> checkIn(
-            @Valid @RequestBody AttendanceDTO.CheckInRequest request) {
-        return ResponseEntity.ok(attendanceService.checkIn(request.getAssignmentId()));
+    public ResponseEntity<AttendanceDTO.AttendanceItemResponse> checkIn(@Valid @RequestBody AttendanceDTO.CheckInRequest request) {
+        return ResponseEntity.ok(attendanceService.checkIn(request.getAssignmentId(), request.getLatitude(), request.getLongitude()));
     }
 
     @PostMapping("/check-out")
-    public ResponseEntity<AttendanceDTO.AttendanceItemResponse> checkOut(
-            @Valid @RequestBody AttendanceDTO.CheckOutRequest request) {
+    public ResponseEntity<AttendanceDTO.AttendanceItemResponse> checkOut(@Valid @RequestBody AttendanceDTO.CheckOutRequest request) {
         return ResponseEntity.ok(attendanceService.checkOut(request.getAssignmentId()));
     }
 
     @GetMapping("/my")
-    public ResponseEntity<AttendanceDTO.StaffAttendanceResponse> getMyAttendance(
-            @RequestParam LocalDate fromDate,
-            @RequestParam LocalDate toDate) {
+    public ResponseEntity<AttendanceDTO.StaffAttendanceResponse> getMyAttendance(@RequestParam LocalDate fromDate,
+                                                                                 @RequestParam LocalDate toDate) {
         return ResponseEntity.ok(attendanceService.getMyAttendance(fromDate, toDate));
     }
 }
