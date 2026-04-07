@@ -21,6 +21,7 @@ import MovieDetailPage from "../pages/MovieDetail/MovieDetailPage";
 import ForgotPassword from "../pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword/ResetPassword";
 import OrderHistory from "../pages/OrderHistory/OrderHistory";
+import NewsPromotions from "../pages/NewsPromotions/NewsPromotions";
 
 export default function ClientRoutes() {
   const { user } = useAuth();
@@ -60,6 +61,9 @@ export default function ClientRoutes() {
         {/* Movies Page */}
         <Route path="movies" element={<MoviesPage />} />
         <Route path="movies/:movieId" element={<MovieDetailPage />} />
+
+        {/* News & Promotions */}
+        <Route path="news-promotions" element={<NewsPromotions />} />
 
         <Route path="ticket" element={<TicketResult />} />
 

@@ -82,12 +82,47 @@
     box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
 }
 
-/* Day Picker — 7 ngày */
+/* Day Picker — wrapper with nav arrows */
+.day-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 28px;
+}
+
+.day-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 2px solid #2a2f45;
+    background: #1a1f2e;
+    color: #9ba3bf;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.day-nav-btn:hover:not(:disabled) {
+    background: #1e2740;
+    border-color: #f5c518;
+    color: #f5c518;
+    box-shadow: 0 4px 14px rgba(245, 197, 24, 0.15);
+}
+
+.day-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .day-picker {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 10px;
-    margin: 0 0 28px;
+    flex: 1;
 }
 
 .day-btn {

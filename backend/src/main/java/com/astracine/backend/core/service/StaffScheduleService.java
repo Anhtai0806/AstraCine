@@ -1,17 +1,18 @@
 package com.astracine.backend.core.service;
 
+import com.astracine.backend.core.entity.HolidayPeriod;
 import com.astracine.backend.core.entity.ScheduleAssignment;
 import com.astracine.backend.core.entity.SchedulePlan;
 import com.astracine.backend.core.entity.ShiftTemplate;
-import com.astracine.backend.core.entity.StaffingDemand;
 import com.astracine.backend.core.entity.User;
 import com.astracine.backend.core.enums.AssignmentSource;
+import com.astracine.backend.core.enums.EmploymentType;
 import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.enums.SchedulePlanStatus;
+import com.astracine.backend.core.repository.HolidayPeriodRepository;
 import com.astracine.backend.core.repository.ScheduleAssignmentRepository;
 import com.astracine.backend.core.repository.SchedulePlanRepository;
 import com.astracine.backend.core.repository.ShiftTemplateRepository;
-import com.astracine.backend.core.repository.StaffingDemandRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.staffschedule.StaffScheduleDTO;
 import lombok.RequiredArgsConstructor;
@@ -29,30 +30,53 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class StaffScheduleService {
 
+    private static final int DEFAULT_REQUIRED_STAFF_PER_SHIFT = 5;
+
     private final SchedulePlanRepository schedulePlanRepository;
     private final ScheduleAssignmentRepository scheduleAssignmentRepository;
-    private final StaffingDemandRepository staffingDemandRepository;
     private final ShiftTemplateRepository shiftTemplateRepository;
     private final UserRepository userRepository;
+    private final HolidayPeriodRepository holidayPeriodRepository;
 
     public StaffScheduleDTO.PlanResponse generatePlan(LocalDate businessDate) {
+        return generateSimplePlan(businessDate, DEFAULT_REQUIRED_STAFF_PER_SHIFT);
+    }
+
+    public StaffScheduleDTO.PlanResponse generateSimplePlan(LocalDate businessDate, Integer requiredStaffPerShift) {
+        validateRequiredStaff(requiredStaffPerShift);
+
         schedulePlanRepository.findFirstByBusinessDateAndStatusOrderByGeneratedAtDesc(businessDate, SchedulePlanStatus.DRAFT)
                 .ifPresent(plan -> {
                     throw new RuntimeException("Ngày " + businessDate + " đã có draft plan. Hãy dùng draft hiện tại hoặc publish/archive trước khi tạo mới.");
                 });
 
-        List<StaffingDemand> demands = staffingDemandRepository.findByBusinessDateOrderByWindowStartAsc(businessDate);
-        if (demands.isEmpty()) {
-            throw new RuntimeException("Chưa có staffing demand cho ngày này");
+        List<ShiftTemplate> templates = shiftTemplateRepository.findByActiveTrueOrderByStartTimeAsc();
+        if (templates.isEmpty()) {
+            throw new RuntimeException("Chưa có shift template active để tạo lịch.");
         }
+
+        List<User> staffCandidates = userRepository.findEligibleStaffForDate(businessDate)
+                .stream()
+                .filter(this::isEligibleForScheduling)
+                .toList();
+
+        if (staffCandidates.isEmpty()) {
+            throw new RuntimeException("Không có nhân viên đủ điều kiện để xếp lịch. Hãy kiểm tra vị trí, loại nhân sự và hồ sơ staff.");
+        }
+
+        List<HolidayPeriod> holidayPeriods = holidayPeriodRepository.findActiveByBusinessDate(businessDate);
+        HolidayPeriod activeHoliday = holidayPeriods.isEmpty() ? null : holidayPeriods.get(0);
+        boolean holidayMode = activeHoliday != null;
 
         SchedulePlan plan = new SchedulePlan();
         plan.setBusinessDate(businessDate);
@@ -61,16 +85,12 @@ public class StaffScheduleService {
                         .map(User::getId)
                         .orElse(null)
         );
-        plan.setWindowMinutes((int) Duration.between(demands.get(0).getWindowStart(), demands.get(0).getWindowEnd()).toMinutes());
+        plan.setWindowMinutes(30);
         plan.setStatus(SchedulePlanStatus.DRAFT);
-        plan.setNote("Kế hoạch ca được sinh tự động từ showtime demand");
+        plan.setNote(holidayMode
+                ? "Simple shift plan - holiday mode, ép 1-2 part-time mỗi ca"
+                : "Simple shift plan - ưu tiên full-time, part-time bù thiếu");
         SchedulePlan savedPlan = schedulePlanRepository.save(plan);
-
-        List<ShiftTemplate> templates = shiftTemplateRepository.findByActiveTrueOrderByStartTimeAsc();
-        List<User> staffCandidates = userRepository.findActiveStaffCandidates();
-        if (staffCandidates.isEmpty()) {
-            throw new RuntimeException("Không có staff active để xếp lịch");
-        }
 
         LocalDate weekStart = businessDate.minusDays(businessDate.getDayOfWeek().getValue() - 1L);
         LocalDate weekEnd = weekStart.plusDays(6);
@@ -82,22 +102,55 @@ public class StaffScheduleService {
         List<ScheduleAssignment> generatedAssignments = new ArrayList<>();
 
         for (ShiftTemplate template : templates) {
-            List<StaffingDemand> overlappingDemands = demands.stream()
-                    .filter(demand -> overlaps(template, demand))
+            LocalDateTime shiftStart = resolveShiftStart(businessDate, template.getStartTime());
+            LocalDateTime shiftEnd = resolveShiftEnd(businessDate, template.getStartTime(), template.getEndTime());
+            long shiftMinutes = resolveWorkingMinutes(template, shiftStart, shiftEnd);
+
+            List<User> eligibleForShift = staffCandidates.stream()
+                    .filter(candidate -> !hasOverlap(candidate.getId(), shiftStart, shiftEnd, generatedAssignments, existingWeekAssignments))
                     .toList();
-            if (overlappingDemands.isEmpty()) {
-                continue;
+
+            List<User> partTimePool = eligibleForShift.stream()
+                    .filter(user -> user.getEmploymentType() == EmploymentType.PART_TIME)
+                    .toList();
+
+            List<User> fullTimePool = eligibleForShift.stream()
+                    .filter(user -> user.getEmploymentType() != EmploymentType.PART_TIME)
+                    .toList();
+
+            int minPartTime = holidayMode ? safeHolidayCount(activeHoliday.getMinPartTimePerShift(), 1) : 0;
+            int maxPartTime = holidayMode ? safeHolidayCount(activeHoliday.getMaxPartTimePerShift(), 2) : 0;
+            int targetPartTime = holidayMode
+                    ? resolvePartTimeTarget(requiredStaffPerShift, minPartTime, maxPartTime, partTimePool.size())
+                    : Math.min(partTimePool.size(), Math.max(0, requiredStaffPerShift - fullTimePool.size()));
+
+            List<User> selected = new ArrayList<>();
+            selected.addAll(pickBalanced(partTimePool, targetPartTime, weeklyMinutesMap));
+            selected.addAll(pickBalanced(fullTimePool, requiredStaffPerShift - selected.size(), weeklyMinutesMap));
+
+            if (selected.size() < requiredStaffPerShift) {
+                List<User> fallbackPool = eligibleForShift.stream()
+                        .filter(user -> !selected.contains(user))
+                        .toList();
+                selected.addAll(pickBalanced(fallbackPool, requiredStaffPerShift - selected.size(), weeklyMinutesMap));
             }
 
-            int counterRequired = overlappingDemands.stream().mapToInt(StaffingDemand::getCounterRequired).max().orElse(0);
-            int checkinRequired = overlappingDemands.stream().mapToInt(StaffingDemand::getCheckinRequired).max().orElse(0);
-            int concessionRequired = overlappingDemands.stream().mapToInt(StaffingDemand::getConcessionRequired).max().orElse(0);
-            int multiRequired = overlappingDemands.stream().mapToInt(StaffingDemand::getMultiRequired).max().orElse(0);
+            for (User staff : selected) {
+                long currentWeeklyMinutes = weeklyMinutesMap.getOrDefault(staff.getId(), 0L);
 
-            generatedAssignments.addAll(assignForPosition(savedPlan, template, businessDate, "COUNTER", counterRequired, staffCandidates, generatedAssignments, existingWeekAssignments, weeklyMinutesMap));
-            generatedAssignments.addAll(assignForPosition(savedPlan, template, businessDate, "CHECKIN", checkinRequired, staffCandidates, generatedAssignments, existingWeekAssignments, weeklyMinutesMap));
-            generatedAssignments.addAll(assignForPosition(savedPlan, template, businessDate, "CONCESSION", concessionRequired, staffCandidates, generatedAssignments, existingWeekAssignments, weeklyMinutesMap));
-            generatedAssignments.addAll(assignForPosition(savedPlan, template, businessDate, "MULTI", multiRequired, staffCandidates, generatedAssignments, existingWeekAssignments, weeklyMinutesMap));
+                ScheduleAssignment assignment = new ScheduleAssignment();
+                assignment.setPlan(savedPlan);
+                assignment.setStaff(staff);
+                assignment.setShiftTemplate(template);
+                assignment.setAssignedPosition(normalizePosition(staff.getStaffPosition()));
+                assignment.setShiftStart(shiftStart);
+                assignment.setShiftEnd(shiftEnd);
+                assignment.setSource(AssignmentSource.AUTO);
+                assignment.setStatus(ScheduleAssignmentStatus.DRAFT);
+                assignment.setExplanation(buildExplanation(staff, template, currentWeeklyMinutes, activeHoliday));
+                generatedAssignments.add(assignment);
+                weeklyMinutesMap.merge(staff.getId(), shiftMinutes, Long::sum);
+            }
         }
 
         List<ScheduleAssignment> savedAssignments = scheduleAssignmentRepository.saveAll(generatedAssignments);
@@ -184,64 +237,72 @@ public class StaffScheduleService {
         return mapAssignment(scheduleAssignmentRepository.save(assignment));
     }
 
-    private List<ScheduleAssignment> assignForPosition(SchedulePlan plan,
-                                                       ShiftTemplate template,
-                                                       LocalDate businessDate,
-                                                       String position,
-                                                       int requiredCount,
-                                                       List<User> staffCandidates,
-                                                       List<ScheduleAssignment> currentAssignments,
-                                                       List<ScheduleAssignment> existingAssignments,
-                                                       Map<Long, Long> weeklyMinutesMap) {
-        List<ScheduleAssignment> created = new ArrayList<>();
-        if (requiredCount <= 0) {
-            return created;
+    private List<User> pickBalanced(List<User> pool, int limit, Map<Long, Long> weeklyMinutesMap) {
+        if (limit <= 0 || pool.isEmpty()) {
+            return new ArrayList<>();
         }
+        return pool.stream()
+                .sorted(Comparator
+                        .comparingLong((User user) -> weeklyMinutesMap.getOrDefault(user.getId(), 0L))
+                        .thenComparing(this::resolveStaffName, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(User::getUsername, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .limit(limit)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
 
-        LocalDateTime shiftStart = resolveShiftStart(businessDate, template.getStartTime());
-        LocalDateTime shiftEnd = resolveShiftEnd(businessDate, template.getStartTime(), template.getEndTime());
-        long shiftMinutes = resolveWorkingMinutes(template, shiftStart, shiftEnd);
+    private int resolvePartTimeTarget(int requiredStaff, int minPartTime, int maxPartTime, int availablePartTime) {
+        if (requiredStaff <= 0 || availablePartTime <= 0) {
+            return 0;
+        }
+        int safeMin = Math.max(0, minPartTime);
+        int safeMax = Math.max(safeMin, maxPartTime);
+        int desired = Math.min(Math.min(safeMax, availablePartTime), requiredStaff);
+        if (desired < safeMin) {
+            return availablePartTime >= safeMin ? safeMin : Math.min(availablePartTime, requiredStaff);
+        }
+        return desired;
+    }
 
-        for (int i = 0; i < requiredCount; i++) {
-            User bestCandidate = staffCandidates.stream()
-                    .filter(candidate -> canWorkPosition(candidate, position))
-                    .filter(candidate -> !hasOverlap(candidate.getId(), shiftStart, shiftEnd, currentAssignments, existingAssignments))
-                    .min(Comparator.comparingInt(candidate -> scoreCandidate(candidate, position, weeklyMinutesMap, template)))
-                    .orElse(null);
-
-            if (bestCandidate == null) {
+    private Map<Long, Long> buildWeeklyMinutesMap(List<ScheduleAssignment> assignments) {
+        Map<Long, Long> weeklyMinutes = new HashMap<>();
+        for (ScheduleAssignment assignment : assignments) {
+            if (assignment.getStaff() == null) {
                 continue;
             }
-
-            long currentWeeklyMinutes = weeklyMinutesMap.getOrDefault(bestCandidate.getId(), 0L);
-
-            ScheduleAssignment assignment = new ScheduleAssignment();
-            assignment.setPlan(plan);
-            assignment.setStaff(bestCandidate);
-            assignment.setShiftTemplate(template);
-            assignment.setAssignedPosition(position);
-            assignment.setShiftStart(shiftStart);
-            assignment.setShiftEnd(shiftEnd);
-            assignment.setSource(AssignmentSource.AUTO);
-            assignment.setStatus(ScheduleAssignmentStatus.DRAFT);
-            assignment.setExplanation(buildExplanation(bestCandidate, position, currentWeeklyMinutes, template));
-            created.add(assignment);
-            currentAssignments.add(assignment);
-            weeklyMinutesMap.merge(bestCandidate.getId(), shiftMinutes, Long::sum);
+            ShiftTemplate template = assignment.getShiftTemplate();
+            long minutes = resolveWorkingMinutes(template, assignment.getShiftStart(), assignment.getShiftEnd());
+            weeklyMinutes.merge(assignment.getStaff().getId(), minutes, Long::sum);
         }
-
-        return created;
+        return weeklyMinutes;
     }
 
-    private boolean overlaps(ShiftTemplate template, StaffingDemand demand) {
-        LocalTime demandStart = demand.getWindowStart().toLocalTime();
-        LocalTime demandEnd = demand.getWindowEnd().toLocalTime();
-        return demandStart.isBefore(template.getEndTime()) && demandEnd.isAfter(template.getStartTime());
+    private long resolveWorkingMinutes(ShiftTemplate template, LocalDateTime shiftStart, LocalDateTime shiftEnd) {
+        long totalMinutes = Duration.between(shiftStart, shiftEnd).toMinutes();
+        int breakMinutes = template != null && template.getBreakMinutes() != null ? template.getBreakMinutes() : 0;
+        return Math.max(totalMinutes - breakMinutes, 0L);
     }
 
-    private boolean canWorkPosition(User candidate, String position) {
-        String staffPosition = normalizePosition(candidate.getStaffPosition());
-        return staffPosition.equals(position) || staffPosition.equals("MULTI");
+    private String buildExplanation(User staff, ShiftTemplate template, long currentWeeklyMinutes, HolidayPeriod holiday) {
+        String employment = staff.getEmploymentType() == null ? EmploymentType.FULL_TIME.name() : staff.getEmploymentType().name();
+        String holidayText = holiday == null ? "Ngày thường" : "Holiday mode: " + holiday.getName();
+        return "Xếp " + resolveStaffName(staff)
+                + " vào ca " + (template.getName() != null ? template.getName() : template.getCode())
+                + " với vị trí " + normalizePosition(staff.getStaffPosition())
+                + ". Loại nhân sự: " + employment
+                + ". " + holidayText
+                + ". Tổng phút tuần trước khi xếp: " + currentWeeklyMinutes + " phút.";
+    }
+
+    private LocalDateTime resolveShiftStart(LocalDate businessDate, LocalTime startTime) {
+        return businessDate.atTime(startTime);
+    }
+
+    private LocalDateTime resolveShiftEnd(LocalDate businessDate, LocalTime startTime, LocalTime endTime) {
+        LocalDateTime endDateTime = businessDate.atTime(endTime);
+        if (!endTime.isAfter(startTime)) {
+            endDateTime = endDateTime.plusDays(1);
+        }
+        return endDateTime;
     }
 
     private boolean hasOverlap(Long staffId,
@@ -264,67 +325,29 @@ public class StaffScheduleService {
                         && assignment.getShiftEnd().isAfter(shiftStart));
     }
 
-    private int scoreCandidate(User candidate,
-                               String position,
-                               Map<Long, Long> weeklyMinutesMap,
-                               ShiftTemplate template) {
-        int score = 0;
-        String staffPosition = normalizePosition(candidate.getStaffPosition());
-        if (staffPosition.equals(position)) {
-            score -= 1000;
-        } else if (staffPosition.equals("MULTI")) {
-            score -= 700;
+    private void validateRequiredStaff(Integer requiredStaffPerShift) {
+        if (requiredStaffPerShift == null || requiredStaffPerShift < 4 || requiredStaffPerShift > 6) {
+            throw new RuntimeException("Số nhân viên mỗi ca phải nằm trong khoảng 4-6 người.");
         }
-        score += weeklyMinutesMap.getOrDefault(candidate.getId(), 0L).intValue();
-        if ("EVENING".equalsIgnoreCase(template.getCode())) {
-            score += 30;
-        }
-        return score;
     }
 
-    private String buildExplanation(User staff, String position, long currentWeeklyMinutes, ShiftTemplate template) {
-        String actualPosition = normalizePosition(staff.getStaffPosition());
-        String matchReason = actualPosition.equals(position)
-                ? "đúng vị trí chính"
-                : "được dùng như nhân sự đa nhiệm MULTI để bù tải";
-        return "Xếp " + resolveStaffName(staff) + " vào ca " + template.getName() + " vị trí " + position
-                + " vì " + matchReason + ", không bị trùng ca và tổng giờ tuần hiện tại là " + currentWeeklyMinutes + " phút.";
+    private int safeHolidayCount(Integer value, int fallback) {
+        return value == null ? fallback : value;
     }
 
-    private Map<Long, Long> buildWeeklyMinutesMap(List<ScheduleAssignment> assignments) {
-        Map<Long, Long> weeklyMinutes = new HashMap<>();
-        for (ScheduleAssignment assignment : assignments) {
-            ShiftTemplate template = assignment.getShiftTemplate();
-            long minutes = resolveWorkingMinutes(template, assignment.getShiftStart(), assignment.getShiftEnd());
-            weeklyMinutes.merge(assignment.getStaff().getId(), minutes, Long::sum);
-        }
-        return weeklyMinutes;
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
-    private long resolveWorkingMinutes(ShiftTemplate template, LocalDateTime shiftStart, LocalDateTime shiftEnd) {
-        long totalMinutes = Duration.between(shiftStart, shiftEnd).toMinutes();
-        int breakMinutes = template != null && template.getBreakMinutes() != null ? template.getBreakMinutes() : 0;
-        return Math.max(totalMinutes - breakMinutes, 0L);
-    }
-
-    private LocalDateTime resolveShiftStart(LocalDate businessDate, LocalTime startTime) {
-        return businessDate.atTime(startTime);
-    }
-
-    private LocalDateTime resolveShiftEnd(LocalDate businessDate, LocalTime startTime, LocalTime endTime) {
-        LocalDateTime endDateTime = businessDate.atTime(endTime);
-        if (!endTime.isAfter(startTime)) {
-            endDateTime = endDateTime.plusDays(1);
-        }
-        return endDateTime;
-    }
-
-    private String getCurrentUsername() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails userDetails)) {
-            return null;
-        }
-        return userDetails.getUsername();
+    private boolean isEligibleForScheduling(User user) {
+        return user != null
+                && Boolean.TRUE.equals(user.getEnabled())
+                && user.getStatus() != null
+                && "ACTIVE".equalsIgnoreCase(String.valueOf(user.getStatus()))
+                && user.getStaffPosition() != null
+                && hasText(user.getFullName())
+                && hasText(user.getEmail())
+                && hasText(user.getPhone());
     }
 
     private StaffScheduleDTO.PlanResponse mapPlan(SchedulePlan plan, int assignmentCount) {
@@ -363,10 +386,18 @@ public class StaffScheduleService {
         return staff.getUsername();
     }
 
-    private String normalizePosition(String position) {
-        if (position == null || position.isBlank()) {
-            return "UNKNOWN";
+    private String normalizePosition(String value) {
+        if (value == null || value.isBlank()) {
+            return "MULTI";
         }
-        return position.trim().toUpperCase();
+        return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails userDetails)) {
+            return null;
+        }
+        return userDetails.getUsername();
     }
 }

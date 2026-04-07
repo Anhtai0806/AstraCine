@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -24,6 +25,11 @@ public class AdminUserManagementResponse {
     private String desiredPosition;
     private String staffApplicationStatus;
     private String staffPosition;
+    private String employmentType;
+    private Boolean seasonalOnly;
+    private LocalDate seasonalStartDate;
+    private LocalDate seasonalEndDate;
+    private Integer noShowStrikeCount;
     private Boolean staff;
     private Boolean blankStaffAccount;
     private String staffTemporaryPassword;
