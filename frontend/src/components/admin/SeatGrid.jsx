@@ -8,11 +8,6 @@ const SEAT_TYPES = {
     PREMIUM: { label: 'Premium', class: 'type-PREMIUM' }
 };
 
-const SEAT_STATUS = {
-    HELD: { label: 'Đang giữ', class: 'status-HELD' },
-    SOLD: { label: 'Đã bán', class: 'status-SOLD' }
-};
-
 const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, priceMultiplier }) => {
     if (!seats || seats.length === 0) {
         return <div style={{ padding: 20, color: '#888' }}>Không có dữ liệu ghế</div>;
@@ -28,12 +23,6 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, p
                     <div key={key} className="legend-item">
                         <span className={`dot ${SEAT_TYPES[key].class}`}></span>
                         {SEAT_TYPES[key].label}
-                    </div>
-                ))}
-                {Object.keys(SEAT_STATUS).map((key) => (
-                    <div key={key} className="legend-item">
-                        <span className={`dot ${SEAT_STATUS[key].class}`}></span>
-                        {SEAT_STATUS[key].label}
                     </div>
                 ))}
             </div>
