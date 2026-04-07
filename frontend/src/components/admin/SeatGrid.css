@@ -51,13 +51,13 @@
 /* Xanh dương */
 .dot.type-VIP,
 .seat-item.type-VIP {
-    background-color: #f59e0b;
+    background-color: #07e1c8;
 }
 
 /* Vàng cam */
 .dot.type-COUPLE,
 .seat-item.type-COUPLE {
-    background-color: #ea2cd3bf;
+    background-color: #fd0ae1bf;
 }
 
 /* Đỏ */
@@ -100,13 +100,11 @@
 }
 
 .dot.status-HELD {
-    background: #f59e0b;
-    border: 2px solid #fef3c7;
+    background: #0bd82a;
 }
 
 .dot.status-SOLD {
     background: #475569;
-    border: 2px solid #ef4444;
 }
 
 /* =========================================
