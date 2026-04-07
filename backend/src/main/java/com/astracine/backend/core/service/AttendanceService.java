@@ -9,6 +9,7 @@ import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.repository.AttendanceRepository;
 import com.astracine.backend.core.repository.ScheduleAssignmentRepository;
 import com.astracine.backend.core.repository.UserRepository;
+import com.astracine.backend.infrastructure.config.AttendanceGpsProperties;
 import com.astracine.backend.presentation.dto.attendance.AttendanceDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -17,10 +18,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -35,39 +36,59 @@ import java.util.stream.Collectors;
 public class AttendanceService {
 
     private static final long EARLY_CHECK_IN_MINUTES = 15;
-    private static final long LATE_CHECK_IN_LIMIT_MINUTES = 120;
+    private static final long LATE_CHECK_IN_LIMIT_MINUTES = 15;
 
     private final AttendanceRepository attendanceRepository;
     private final ScheduleAssignmentRepository scheduleAssignmentRepository;
     private final UserRepository userRepository;
+    private final AttendanceGpsProperties gpsProperties;
 
-    public AttendanceDTO.AttendanceItemResponse checkIn(Long assignmentId) {
+    public AttendanceDTO.AttendanceItemResponse checkIn(Long assignmentId, Double latitude, Double longitude) {
         User currentUser = getCurrentUser();
         ScheduleAssignment assignment = getAssignmentForCurrentStaff(assignmentId, currentUser.getId());
         validateAssignmentCheckInEligibility(assignment);
 
+        if (latitude == null || longitude == null) {
+            throw new RuntimeException("Thiếu dữ liệu GPS để check-in.");
+        }
+
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(assignment.getShiftStart().minusMinutes(EARLY_CHECK_IN_MINUTES))) {
-            throw new RuntimeException("Chưa đến thời gian check-in cho ca này");
+            throw new RuntimeException("Chưa đến thời gian check-in cho ca này.");
         }
         if (now.isAfter(assignment.getShiftStart().plusMinutes(LATE_CHECK_IN_LIMIT_MINUTES))) {
-            throw new RuntimeException("Đã quá thời gian check-in cho ca này, vui lòng liên hệ admin");
+            throw new RuntimeException("Đã quá 15 phút check-in cho ca này. Hệ thống sẽ tự đánh vắng.");
+        }
+
+        double distanceMeters = distanceInMeters(
+                latitude,
+                longitude,
+                gpsProperties.getCinemaLatitude(),
+                gpsProperties.getCinemaLongitude());
+
+        if (distanceMeters > gpsProperties.getAllowedRadiusMeters()) {
+            throw new RuntimeException("Bạn chưa ở trong phạm vi rạp để check-in.");
         }
 
         Attendance attendance = attendanceRepository.findWithAssignmentByAssignmentId(assignmentId)
                 .orElseGet(() -> createPendingAttendance(assignment));
 
         if (attendance.getCheckInTime() != null) {
-            throw new RuntimeException("Ca này đã được check-in trước đó");
+            throw new RuntimeException("Ca này đã được check-in trước đó.");
         }
         if (attendance.getStatus() == AttendanceStatus.ABSENT) {
-            throw new RuntimeException("Ca này đã bị đánh dấu vắng mặt");
+            throw new RuntimeException("Ca này đã bị đánh dấu vắng mặt.");
         }
 
         attendance.setCheckInTime(now);
         attendance.setLateMinutes((int) Math.max(0, Duration.between(assignment.getShiftStart(), now).toMinutes()));
         attendance.setStatus(AttendanceStatus.CHECKED_IN);
         attendance.setNote(trimToNull(attendance.getNote()));
+        attendance.setCheckInLat(BigDecimal.valueOf(latitude));
+        attendance.setCheckInLng(BigDecimal.valueOf(longitude));
+        attendance.setCheckInDistanceMeters(distanceMeters);
+        attendance.setGpsVerified(true);
+        attendance.setAutoMarkedAbsent(false);
 
         Attendance saved = attendanceRepository.save(attendance);
         return mapItem(assignment, saved, currentUser.getId());
@@ -170,6 +191,7 @@ public class AttendanceService {
         attendance.setNote(trimToNull(request.getNote()));
         attendance.setApprovedBy(getCurrentUser().getId());
         attendance.setApprovedAt(LocalDateTime.now());
+        attendance.setAutoMarkedAbsent(false);
 
         Attendance saved = attendanceRepository.save(attendance);
         return mapItem(assignment, saved, null);
@@ -193,6 +215,7 @@ public class AttendanceService {
         attendance.setNote(trimToNull(request.getNote()));
         attendance.setApprovedBy(getCurrentUser().getId());
         attendance.setApprovedAt(LocalDateTime.now());
+        attendance.setAutoMarkedAbsent(false);
 
         Attendance saved = attendanceRepository.save(attendance);
         return mapItem(assignment, saved, null);
@@ -229,6 +252,8 @@ public class AttendanceService {
         attendance.setScheduledStart(assignment.getShiftStart());
         attendance.setScheduledEnd(assignment.getShiftEnd());
         attendance.setStatus(AttendanceStatus.PENDING);
+        attendance.setGpsVerified(false);
+        attendance.setAutoMarkedAbsent(false);
         return attendance;
     }
 
@@ -255,6 +280,7 @@ public class AttendanceService {
         boolean canCheckIn = isOwner
                 && (assignment.getStatus() == ScheduleAssignmentStatus.PUBLISHED || assignment.getStatus() == ScheduleAssignmentStatus.CONFIRMED)
                 && (attendance == null || attendance.getCheckInTime() == null)
+                && (attendance == null || attendance.getStatus() != AttendanceStatus.ABSENT)
                 && !now.isBefore(assignment.getShiftStart().minusMinutes(EARLY_CHECK_IN_MINUTES))
                 && !now.isAfter(assignment.getShiftStart().plusMinutes(LATE_CHECK_IN_LIMIT_MINUTES));
         boolean canCheckOut = isOwner
@@ -284,9 +310,23 @@ public class AttendanceService {
                 status,
                 assignment.getStatus(),
                 attendance == null ? null : attendance.getNote(),
+                attendance == null ? Boolean.FALSE : attendance.getGpsVerified(),
+                attendance == null ? null : attendance.getCheckInDistanceMeters(),
+                attendance == null ? Boolean.FALSE : attendance.getAutoMarkedAbsent(),
                 canCheckIn,
                 canCheckOut
         );
+    }
+
+    private double distanceInMeters(double lat1, double lng1, double lat2, double lng2) {
+        double earthRadius = 6371000.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadius * c;
     }
 
     private User getCurrentUser() {

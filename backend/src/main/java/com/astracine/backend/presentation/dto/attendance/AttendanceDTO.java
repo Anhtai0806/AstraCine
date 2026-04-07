@@ -38,6 +38,9 @@ public class AttendanceDTO {
         private AttendanceStatus attendanceStatus;
         private ScheduleAssignmentStatus assignmentStatus;
         private String note;
+        private Boolean gpsVerified;
+        private Double checkInDistanceMeters;
+        private Boolean autoMarkedAbsent;
         private Boolean canCheckIn;
         private Boolean canCheckOut;
     }
@@ -70,6 +73,12 @@ public class AttendanceDTO {
     public static class CheckInRequest {
         @NotNull
         private Long assignmentId;
+
+        @NotNull
+        private Double latitude;
+
+        @NotNull
+        private Double longitude;
     }
 
     @Data
