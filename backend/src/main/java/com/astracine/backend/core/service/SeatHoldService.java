@@ -159,6 +159,7 @@ public class SeatHoldService {
                     .heldExpiresAt(heldExpiresAt)
                     .heldByCurrentUser(heldByCurrentUser)
                     .holdId(holdId)
+                    .pairedSeatId(s.getPairedSeatId())
                     .build());
         }
 
@@ -169,10 +170,19 @@ public class SeatHoldService {
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtimeId));
 
+        Set<Long> expandedSeatIds = new HashSet<>(seatIds);
+        List<Seat> targetSeats = seatRepository.findAllById(seatIds);
+        for (Seat s : targetSeats) {
+            if (s.getSeatType() == com.astracine.backend.core.enums.SeatType.COUPLE && s.getPairedSeatId() != null) {
+                expandedSeatIds.add(s.getPairedSeatId());
+            }
+        }
+        List<Long> finalSeatIds = new ArrayList<>(expandedSeatIds);
+
         // ensure seatIds belong to this showtime's room
         Set<Long> roomSeatIds = seatRepository.findByRoomId(showtime.getRoom().getId())
                 .stream().map(Seat::getId).collect(Collectors.toSet());
-        for (Long seatId : seatIds) {
+        for (Long seatId : finalSeatIds) {
             if (!roomSeatIds.contains(seatId)) {
                 throw new IllegalArgumentException("Seat " + seatId + " does not belong to showtime's room");
             }
@@ -181,7 +191,7 @@ public class SeatHoldService {
         // sold check (DB)
         Set<Long> soldSeatIds = new HashSet<>(
                 showtimeSeatRepository.findSeatIdsByShowtimeAndStatus(showtimeId, SeatBookingStatus.SOLD));
-        List<Long> soldConflicts = seatIds.stream().filter(soldSeatIds::contains).toList();
+        List<Long> soldConflicts = finalSeatIds.stream().filter(soldSeatIds::contains).toList();
         if (!soldConflicts.isEmpty()) {
             throw new SeatAlreadySoldException(showtimeId, soldConflicts);
         }
@@ -190,7 +200,7 @@ public class SeatHoldService {
         long expiresAt = Instant.now().plusSeconds(ttlSeconds).toEpochMilli();
         String value = holdValue(holdId, userId, expiresAt);
 
-        List<String> keys = seatIds.stream()
+        List<String> keys = finalSeatIds.stream()
                 .map(seatId -> seatHoldKey(showtimeId, seatId))
                 .toList();
 
@@ -202,8 +212,8 @@ public class SeatHoldService {
                 int idx = ((Number) idxObj).intValue();
                 // Lua trả 1-based
                 int seatIndex = idx - 1;
-                if (seatIndex >= 0 && seatIndex < seatIds.size()) {
-                    conflictSeatIds.add(seatIds.get(seatIndex));
+                if (seatIndex >= 0 && seatIndex < finalSeatIds.size()) {
+                    conflictSeatIds.add(finalSeatIds.get(seatIndex));
                 }
             }
             throw new HoldConflictException(showtimeId, conflictSeatIds);
@@ -211,7 +221,7 @@ public class SeatHoldService {
 
         // hold summary (buffer TTL để scheduler còn đọc được khi seat-key đã expire)
         String summaryKey = holdSummaryKey(holdId);
-        String summaryValue = summaryValue(showtimeId, userId, expiresAt, seatIds);
+        String summaryValue = summaryValue(showtimeId, userId, expiresAt, finalSeatIds);
         redis.opsForValue().set(summaryKey, summaryValue, Duration.ofSeconds(ttlSeconds + summaryTtlBufferSeconds));
 
         // zset expiration
@@ -221,7 +231,7 @@ public class SeatHoldService {
         publisher.publish(showtimeId, SeatEventDto.builder()
                 .type(SeatEventType.SEAT_HELD)
                 .showtimeId(showtimeId)
-                .seatIds(seatIds)
+                .seatIds(finalSeatIds)
                 .holdId(holdId)
                 .expiresAt(expiresAt)
                 .build());
@@ -229,7 +239,7 @@ public class SeatHoldService {
         return HoldResponse.builder()
                 .holdId(holdId)
                 .showtimeId(showtimeId)
-                .seatIds(seatIds)
+                .seatIds(finalSeatIds)
                 .expiresAt(expiresAt)
                 .ttlSeconds(ttlSeconds)
                 .build();

@@ -22,7 +22,15 @@ public class SeatService {
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ghế ID: " + seatId));
 
-        // 2. Cập nhật loại ghế mới
+        // 2. Validate không cho đổi qua lại giữa ghế đơn và ghế đôi
+        if (seat.getSeatType() == SeatType.COUPLE && newType != SeatType.COUPLE) {
+            throw new RuntimeException("Không thể chuyển đổi ghế đôi sang loại ghế khác.");
+        }
+        if (seat.getSeatType() != SeatType.COUPLE && newType == SeatType.COUPLE) {
+            throw new RuntimeException("Không thể chuyển đổi ghế đơn sang ghế đôi.");
+        }
+
+        // 3. Cập nhật loại ghế mới
         seat.setSeatType(newType);
 
         // 3. ✅ TỰ ĐỘNG CẬP NHẬT GIÁ (Lấy từ Enum SeatType)

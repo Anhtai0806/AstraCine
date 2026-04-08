@@ -34,6 +34,7 @@ public class RoomService {
      * Tạo phòng chiếu mới và tự động sinh ghế
      */
     public Room createRoom(RoomDTO.CreateRequest request) {
+
         Room room = new Room(
                 request.getName(),
                 request.getTotalRows(),
@@ -43,7 +44,26 @@ public class RoomService {
         room = roomRepository.save(room);
 
         List<Seat> seats = generateSeats(room);
-        seatRepository.saveAll(seats);
+        seats = seatRepository.saveAll(seats);
+
+        boolean updatedPairs = false;
+        for (int i = 0; i < seats.size(); i++) {
+            Seat s1 = seats.get(i);
+            if (s1.getSeatType() == SeatType.COUPLE && s1.getPairedSeatId() == null) {
+                if (i + 1 < seats.size()) {
+                    Seat s2 = seats.get(i + 1);
+                    if (s2.getSeatType() == SeatType.COUPLE && s2.getRowLabel().equals(s1.getRowLabel())) {
+                        s1.setPairedSeatId(s2.getId());
+                        s2.setPairedSeatId(s1.getId());
+                        updatedPairs = true;
+                    }
+                }
+            }
+        }
+        
+        if (updatedPairs) {
+            seatRepository.saveAll(seats);
+        }
 
         return room;
     }
@@ -189,9 +209,9 @@ public class RoomService {
     }
 
     private SeatType determineSeatType(int row, int col, int totalRows, int totalCols) {
-        if (row == totalRows - 1)
+        if (row == totalRows - 1 && totalCols % 2 == 0)
             return SeatType.COUPLE;
-        if (row >= totalRows - 3 && row < totalRows - 1)
+        if (row >= totalRows - 3 && row < totalRows)
             return SeatType.VIP;
         if (row >= totalRows / 3 && row < 2 * totalRows / 3 && col >= totalCols / 3 && col < 2 * totalCols / 3)
             return SeatType.PREMIUM;

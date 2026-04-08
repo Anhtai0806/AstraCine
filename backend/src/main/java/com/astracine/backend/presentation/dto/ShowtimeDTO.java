@@ -148,5 +148,6 @@ public class ShowtimeDTO {
         private BigDecimal basePrice;
         private BigDecimal finalPrice;
         private SeatBookingStatus status;
+        private Long pairedSeatId;
     }
 }
