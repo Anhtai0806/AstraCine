@@ -189,10 +189,10 @@ public class RoomService {
     }
 
     private SeatType determineSeatType(int row, int col, int totalRows, int totalCols) {
-        if (row >= totalRows - 2)
-            return SeatType.VIP;
-        if (row == 0 && col >= totalCols / 3 && col < 2 * totalCols / 3)
+        if (row == totalRows - 1)
             return SeatType.COUPLE;
+        if (row >= totalRows - 3 && row < totalRows - 1)
+            return SeatType.VIP;
         if (row >= totalRows / 3 && row < 2 * totalRows / 3 && col >= totalCols / 3 && col < 2 * totalCols / 3)
             return SeatType.PREMIUM;
         return SeatType.NORMAL;
