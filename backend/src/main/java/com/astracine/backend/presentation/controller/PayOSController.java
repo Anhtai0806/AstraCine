@@ -1,5 +1,20 @@
 package com.astracine.backend.presentation.controller;
 
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.astracine.backend.core.service.payment.InvoiceService;
 import com.astracine.backend.core.service.payment.PayOSService;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
@@ -9,12 +24,6 @@ import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @Slf4j
 @RestController
@@ -25,11 +34,6 @@ public class PayOSController {
 
     private final PayOSService payOSService;
     private final InvoiceService invoiceService;
-
-    // public PayOSController(PayOSService payOSService) {
-    // this.payOSService = payOSService;
-
-    // }
 
     /**
      * Tạo PayOS payment link cho một hold đã có.
@@ -42,10 +46,18 @@ public class PayOSController {
             @RequestHeader(value = "X-User-Id", required = false) String guestUserId) {
 
         String userId = resolveUserId(user, guestUserId);
+
+        // 👇 ĐÃ SỬA: Thêm req.getPointsUsed() vào cuối cùng
         PayOSCreateResponse response = payOSService.createPaymentLink(
-                req.getHoldId(), userId, req.getReturnUrl(), req.getCancelUrl(),
-                req.getAmount(), req.getPromotionCode(), req.getComboItems(),
-                req.getDiscountAmount());
+                req.getHoldId(),
+                userId,
+                req.getReturnUrl(),
+                req.getCancelUrl(),
+                req.getAmount(),
+                req.getPromotionCode(),
+                req.getComboItems(),
+                req.getDiscountAmount(),
+                req.getPointsUsed());
         return ResponseEntity.ok(response);
     }
 
@@ -53,10 +65,6 @@ public class PayOSController {
      * Nhận webhook callback từ PayOS sau khi user hoàn tất thanh toán.
      * Endpoint này PHẢI public (không cần auth) để PayOS gọi được.
      * PayOS verify bằng HMAC-SHA256 signature trong payload.
-     */
-    /**
-     * PayOS gửi raw JSON body. SDK v2 verify(Object) cần raw Map để tính checksum.
-     * Endpoint này PHẢI public (không cần auth).
      */
     @PostMapping("/webhook")
     public ResponseEntity<Map<String, String>> webhook(@RequestBody Map<String, Object> rawBody) {
@@ -97,7 +105,6 @@ public class PayOSController {
      * Lấy thông tin E-ticket theo orderCode.
      * Dùng khi user F5 trang vé hoặc truy cập trực tiếp /ticket?orderCode=xxx
      */
-
     @GetMapping("/ticket/{orderCode}")
     public ResponseEntity<?> getETicket(@PathVariable("orderCode") String orderCode) {
         try {

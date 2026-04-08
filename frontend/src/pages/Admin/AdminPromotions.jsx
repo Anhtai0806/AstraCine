@@ -17,7 +17,8 @@ const AdminPromotions = () => {
         endDate: '',
         status: 'ACTIVE',
         maxUsage: '',
-        minOrderAmount: '0'
+        minOrderAmount: '0',
+        applicableTo: 'ALL' // Thêm trường applicableTo mặc định là ALL
     });
     const [isEditing, setIsEditing] = useState(false);
     const codeRef = useRef(null);
@@ -78,7 +79,8 @@ const AdminPromotions = () => {
             setCurrentPromotion({
                 ...promotion,
                 maxUsage: promotion.maxUsage || '',
-                minOrderAmount: promotion.minOrderAmount || '0'
+                minOrderAmount: promotion.minOrderAmount || '0',
+                applicableTo: promotion.applicableTo || 'ALL' // Đảm bảo load được applicableTo nếu có
             });
             setIsEditing(true);
         } else {
@@ -91,7 +93,8 @@ const AdminPromotions = () => {
                 endDate: '',
                 status: 'ACTIVE',
                 maxUsage: '',
-                minOrderAmount: '0'
+                minOrderAmount: '0',
+                applicableTo: 'ALL' // Reset về ALL
             });
             setIsEditing(false);
         }
@@ -109,7 +112,8 @@ const AdminPromotions = () => {
             endDate: '',
             status: 'ACTIVE',
             maxUsage: '',
-            minOrderAmount: '0'
+            minOrderAmount: '0',
+            applicableTo: 'ALL' // Reset về ALL
         });
         setError(null);
         [
@@ -194,7 +198,9 @@ const AdminPromotions = () => {
                 ...currentPromotion,
                 code: normalizedCode,
                 maxUsage: parsedMaxUsage,
-                minOrderAmount: parseFloat(currentPromotion.minOrderAmount) || 0
+                minOrderAmount: parseFloat(currentPromotion.minOrderAmount) || 0,
+                // Đảm bảo gửi applicableTo lên backend
+                applicableTo: currentPromotion.applicableTo || 'ALL'
             };
 
             if (isEditing) {
@@ -277,6 +283,19 @@ const AdminPromotions = () => {
         return `${promotion.currentUsage || 0} / ${promotion.maxUsage}`;
     };
 
+    // Thêm hàm hiển thị badge cho applicableTo
+    const getApplicableToBadge = (applicableTo) => {
+        switch (applicableTo) {
+            case 'TICKET':
+                return <span className="badge-custom badge-info" style={{backgroundColor: '#0ea5e9'}}>Chỉ Vé</span>;
+            case 'COMBO':
+                return <span className="badge-custom badge-warning" style={{backgroundColor: '#eab308'}}>Chỉ Bắp Nước</span>;
+            case 'ALL':
+            default:
+                return <span className="badge-custom badge-primary" style={{backgroundColor: '#8b5cf6'}}>Tất cả</span>;
+        }
+    };
+
     if (loading) return (
         <div className="admin-promotions-page">
             <div className="loading-spinner">
@@ -308,6 +327,7 @@ const AdminPromotions = () => {
                             <tr>
                                 <th>Mã</th>
                                 <th>Mô tả</th>
+                                <th>Áp dụng cho</th> {/* Thêm cột này */}
                                 <th>Đơn hàng tối thiểu</th>
                                 <th>Giá trị giảm</th>
                                 <th>Sử dụng</th>
@@ -323,6 +343,7 @@ const AdminPromotions = () => {
                                     <tr key={promotion.id}>
                                         <td className="promotion-code"><strong>{promotion.code}</strong></td>
                                         <td className="promotion-description">{promotion.description || 'N/A'}</td>
+                                        <td>{getApplicableToBadge(promotion.applicableTo)}</td> {/* Hiển thị dữ liệu */}
                                         <td>{formatCurrency(promotion.minOrderAmount)}</td>
                                         <td className="promotion-value">{getDiscountDisplay(promotion)}</td>
                                         <td>{getUsageDisplay(promotion)}</td>
@@ -343,7 +364,7 @@ const AdminPromotions = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="9" className="no-data-message">Chưa có mã khuyến mãi nào.</td>
+                                    <td colSpan="10" className="no-data-message">Chưa có mã khuyến mãi nào.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -422,6 +443,21 @@ const AdminPromotions = () => {
                                                 />
                                             </div>
                                         </div>
+                                    </div>
+                                    
+                                    {/* THÊM TRƯỜNG "ÁP DỤNG CHO" VÀO ĐÂY */}
+                                    <div className="form-group-custom mb-3">
+                                        <label>Áp dụng cho *</label>
+                                        <select
+                                            className="form-control-custom"
+                                            value={currentPromotion.applicableTo}
+                                            onChange={(e) => setCurrentPromotion({ ...currentPromotion, applicableTo: e.target.value })}
+                                            required
+                                        >
+                                            <option value="ALL">Toàn bộ đơn hàng (Vé & Bắp nước)</option>
+                                            <option value="TICKET">Chỉ áp dụng cho Vé</option>
+                                            <option value="COMBO">Chỉ áp dụng cho Bắp nước (Combo)</option>
+                                        </select>
                                     </div>
 
                                     <div className="form-row">

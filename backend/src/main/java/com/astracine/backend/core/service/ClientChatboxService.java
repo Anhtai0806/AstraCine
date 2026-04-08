@@ -430,6 +430,7 @@ public class ClientChatboxService {
                     totalAmount,
                     null,
                     session.getComboItems(),
+                    null,
                     null);
 
             session.setOrderCode(payment.getOrderCode());
