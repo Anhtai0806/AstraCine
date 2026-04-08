@@ -136,3 +136,106 @@ th { color:#52607d; font-size:.9rem; }
 }
 .empty-state { color:#6a7794; }
 @media (max-width: 1100px) { .admin-attendance-grid { grid-template-columns:1fr; } }
+
+.admin-attendance-layout {
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.admin-attendance-panel.side {
+    min-height: 100%;
+}
+
+.discipline-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.discipline-cell small {
+    color: #7a859f;
+    font-size: 0.82rem;
+}
+
+.discipline-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.discipline-chip.normal {
+    background: #eef9f1;
+    color: #239357;
+}
+
+.discipline-chip.warning {
+    background: #fff7df;
+    color: #b77f07;
+}
+
+.discipline-chip.on_probation {
+    background: #fff2e5;
+    color: #c26c00;
+}
+
+.discipline-chip.suspended_from_auto_assignment {
+    background: #fff1f1;
+    color: #bf3f3f;
+}
+
+.discipline-chip.locked_by_attendance_review {
+    background: #273142;
+    color: #ffffff;
+}
+
+.attendance-discipline-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid #e5ebf7;
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.attendance-discipline-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #e5ebf7;
+}
+
+.attendance-discipline-row span {
+    color: #6b7794;
+}
+
+.attendance-discipline-row strong {
+    color: #1d2740;
+    text-align: right;
+}
+
+.attendance-policy-note {
+    margin-top: 4px;
+    padding: 14px;
+    border-radius: 14px;
+    background: #f6f9ff;
+    border: 1px solid #e4ebf9;
+    color: #5f6b86;
+    line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+    .admin-attendance-layout {
+        grid-template-columns: 1fr;
+    }
+}

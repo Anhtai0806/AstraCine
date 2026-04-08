@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import com.astracine.backend.core.enums.AttendanceDisciplineStatus;
 
 @Entity
 @Table(name = "users")
@@ -81,6 +82,10 @@ public class User {
     @Column(name = "no_show_strike_count", nullable = false)
     private Integer noShowStrikeCount = 0;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attendance_discipline_status", length = 50)
+    private AttendanceDisciplineStatus attendanceDisciplineStatus = AttendanceDisciplineStatus.NORMAL;
+
     public User() {
     }
 
@@ -143,4 +148,12 @@ public class User {
     public void setSeasonalStartDate(LocalDate seasonalStartDate) { this.seasonalStartDate = seasonalStartDate; }
     public void setSeasonalEndDate(LocalDate seasonalEndDate) { this.seasonalEndDate = seasonalEndDate; }
     public void setNoShowStrikeCount(Integer noShowStrikeCount) { this.noShowStrikeCount = noShowStrikeCount; }
+
+    public AttendanceDisciplineStatus getAttendanceDisciplineStatus() {
+        return attendanceDisciplineStatus;
+    }
+
+    public void setAttendanceDisciplineStatus(AttendanceDisciplineStatus attendanceDisciplineStatus) {
+        this.attendanceDisciplineStatus = attendanceDisciplineStatus;
+    }
 }
