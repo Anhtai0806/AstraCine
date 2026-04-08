@@ -1,5 +1,6 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.payment;
 
+import com.astracine.backend.core.service.SeatHoldService;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
 import com.astracine.backend.presentation.exception.HoldNotFoundException;
@@ -91,7 +92,8 @@ public class PayOSService {
             String sessionRaw = redis.opsForValue().get(PAYOS_ORDER_KEY_PREFIX + existingOrderCode);
             if (sessionRaw != null) {
                 try {
-                    Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+                    Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+                    });
                     String status = (String) prev.getOrDefault("status", "PENDING");
                     return PayOSCreateResponse.builder()
                             .orderCode(Long.parseLong(existingOrderCode))
@@ -146,7 +148,8 @@ public class PayOSService {
             } catch (Exception ignored) {
             }
 
-            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode + "&status=PAID";
+            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
+                    + "&status=PAID";
             return PayOSCreateResponse.builder()
                     .orderCode(orderCode)
                     .checkoutUrl(returnUrlWithParams)
@@ -173,7 +176,7 @@ public class PayOSService {
                 }
             }
         }
-        
+
         long discount = (discountAmount != null && discountAmount > 0) ? discountAmount : 0L;
         long ticketAmount = Math.max(amount - totalComboAmount + discount, 0L);
         long pricePerSeat = hold.seatCount > 0 ? ticketAmount / hold.seatCount : ticketAmount;
@@ -280,7 +283,8 @@ public class PayOSService {
                 return false;
             }
 
-            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
             String holdId = (String) session.get("holdId");
             String userId = (String) session.get("userId");
             String currentStatus = (String) session.getOrDefault("status", "PENDING");
@@ -305,21 +309,23 @@ public class PayOSService {
                     @SuppressWarnings("unchecked")
                     List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
                             session.getOrDefault("comboItems", Collections.emptyList()),
-                            new TypeReference<List<ComboCartItemDTO>>() {});
+                            new TypeReference<List<ComboCartItemDTO>>() {
+                            });
 
                     long showtimeId = ((Number) session.getOrDefault("showtimeId", 0L)).longValue();
 
                     @SuppressWarnings("unchecked")
                     List<Long> seatIds = objectMapper.convertValue(
                             session.getOrDefault("seatIds", Collections.emptyList()),
-                            new TypeReference<List<Long>>() {});
+                            new TypeReference<List<Long>>() {
+                            });
 
                     // <--- LẤY pointsUsed TỪ REDIS VÀ TRUYỀN XUỐNG
                     int pointsUsed = ((Number) session.getOrDefault("pointsUsed", 0)).intValue();
 
                     invoiceService.createInvoice(
                             holdId, userId, orderCode, amount, promotionCode,
-                            comboItems, showtimeId, seatIds, pointsUsed); 
+                            comboItems, showtimeId, seatIds, pointsUsed);
                 } catch (Exception ex) {
                     log.error("[PayOS] Invoice creation failed orderCode={}: {}", orderCode, ex.getMessage(), ex);
                 }
@@ -330,7 +336,8 @@ public class PayOSService {
                     seatHoldService.releaseHold(holdId, userId);
                     log.info("[PayOS] Hold released on cancel orderCode={} holdId={}", orderCode, holdId);
                 } catch (Exception ex) {
-                    log.warn("[PayOS] Release hold failed (may have expired) orderCode={}: {}", orderCode, ex.getMessage());
+                    log.warn("[PayOS] Release hold failed (may have expired) orderCode={}: {}", orderCode,
+                            ex.getMessage());
                 }
             }
 
@@ -355,7 +362,8 @@ public class PayOSService {
         }
 
         try {
-            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
             String currentStatus = (String) session.getOrDefault("status", "PENDING");
 
             if ("PAID".equals(currentStatus)) {
@@ -383,21 +391,23 @@ public class PayOSService {
             @SuppressWarnings("unchecked")
             List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
                     session.getOrDefault("comboItems", Collections.emptyList()),
-                    new TypeReference<List<ComboCartItemDTO>>() {});
+                    new TypeReference<List<ComboCartItemDTO>>() {
+                    });
 
             long showtimeId = ((Number) session.getOrDefault("showtimeId", 0L)).longValue();
 
             @SuppressWarnings("unchecked")
             List<Long> seatIds = objectMapper.convertValue(
                     session.getOrDefault("seatIds", Collections.emptyList()),
-                    new TypeReference<List<Long>>() {});
+                    new TypeReference<List<Long>>() {
+                    });
 
             // <--- LẤY pointsUsed TỪ REDIS VÀ TRUYỀN XUỐNG
             int pointsUsed = ((Number) session.getOrDefault("pointsUsed", 0)).intValue();
 
             invoiceService.createInvoice(
                     holdId, userId, orderCode, amount, promotionCode,
-                    comboItems, showtimeId, seatIds, pointsUsed); 
+                    comboItems, showtimeId, seatIds, pointsUsed);
 
             log.info("[PayOS] confirmPayment: Invoice created for orderCode={}", orderCode);
             return true;
@@ -417,7 +427,8 @@ public class PayOSService {
         }
 
         try {
-            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {});
+            Map<String, Object> session = objectMapper.readValue(sessionRaw, new TypeReference<>() {
+            });
             String storedHoldId = (String) session.get("holdId");
             String storedUserId = (String) session.get("userId");
             String status = (String) session.getOrDefault("status", "PENDING");

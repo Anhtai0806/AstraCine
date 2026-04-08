@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -69,6 +70,24 @@ public class Attendance {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "check_in_lat", precision = 10, scale = 7)
+    private BigDecimal checkInLat;
+
+    @Column(name = "check_in_lng", precision = 10, scale = 7)
+    private BigDecimal checkInLng;
+
+    @Column(name = "check_in_distance_meters")
+    private Double checkInDistanceMeters;
+
+    @Column(name = "gps_verified", nullable = false)
+    private Boolean gpsVerified = false;
+
+    @Column(name = "auto_marked_absent", nullable = false)
+    private Boolean autoMarkedAbsent = false;
+
+    @Column(name = "violation_strike_applied", nullable = false)
+    private Boolean violationStrikeApplied = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -79,18 +98,13 @@ public class Attendance {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) {
-            status = AttendanceStatus.PENDING;
-        }
-        if (workedMinutes == null) {
-            workedMinutes = 0;
-        }
-        if (lateMinutes == null) {
-            lateMinutes = 0;
-        }
-        if (earlyLeaveMinutes == null) {
-            earlyLeaveMinutes = 0;
-        }
+        if (status == null) status = AttendanceStatus.PENDING;
+        if (workedMinutes == null) workedMinutes = 0;
+        if (lateMinutes == null) lateMinutes = 0;
+        if (earlyLeaveMinutes == null) earlyLeaveMinutes = 0;
+        if (gpsVerified == null) gpsVerified = false;
+        if (autoMarkedAbsent == null) autoMarkedAbsent = false;
+        if (violationStrikeApplied == null) violationStrikeApplied = false;
     }
 
     @PreUpdate

@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.astracine.backend.core.service.InvoiceService;
-import com.astracine.backend.core.service.PayOSService;
+import com.astracine.backend.core.service.payment.InvoiceService;
+import com.astracine.backend.core.service.payment.PayOSService;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateRequest;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
@@ -46,19 +46,18 @@ public class PayOSController {
             @RequestHeader(value = "X-User-Id", required = false) String guestUserId) {
 
         String userId = resolveUserId(user, guestUserId);
-        
+
         // 👇 ĐÃ SỬA: Thêm req.getPointsUsed() vào cuối cùng
         PayOSCreateResponse response = payOSService.createPaymentLink(
-                req.getHoldId(), 
-                userId, 
-                req.getReturnUrl(), 
+                req.getHoldId(),
+                userId,
+                req.getReturnUrl(),
                 req.getCancelUrl(),
-                req.getAmount(), 
-                req.getPromotionCode(), 
+                req.getAmount(),
+                req.getPromotionCode(),
                 req.getComboItems(),
                 req.getDiscountAmount(),
-                req.getPointsUsed() 
-        );
+                req.getPointsUsed());
         return ResponseEntity.ok(response);
     }
 

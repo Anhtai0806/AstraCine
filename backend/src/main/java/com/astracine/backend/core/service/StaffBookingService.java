@@ -11,6 +11,7 @@ import com.astracine.backend.core.repository.InvoiceComboRepository;
 import com.astracine.backend.core.repository.MovieRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
+import com.astracine.backend.core.service.payment.InvoiceService;
 import com.astracine.backend.presentation.dto.staff.StaffCounterBookingRequest;
 import com.astracine.backend.presentation.dto.staff.StaffCounterBookingResponse;
 import com.astracine.backend.presentation.dto.staff.StaffTicketVerificationResponse;

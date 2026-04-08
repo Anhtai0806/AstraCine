@@ -21,6 +21,8 @@ public class MovieResponse {
     private LocalDate endDate;
     private String ageRating;
     private MovieStatus status;
+    /** Độ ưu tiên (độ hot) của phim — từ 1 (ít phổ biến) đến 5 (siêu hot). */
+    private Integer priority;
     private String posterUrl;
     private String trailerUrl;
     private LocalDateTime createdAt;

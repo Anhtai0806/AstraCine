@@ -26,6 +26,7 @@ const formatDateTime = (value) =>
 
 const getSeatTypeClass = (seatType) => `seat-type-${String(seatType || "NORMAL").toLowerCase()}`;
 const getSeatStatusClass = (status) => `seat-status-${String(status || "AVAILABLE").toLowerCase()}`;
+const HIDDEN_SUGGESTION_SOURCES = new Set(["booking-no-exact-showtime"]);
 
 const AIChatBox = () => {
   const navigate = useNavigate();
@@ -55,24 +56,24 @@ const AIChatBox = () => {
     const message = input.trim();
     if (!message || loading) return;
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: message,
-        suggestedMovies: [],
-        suggestedShowtimes: [],
-        suggestedCombos: [],
-      },
-    ]);
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: message,
+      suggestedMovies: [],
+      suggestedShowtimes: [],
+      suggestedCombos: [],
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
     setInput("");
     setLoading(true);
 
     try {
       const response = await chatboxApi.sendMessage({
         message,
-        history: buildHistoryPayload(messages),
+        history: buildHistoryPayload(nextMessages),
         sessionId,
       });
 
@@ -130,6 +131,24 @@ const AIChatBox = () => {
     }
   };
 
+  const shouldRenderSuggestions = (message) => {
+    if (message.role !== "assistant") {
+      return false;
+    }
+    if (HIDDEN_SUGGESTION_SOURCES.has(message.source)) {
+      return false;
+    }
+    return (
+      message.source?.startsWith("booking-") ||
+      message.bookingState ||
+      message.payment ||
+      message.ticket ||
+      message.suggestedMovies?.length > 0 ||
+      message.suggestedShowtimes?.length > 0 ||
+      message.suggestedCombos?.length > 0
+    );
+  };
+
   return (
     <div className="ai-chat-container">
       {!open && showGreeting && (
@@ -178,15 +197,9 @@ const AIChatBox = () => {
                 <div className="chat-bubble">
                   <p>{message.content}</p>
 
-                  {message.role === "assistant" &&
-                    (message.bookingState ||
-                      message.payment ||
-                      message.ticket ||
-                      message.suggestedMovies?.length > 0 ||
-                      message.suggestedShowtimes?.length > 0 ||
-                      message.suggestedCombos?.length > 0) && (
+                  {shouldRenderSuggestions(message) && (
                       <div className="chat-suggestions">
-                        {message.bookingState?.active && (
+                        {message.bookingState && (
                           <div className="chat-suggestion-block booking-summary">
                             <div className="suggestion-title">Trạng thái đặt vé</div>
                             <div className="booking-summary-grid">
@@ -293,7 +306,7 @@ const AIChatBox = () => {
                           <div className="chat-suggestion-block">
                             <div className="suggestion-title">Phim gợi ý</div>
                             <div className="suggestion-chips">
-                              {message.suggestedMovies.slice(0, 3).map((movie) => (
+                              {message.suggestedMovies.map((movie) => (
                                 <button
                                   key={`movie-${movie.id}`}
                                   className="suggestion-chip"
@@ -312,9 +325,7 @@ const AIChatBox = () => {
                               Suất chiếu phù hợp
                             </div>
                             <div className="suggestion-chips">
-                              {message.suggestedShowtimes
-                                .slice(0, 3)
-                                .map((showtime) => (
+                              {message.suggestedShowtimes.map((showtime) => (
                                   <button
                                     key={`showtime-${showtime.id}`}
                                     className="suggestion-chip suggestion-chip-secondary"

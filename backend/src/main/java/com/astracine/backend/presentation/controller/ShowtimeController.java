@@ -1,7 +1,6 @@
 package com.astracine.backend.presentation.controller;
 
-import com.astracine.backend.core.entity.Showtime;
-import com.astracine.backend.core.service.ShowtimeService;
+import com.astracine.backend.core.service.showtime.ShowtimeService;
 import com.astracine.backend.presentation.dto.ShowtimeDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +20,10 @@ public class ShowtimeController {
     private final ShowtimeService showtimeService;
 
     @PostMapping
-    public ResponseEntity<Showtime> createShowtime(@Valid @RequestBody ShowtimeDTO.CreateRequest request) {
-        Showtime showtime = showtimeService.createShowtime(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(showtime);
+    public ResponseEntity<ShowtimeDTO.ManualCreateResponse> createShowtime(
+            @Valid @RequestBody ShowtimeDTO.CreateRequest request) {
+        ShowtimeDTO.ManualCreateResponse response = showtimeService.createShowtime(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/generate")
@@ -32,9 +32,22 @@ public class ShowtimeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.generateShowtimes(request));
     }
 
+    @PostMapping("/generate/preview")
+    public ResponseEntity<ShowtimeDTO.GenerateResponse> previewGenerateShowtimes(
+            @Valid @RequestBody ShowtimeDTO.GenerateRequest request) {
+        return ResponseEntity.ok(showtimeService.previewGenerateShowtimes(request));
+    }
+
+    @PostMapping("/generate/confirm")
+    public ResponseEntity<ShowtimeDTO.GenerateResponse> confirmGeneratedShowtimes(
+            @Valid @RequestBody ShowtimeDTO.ConfirmGenerateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.confirmGeneratedShowtimes(request));
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<Showtime> updateShowtime(@PathVariable Long id,
-                                                   @Valid @RequestBody ShowtimeDTO.CreateRequest request) {
+    public ResponseEntity<ShowtimeDTO.ManualCreateResponse> updateShowtime(
+            @PathVariable Long id,
+            @Valid @RequestBody ShowtimeDTO.CreateRequest request) {
         return ResponseEntity.ok(showtimeService.updateShowtime(id, request));
     }
 

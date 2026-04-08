@@ -1,11 +1,12 @@
 package com.astracine.backend.presentation.controller.client;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,10 +27,19 @@ public class ClientChatController {
     @PostMapping("/message")
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
-            @AuthenticationPrincipal UserDetails user,
-            @RequestHeader(value = "X-User-Id", required = false) String guestUserId) {
-        String userId = user != null ? user.getUsername()
-                : (guestUserId != null && !guestUserId.isBlank() ? guestUserId : "anonymous");
+            @AuthenticationPrincipal UserDetails user) {
+        if (user == null) {
+            return ResponseEntity.ok(ChatResponse.builder()
+                    .reply("Vui lòng đăng nhập để có thể nhắn tin với chatbox.")
+                    .usedAi(false)
+                    .source("auth-required")
+                    .suggestedMovies(List.of())
+                    .suggestedShowtimes(List.of())
+                    .sessionId(request.getSessionId())
+                    .suggestedCombos(List.of())
+                    .build());
+        }
+        String userId = user.getUsername();
         return ResponseEntity.ok(clientChatboxService.chat(request, userId));
     }
 }

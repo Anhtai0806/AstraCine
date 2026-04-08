@@ -82,6 +82,10 @@ public class SeatHoldService {
     // ===============================
 
     public List<SeatStateDto> getSeatStates(Long showtimeId) {
+        return getSeatStates(showtimeId, null);
+    }
+
+    public List<SeatStateDto> getSeatStates(Long showtimeId, String currentUserId) {
         // Lấy toàn bộ ghế của showtime (đã có finalPrice) từ bảng showtime_seats
         List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtimeId);
         if (showtimeSeats.isEmpty()) {
@@ -107,15 +111,19 @@ public class SeatHoldService {
                 .collect(Collectors.toList());
 
         List<String> values = redis.opsForValue().multiGet(holdKeys);
-        Map<Long, Long> heldExpiresBySeatId = new HashMap<>();
+        Map<Long, HoldSeatMeta> heldMetaBySeatId = new HashMap<>();
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 String v = values.get(i);
-                if (v == null)
+                if (v == null) {
                     continue;
+                }
+
                 Long seatId = showtimeSeats.get(i).getSeat().getId();
-                Long exp = parseExpiresAt(v);
-                heldExpiresBySeatId.put(seatId, exp);
+                HoldSeatMeta meta = parseHoldSeatMeta(v);
+                if (meta != null) {
+                    heldMetaBySeatId.put(seatId, meta);
+                }
             }
         }
 
@@ -125,12 +133,18 @@ public class SeatHoldService {
 
             SeatBookingStatus status;
             Long heldExpiresAt = null;
+            Boolean heldByCurrentUser = false;
+            String holdId = null;
 
             if (soldSeatIds.contains(s.getId())) {
                 status = SeatBookingStatus.SOLD;
-            } else if (heldExpiresBySeatId.containsKey(s.getId())) {
+            } else if (heldMetaBySeatId.containsKey(s.getId())) {
                 status = SeatBookingStatus.HELD;
-                heldExpiresAt = heldExpiresBySeatId.get(s.getId());
+
+                HoldSeatMeta meta = heldMetaBySeatId.get(s.getId());
+                heldExpiresAt = meta.expiresAt();
+                holdId = meta.holdId();
+                heldByCurrentUser = currentUserId != null && currentUserId.equals(meta.userId());
             } else {
                 status = SeatBookingStatus.AVAILABLE;
             }
@@ -143,6 +157,8 @@ public class SeatHoldService {
                     .finalPrice(ss.getFinalPrice())
                     .status(status)
                     .heldExpiresAt(heldExpiresAt)
+                    .heldByCurrentUser(heldByCurrentUser)
+                    .holdId(holdId)
                     .build());
         }
 
@@ -207,7 +223,6 @@ public class SeatHoldService {
                 .showtimeId(showtimeId)
                 .seatIds(seatIds)
                 .holdId(holdId)
-                .byUserId(userId)
                 .expiresAt(expiresAt)
                 .build());
 
@@ -224,7 +239,6 @@ public class SeatHoldService {
         HoldSummary summary = getAndValidateHoldSummary(holdId, userId);
         cleanupHoldKeys(summary.showtimeId, holdId, userId, summary.seatIds);
 
-        // broadcast release
         publisher.publish(summary.showtimeId, SeatEventDto.builder()
                 .type(SeatEventType.SEAT_RELEASED)
                 .showtimeId(summary.showtimeId)
@@ -265,7 +279,6 @@ public class SeatHoldService {
                 .ttlSeconds(ttlSeconds)
                 .build();
     }
-
 
     public HoldSnapshot getHoldSnapshot(String holdId, String userId) {
         HoldSummary summary = getAndValidateHoldSummary(holdId, userId);
@@ -309,8 +322,7 @@ public class SeatHoldService {
             showtimeSeatRepository.save(ss);
         }
 
-        // cleanup hold keys + summary (KHÔNG broadcast RELEASED để tránh UI nhấp nháy
-        // AVAILABLE)
+        // cleanup hold keys + summary (KHÔNG broadcast RELEASED để tránh UI nhấp nháy AVAILABLE)
         cleanupHoldKeys(summary.showtimeId, holdId, userId, summary.seatIds);
 
         // broadcast sold
@@ -402,12 +414,19 @@ public class SeatHoldService {
     }
 
     private static Long parseExpiresAt(String holdValue) {
+        HoldSeatMeta meta = parseHoldSeatMeta(holdValue);
+        return meta != null ? meta.expiresAt() : null;
+    }
+
+    private static HoldSeatMeta parseHoldSeatMeta(String holdValue) {
         // {holdId}|{userId}|{expiresAt}
-        String[] parts = holdValue.split("\\|");
-        if (parts.length < 3)
+        String[] parts = holdValue.split("\\|", 3);
+        if (parts.length < 3) {
             return null;
+        }
+
         try {
-            return Long.parseLong(parts[2]);
+            return new HoldSeatMeta(parts[0], parts[1], Long.parseLong(parts[2]));
         } catch (Exception e) {
             return null;
         }
@@ -435,6 +454,9 @@ public class SeatHoldService {
     }
 
     private record HoldSummary(Long showtimeId, String userId, long expiresAt, List<Long> seatIds) {
+    }
+
+    private record HoldSeatMeta(String holdId, String userId, Long expiresAt) {
     }
 
     public static class HoldSnapshot {
@@ -518,14 +540,15 @@ public class SeatHoldService {
     /**
      * KEYS: seat hold keys
      * ARGV[1]: prefix = holdId|userId|
-     * ARGV[2]: newValue
+     * ARGV[2]: newValue = holdId|userId|newExpiresAt
      * ARGV[3]: ttl seconds
-     * return: 1 if all keys renewed, 0 otherwise
+     * return: 1 nếu all matched and renewed, 0 nếu có key missing/mismatch
      */
     private static final String RENEW_SEATS_LUA = """
             local prefix = ARGV[1]
-            local newVal = ARGV[2]
+            local newValue = ARGV[2]
             local ttl = tonumber(ARGV[3])
+
             for i=1,#KEYS do
               local v = redis.call('GET', KEYS[i])
               if v == false then
@@ -535,8 +558,9 @@ public class SeatHoldService {
                 return 0
               end
             end
+
             for i=1,#KEYS do
-              redis.call('SET', KEYS[i], newVal, 'EX', ttl, 'XX')
+              redis.call('SET', KEYS[i], newValue, 'EX', ttl)
             end
             return 1
             """;

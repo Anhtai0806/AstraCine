@@ -199,7 +199,7 @@ const ComboMenu = () => {
                                             {qty > 0 && <span className="cart-qty-badge">{qty}</span>}
                                             {isActive && !isOutOfStock && (
                                                 <span className="stock-count-badge">
-                                                    Còn {maxQty - qty}/{maxQty}
+                                                    Còn {maxQty - qty}
                                                 </span>
                                             )}
                                         </div>

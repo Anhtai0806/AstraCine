@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.payment;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -33,9 +33,12 @@ import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
-import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
+import com.astracine.backend.core.service.EmailService;
+import com.astracine.backend.core.service.MemberService;
+import com.astracine.backend.core.service.SeatHoldService;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
+import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -195,8 +198,7 @@ public class InvoiceService {
             } else if (!"WALK_IN".equals(customerUsername)) {
 
                 Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(
-                        customerUsername, customerUsername, customerUsername
-                );
+                        customerUsername, customerUsername, customerUsername);
 
                 if (userOpt.isPresent()) {
                     User user = userOpt.get();
@@ -295,7 +297,8 @@ public class InvoiceService {
 
             // Nếu không có email tham số (ví dụ online booking), lấy từ user liên kết
             if (targetEmail == null || targetEmail.isBlank()) {
-                Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername, customerUsername);
+                Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername,
+                        customerUsername);
                 if (uOpt.isPresent() && uOpt.get().getEmail() != null && !uOpt.get().getEmail().isBlank()) {
                     targetEmail = uOpt.get().getEmail();
                 }
@@ -303,7 +306,8 @@ public class InvoiceService {
 
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
-                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi
+                // proxy/chưa commit
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
 
                 // Tạo một luồng mới để gửi thư
@@ -341,8 +345,8 @@ public class InvoiceService {
                 int requested = item.getQuantity();
                 if (currentStock < requested) {
                     throw new IllegalStateException(
-                            "Combo \"" + combo.getName() + "\" chỉ còn " + currentStock + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ")."
-                    );
+                            "Combo \"" + combo.getName() + "\" chỉ còn " + currentStock
+                                    + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ").");
                 }
 
                 // Trừ tồn kho

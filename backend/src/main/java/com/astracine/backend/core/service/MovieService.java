@@ -201,6 +201,8 @@ public class MovieService {
 
         movie.setStatus(resolveMovieStatus(request.getReleaseDate(), request.getEndDate()));
 
+        movie.setPriority(request.getPriority());
+
         // Update genres
         if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
             Set<Genre> genres = new HashSet<>();
@@ -223,6 +225,7 @@ public class MovieService {
         response.setEndDate(movie.getEndDate());
         response.setAgeRating(movie.getAgeRating());
         response.setStatus(movie.getStatus());
+        response.setPriority(movie.getPriority());
         response.setPosterUrl(movie.getPosterUrl());
         response.setTrailerUrl(movie.getTrailerUrl());
         response.setCreatedAt(movie.getCreatedAt());
