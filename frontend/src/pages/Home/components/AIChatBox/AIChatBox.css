@@ -109,7 +109,7 @@
 .chat-greeting {
   position: absolute;
   bottom: 90px;
-  right: 20px;
+  right: 17px;
   background: white;
   padding: 15px 16px;
   border-radius: 16px;
@@ -126,7 +126,7 @@
   content: "";
   position: absolute;
   bottom: -8px;
-  left: 250px;
+  left: 230px;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
   border-top: 8px solid white;

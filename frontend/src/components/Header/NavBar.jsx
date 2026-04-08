@@ -26,7 +26,7 @@ function NavBar() {
                     <Link to="/booking"><li>Lịch chiếu</li></Link>
                     <li>Giá vé</li>
                     <li>Tin mới & ưu đãi</li>
-                    <li>Thành viên</li>
+                    <Link to="/member"><li>Thành viên</li></Link>
                 </ul>
             </div>
         </div>

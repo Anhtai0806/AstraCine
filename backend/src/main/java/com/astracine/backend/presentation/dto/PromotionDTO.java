@@ -1,12 +1,16 @@
 package com.astracine.backend.presentation.dto;
 
-import jakarta.validation.constraints.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -46,6 +50,9 @@ public class PromotionDTO {
 
     @DecimalMin(value = "0", message = "Minimum order amount must be 0 or greater")
     private BigDecimal minOrderAmount;
+
+    @jakarta.validation.constraints.Pattern(regexp = "^(ALL|TICKET|COMBO)$", message = "Applicable to must be ALL, TICKET, or COMBO")
+    private String applicableTo;
 
     // Custom validation method for percentage discount
     public boolean isValidPercentageDiscount() {

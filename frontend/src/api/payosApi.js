@@ -95,8 +95,11 @@ async function request(path, options = {}) {
  * @param {string|null} promotionCode - Mã khuyến mãi đã áp dụng
  * @param {Array} comboItems - Danh sách combo [{comboId, name, quantity, price, subtotal}]
  * @param {number} discountAmount - Số tiền được giảm (để hiển thị trong PayOS)
+ * @param {number} pointsUsed - Số điểm thành viên đã dùng (mới thêm)
  */
-export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, promotionCode, comboItems, discountAmount) {
+export async function createPaymentLink(
+    holdId, returnUrl, cancelUrl, amount, promotionCode, comboItems, discountAmount, pointsUsed = 0
+) {
     return request("/api/payments/payos/create", {
         method: "POST",
         body: JSON.stringify({
@@ -107,6 +110,8 @@ export async function createPaymentLink(holdId, returnUrl, cancelUrl, amount, pr
             promotionCode: promotionCode || null,
             comboItems: comboItems || [],
             discountAmount: discountAmount ? Math.round(discountAmount) : null,
+            // 👇 THÊM DÒNG NÀY ĐỂ GỬI SỐ ĐIỂM XUỐNG BACKEND
+            pointsUsed: pointsUsed ? parseInt(pointsUsed, 10) : 0, 
         }),
     });
 }

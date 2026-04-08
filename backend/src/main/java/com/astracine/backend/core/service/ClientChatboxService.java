@@ -195,9 +195,9 @@ public class ClientChatboxService {
             saveBookingSession(userId, session);
             return bookingResponse(
                     showtimeSuggestions.isEmpty()
-                            ? "Hiện mình chưa thấy suất chiếu phù hợp cho phim " + selectedMovie.getTitle()
-                                    + ". Bạn có thể đổi ngày/giờ khác hoặc chọn phim khác."
-                            : buildShowtimeQuestion(selectedMovie, showtimeSuggestions),
+                    ? "Hiện mình chưa thấy suất chiếu phù hợp cho phim " + selectedMovie.getTitle()
+                    + ". Bạn có thể đổi ngày/giờ khác hoặc chọn phim khác."
+                    : buildShowtimeQuestion(selectedMovie, showtimeSuggestions),
                     false,
                     showtimeSuggestions.isEmpty() ? "booking-no-showtime" : "booking-collect-showtime",
                     List.of(toMovieSuggestion(selectedMovie, 100)),
@@ -330,7 +330,8 @@ public class ClientChatboxService {
                     totalAmount,
                     null,
                     session.getComboItems(),
-                    null);
+                    null,
+                    0);
 
             session.setOrderCode(payment.getOrderCode());
             session.setAwaitingPayment(true);
@@ -426,13 +427,13 @@ public class ClientChatboxService {
         List<Movie> filteredMovies = movies.stream()
                 .filter(movie -> matchesGenrePreference(movie, preference))
                 .filter(movie -> preference.specificMovieId() == null
-                        || preference.specificMovieId().equals(movie.getId()))
+                || preference.specificMovieId().equals(movie.getId()))
                 .collect(Collectors.toList());
 
         if (filteredMovies.isEmpty()) {
             filteredMovies = movies.stream()
                     .filter(movie -> preference.specificMovieId() == null
-                            || preference.specificMovieId().equals(movie.getId()))
+                    || preference.specificMovieId().equals(movie.getId()))
                     .collect(Collectors.toList());
         }
 
@@ -665,13 +666,13 @@ public class ClientChatboxService {
         List<Showtime> upcomingShowtimes = showtimeRepository.findAll().stream()
                 .filter(showtime -> showtime.getStatus() == ShowtimeStatus.OPEN)
                 .filter(showtime -> showtime.getStartTime() != null
-                        && showtime.getStartTime().isAfter(LocalDateTime.now()))
+                && showtime.getStartTime().isAfter(LocalDateTime.now()))
                 .collect(Collectors.toList());
         Map<Long, Integer> scores = scoreMovies(mergedConversation, movies, upcomingShowtimes, preference);
 
         return movies.stream()
                 .filter(movie -> movie.getStatus() == MovieStatus.NOW_SHOWING
-                        || movie.getStatus() == MovieStatus.COMING_SOON)
+                || movie.getStatus() == MovieStatus.COMING_SOON)
                 .sorted(Comparator.comparingInt((Movie movie) -> scores.getOrDefault(movie.getId(), 0)).reversed())
                 .limit(MAX_FINAL_SUGGESTIONS)
                 .map(movie -> toMovieSuggestion(movie, scores.getOrDefault(movie.getId(), 0)))
@@ -762,7 +763,7 @@ public class ClientChatboxService {
                 .sorted(Comparator.comparing(Combo::getName, String.CASE_INSENSITIVE_ORDER))
                 .limit(MAX_FINAL_SUGGESTIONS)
                 .map(combo -> new ComboCartItemDTO(combo.getId(), combo.getName(), 1, combo.getPrice(),
-                        combo.getPrice()))
+                combo.getPrice()))
                 .collect(Collectors.toList());
     }
 
@@ -1038,30 +1039,41 @@ public class ClientChatboxService {
                 if (token.length() < 3) {
                     continue;
                 }
-                if (title.contains(token))
+                if (title.contains(token)) {
                     score += 3;
-                if (!description.isBlank() && description.contains(token))
+                }
+                if (!description.isBlank() && description.contains(token)) {
                     score += 1;
-                if (!ageRating.isBlank() && ageRating.contains(token))
+                }
+                if (!ageRating.isBlank() && ageRating.contains(token)) {
                     score += 1;
-                if (genres.stream().anyMatch(genre -> genre.contains(token) || token.contains(genre)))
+                }
+                if (genres.stream().anyMatch(genre -> genre.contains(token) || token.contains(genre))) {
                     score += 4;
+                }
             }
 
-            if (movie.getStatus() == MovieStatus.NOW_SHOWING)
+            if (movie.getStatus() == MovieStatus.NOW_SHOWING) {
                 score += 2;
-            if (movie.getStatus() == MovieStatus.COMING_SOON)
+            }
+            if (movie.getStatus() == MovieStatus.COMING_SOON) {
                 score += 1;
-            if (movieIdsWithUpcomingShowtimes.contains(movie.getId()))
+            }
+            if (movieIdsWithUpcomingShowtimes.contains(movie.getId())) {
                 score += 2;
-            if (asksForNowShowing && movie.getStatus() == MovieStatus.NOW_SHOWING)
+            }
+            if (asksForNowShowing && movie.getStatus() == MovieStatus.NOW_SHOWING) {
                 score += 4;
-            if (asksForComingSoon && movie.getStatus() == MovieStatus.COMING_SOON)
+            }
+            if (asksForComingSoon && movie.getStatus() == MovieStatus.COMING_SOON) {
                 score += 6;
-            if (asksForRecommendation && movie.getStatus() == MovieStatus.NOW_SHOWING)
+            }
+            if (asksForRecommendation && movie.getStatus() == MovieStatus.NOW_SHOWING) {
                 score += 2;
-            if (asksForTime && movieIdsWithUpcomingShowtimes.contains(movie.getId()))
+            }
+            if (asksForTime && movieIdsWithUpcomingShowtimes.contains(movie.getId())) {
                 score += 4;
+            }
 
             if (preference.genreKeyword() != null && matchesGenrePreference(movie, preference)) {
                 score += 30;
@@ -1166,7 +1178,7 @@ public class ClientChatboxService {
         }
         prompts.add(
                 "Hãy chọn các id phù hợp nhất từ danh sách candidate và trả về JSON theo đúng schema. Câu hỏi hiện tại:\n"
-                        + request.getMessage().trim());
+                + request.getMessage().trim());
         return prompts;
     }
 
@@ -1200,16 +1212,18 @@ public class ClientChatboxService {
 
     private List<ChatMovieSuggestionDTO> selectMovies(List<Long> movieIds,
             Map<Long, ChatMovieSuggestionDTO> candidateMovieMap) {
-        if (movieIds == null || movieIds.isEmpty())
+        if (movieIds == null || movieIds.isEmpty()) {
             return List.of();
+        }
         return new LinkedHashSet<>(movieIds).stream().map(candidateMovieMap::get).filter(Objects::nonNull)
                 .limit(MAX_FINAL_SUGGESTIONS).toList();
     }
 
     private List<ChatShowtimeSuggestionDTO> selectShowtimes(List<Long> showtimeIds,
             Map<Long, ChatShowtimeSuggestionDTO> candidateShowtimeMap) {
-        if (showtimeIds == null || showtimeIds.isEmpty())
+        if (showtimeIds == null || showtimeIds.isEmpty()) {
             return List.of();
+        }
         return new LinkedHashSet<>(showtimeIds).stream().map(candidateShowtimeMap::get).filter(Objects::nonNull)
                 .limit(MAX_FINAL_SUGGESTIONS).toList();
     }
@@ -1235,8 +1249,9 @@ public class ClientChatboxService {
             List<ChatShowtimeSuggestionDTO> suggestedShowtimes, String aiErrorMessage) {
         StringBuilder reply = new StringBuilder();
         reply.append("Mình đã kiểm tra dữ liệu phim và suất chiếu hiện có của rạp");
-        if (aiErrorMessage != null && !aiErrorMessage.isBlank())
+        if (aiErrorMessage != null && !aiErrorMessage.isBlank()) {
             reply.append(", nhưng hiện chưa gọi được Gemini");
+        }
         reply.append(". ");
 
         if (!suggestedMovies.isEmpty()) {
@@ -1253,7 +1268,7 @@ public class ClientChatboxService {
             reply.append("Một vài suất chiếu gần nhất là ");
             reply.append(suggestedShowtimes.stream()
                     .map(showtime -> showtime.getMovieTitle() + " lúc "
-                            + showtime.getStartTime().format(SHOWTIME_FORMATTER))
+                    + showtime.getStartTime().format(SHOWTIME_FORMATTER))
                     .collect(Collectors.joining("; ")));
             reply.append(". ");
         } else {
@@ -1270,10 +1285,11 @@ public class ClientChatboxService {
         String genreKeyword = resolveGenreKeyword(normalized);
 
         LocalDate preferredDate = null;
-        if (containsConfigured(normalized, "TOMORROW"))
-            preferredDate = now.toLocalDate().plusDays(1);
-        else if (containsConfigured(normalized, "TODAY"))
+        if (containsConfigured(normalized, "TOMORROW")) {
+            preferredDate = now.toLocalDate().plusDays(1); 
+        }else if (containsConfigured(normalized, "TODAY")) {
             preferredDate = now.toLocalDate();
+        }
 
         DayOfWeek preferredWeekday = extractPreferredWeekday(normalized);
         LocalTime targetTime = extractTargetTime(normalized);
@@ -1311,8 +1327,9 @@ public class ClientChatboxService {
         for (Movie movie : movies) {
             String normalizedTitle = normalize(movie.getTitle());
             int score = 0;
-            if (!normalizedTitle.isBlank() && normalizedConversation.contains(normalizedTitle))
+            if (!normalizedTitle.isBlank() && normalizedConversation.contains(normalizedTitle)) {
                 score += 100;
+            }
 
             if (!normalizedTitle.isBlank()
                     && (normalizedTitle.contains(normalizedConversation) || normalizedConversation.contains(normalizedTitle))) {
@@ -1331,8 +1348,9 @@ public class ClientChatboxService {
             }
 
             for (String token : titleTokens) {
-                if (token.length() >= 3 && conversationTokens.contains(token))
+                if (token.length() >= 3 && conversationTokens.contains(token)) {
                     score += 10;
+                }
             }
 
             if (score > bestScore) {
@@ -1366,8 +1384,9 @@ public class ClientChatboxService {
         mappings.put("chu nhat", DayOfWeek.SUNDAY);
         mappings.put("cn", DayOfWeek.SUNDAY);
         for (Map.Entry<String, DayOfWeek> entry : mappings.entrySet()) {
-            if (normalizedConversation.contains(entry.getKey()))
+            if (normalizedConversation.contains(entry.getKey())) {
                 return entry.getValue();
+            }
         }
         return null;
     }
@@ -1391,20 +1410,23 @@ public class ClientChatboxService {
     }
 
     private boolean matchesGenrePreference(Movie movie, UserPreference preference) {
-        if (preference.genreKeyword() == null || preference.genreKeyword().isBlank())
+        if (preference.genreKeyword() == null || preference.genreKeyword().isBlank()) {
             return true;
+        }
         return movie.getGenres().stream()
                 .map(Genre::getName)
                 .map(this::normalize)
                 .anyMatch(genre -> genre.contains(preference.genreKeyword())
-                        || preference.genreKeyword().contains(genre));
+                || preference.genreKeyword().contains(genre));
     }
 
     private LocalDate resolveTargetDate(UserPreference preference, List<Showtime> showtimes) {
-        if (preference.preferredDate() != null)
+        if (preference.preferredDate() != null) {
             return preference.preferredDate();
-        if (preference.preferredWeekday() == null)
+        }
+        if (preference.preferredWeekday() == null) {
             return null;
+        }
         return showtimes.stream()
                 .map(showtime -> showtime.getStartTime().toLocalDate())
                 .filter(date -> date.getDayOfWeek() == preference.preferredWeekday())
@@ -1413,12 +1435,14 @@ public class ClientChatboxService {
     }
 
     private boolean matchesTimePreference(Showtime showtime, UserPreference preference, LocalDate targetDate) {
-        if (targetDate != null && !showtime.getStartTime().toLocalDate().equals(targetDate))
+        if (targetDate != null && !showtime.getStartTime().toLocalDate().equals(targetDate)) {
             return false;
+        }
         if (preference.timeFrom() != null && preference.timeTo() != null) {
             LocalTime start = showtime.getStartTime().toLocalTime();
-            if (start.isBefore(preference.timeFrom()) || start.isAfter(preference.timeTo()))
+            if (start.isBefore(preference.timeFrom()) || start.isAfter(preference.timeTo())) {
                 return false;
+            }
         }
         return true;
     }
@@ -1427,16 +1451,18 @@ public class ClientChatboxService {
         List<Showtime> sorted = showtimes.stream().sorted(Comparator.comparing(Showtime::getStartTime)).toList();
         List<Showtime> exact = sorted.stream()
                 .filter(showtime -> showtime.getStartTime().toLocalTime().equals(targetTime)).toList();
-        if (!exact.isEmpty())
+        if (!exact.isEmpty()) {
             return exact;
+        }
 
         List<Showtime> before = sorted.stream()
                 .filter(showtime -> showtime.getStartTime().toLocalTime().isBefore(targetTime)).toList();
         List<Showtime> after = sorted.stream()
                 .filter(showtime -> !showtime.getStartTime().toLocalTime().isBefore(targetTime)).toList();
         List<Showtime> prioritized = new ArrayList<>();
-        if (!before.isEmpty())
+        if (!before.isEmpty()) {
             prioritized.add(before.get(before.size() - 1));
+        }
         prioritized.addAll(after.stream().limit(2).toList());
 
         Set<Long> selectedIds = prioritized.stream().map(Showtime::getId).collect(Collectors.toSet());
@@ -1445,8 +1471,9 @@ public class ClientChatboxService {
     }
 
     private String safeText(String value, int maxLength) {
-        if (value == null || value.isBlank())
+        if (value == null || value.isBlank()) {
             return "Không có mô tả";
+        }
         String normalized = value.trim().replaceAll("\\s+", " ");
         return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength - 3) + "...";
     }
@@ -1478,15 +1505,17 @@ public class ClientChatboxService {
             }
             String paddedText = " " + text + " ";
             String paddedKeyword = " " + normalizedKeyword + " ";
-            if (paddedText.contains(paddedKeyword))
+            if (paddedText.contains(paddedKeyword)) {
                 return true;
+            }
         }
         return false;
     }
 
     private Set<String> extractTokens(String text) {
-        if (text == null || text.isBlank())
+        if (text == null || text.isBlank()) {
             return Set.of();
+        }
         String cleaned = text.replaceAll("[^\\p{L}\\p{Nd}\\s]", " ");
         return List.of(cleaned.split("\\s+")).stream()
                 .map(String::trim)
@@ -1495,8 +1524,9 @@ public class ClientChatboxService {
     }
 
     private String normalize(String input) {
-        if (input == null || input.isBlank())
+        if (input == null || input.isBlank()) {
             return "";
+        }
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}", "")
                 .toLowerCase(Locale.ROOT);
         normalized = normalized.replace("\u0111", "d").replace("\u0110", "d");
@@ -1504,14 +1534,17 @@ public class ClientChatboxService {
     }
 
     private record GeminiDecision(String reply, List<Long> movieIds, List<Long> showtimeIds) {
+
     }
 
     private record UserPreference(String genreKeyword, LocalDate preferredDate, DayOfWeek preferredWeekday,
             LocalTime targetTime, LocalTime timeFrom, LocalTime timeTo, Long specificMovieId) {
+
     }
 
     @Data
     private static class BookingSession {
+
         private String sessionId;
         private boolean active;
         private Long movieId;
