@@ -40,7 +40,10 @@ public class RoomDTO {
         private BigDecimal priceMultiplier; // default 1.00
     }
 
-    /** DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType + priceMultiplier */
+    /**
+     * DTO dùng để cập nhật phòng — CHỈ cho phép sửa name + screenType +
+     * priceMultiplier
+     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

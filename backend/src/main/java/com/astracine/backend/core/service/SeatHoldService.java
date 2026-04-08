@@ -266,7 +266,6 @@ public class SeatHoldService {
                 .build();
     }
 
-
     public HoldSnapshot getHoldSnapshot(String holdId, String userId) {
         HoldSummary summary = getAndValidateHoldSummary(holdId, userId);
         return new HoldSnapshot(summary.showtimeId, summary.userId, summary.expiresAt, summary.seatIds);

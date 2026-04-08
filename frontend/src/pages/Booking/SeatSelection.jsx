@@ -323,8 +323,8 @@ export default function SeatSelection() {
             {!user && (
                 <div className="login-notice">
                     <span className="notice-icon">🔐</span>
-                    <span>Vui lòng <button 
-                        className="login-link" 
+                    <span>Vui lòng <button
+                        className="login-link"
                         onClick={() => navigate("/login", { state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` } })}
                     >
                         đăng nhập
