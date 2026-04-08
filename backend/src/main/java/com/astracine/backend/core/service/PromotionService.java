@@ -1,17 +1,20 @@
 package com.astracine.backend.core.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.astracine.backend.core.entity.Promotion;
 import com.astracine.backend.core.repository.PromotionRepository;
 import com.astracine.backend.presentation.dto.PromotionDTO;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -86,6 +89,9 @@ public class PromotionService {
         promotion.setDescription(promotionDTO.getDescription());
         promotion.setMinOrderAmount(
                 promotionDTO.getMinOrderAmount() != null ? promotionDTO.getMinOrderAmount() : BigDecimal.ZERO);
+        
+        // Cập nhật trường applicableTo
+        promotion.setApplicableTo(promotionDTO.getApplicableTo() != null ? promotionDTO.getApplicableTo() : "ALL");
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
         return convertToDTO(updatedPromotion);
@@ -111,6 +117,34 @@ public class PromotionService {
         return convertToDTO(promotion);
     }
 
+    // TỰ ĐỘNG TẠO MÃ THĂNG HẠNG (CHỈ ÁP DỤNG CHO VÉ)
+    public List<String> generateUpgradeRewards(Long customerId, String levelName, int quantity) {
+        List<String> generatedCodes = new ArrayList<>();
+        
+        for (int i = 0; i < quantity; i++) {
+            String uniqueString = UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+            String code = "UPG-" + levelName.toUpperCase() + "-" + customerId + "-" + uniqueString;
+
+            Promotion promotion = new Promotion();
+            promotion.setCode(code);
+            promotion.setDiscountType("PERCENTAGE");
+            promotion.setDiscountValue(new BigDecimal("100")); 
+            promotion.setApplicableTo("TICKET"); // Bắt buộc chỉ áp dụng cho Vé
+            promotion.setStartDate(LocalDate.now());
+            promotion.setEndDate(LocalDate.now().plusMonths(3)); // Hạn sử dụng 3 tháng
+            promotion.setStatus("ACTIVE");
+            promotion.setMaxUsage(1); 
+            promotion.setCurrentUsage(0);
+            promotion.setDescription("Quà tặng thăng hạng " + levelName);
+            promotion.setMinOrderAmount(BigDecimal.ZERO);
+
+            promotionRepository.save(promotion);
+            generatedCodes.add(code);
+        }
+        
+        return generatedCodes;
+    }
+
     private PromotionDTO convertToDTO(Promotion promotion) {
         PromotionDTO dto = new PromotionDTO();
         dto.setId(promotion.getId());
@@ -124,6 +158,10 @@ public class PromotionService {
         dto.setCurrentUsage(promotion.getCurrentUsage());
         dto.setDescription(promotion.getDescription());
         dto.setMinOrderAmount(promotion.getMinOrderAmount());
+        
+        // Map trường applicableTo
+        dto.setApplicableTo(promotion.getApplicableTo());
+        
         return dto;
     }
 
@@ -139,6 +177,10 @@ public class PromotionService {
         promotion.setCurrentUsage(dto.getCurrentUsage() != null ? dto.getCurrentUsage() : 0);
         promotion.setDescription(dto.getDescription());
         promotion.setMinOrderAmount(dto.getMinOrderAmount() != null ? dto.getMinOrderAmount() : BigDecimal.ZERO);
+        
+        // Map trường applicableTo (Mặc định là ALL nếu người dùng không truyền)
+        promotion.setApplicableTo(dto.getApplicableTo() != null ? dto.getApplicableTo() : "ALL");
+        
         return promotion;
     }
 }

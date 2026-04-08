@@ -7,6 +7,7 @@ export const staffSchedulingAdminApi = {
     generateDemand: (payload) => axiosClient.post(`${BASE_ADMIN}/demands/generate`, payload),
     getDemands: (businessDate) => axiosClient.get(`${BASE_ADMIN}/demands`, { params: { businessDate } }),
     generatePlan: (payload) => axiosClient.post(`${BASE_ADMIN}/plans/generate`, payload),
+    generateSimplePlan: (payload) => axiosClient.post(`${BASE_ADMIN}/plans/generate-simple`, payload),
     getPlans: (businessDate) => axiosClient.get(`${BASE_ADMIN}/plans`, { params: { businessDate } }),
     publishPlan: (planId) => axiosClient.post(`${BASE_ADMIN}/plans/${planId}/publish`),
     getAssignments: (businessDate) => axiosClient.get(`${BASE_ADMIN}/assignments`, { params: { businessDate } }),

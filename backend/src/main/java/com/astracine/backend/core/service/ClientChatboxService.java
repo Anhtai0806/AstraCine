@@ -39,6 +39,8 @@ import com.astracine.backend.core.enums.ShowtimeStatus;
 import com.astracine.backend.core.repository.ComboRepository;
 import com.astracine.backend.core.repository.MovieRepository;
 import com.astracine.backend.core.repository.ShowtimeRepository;
+import com.astracine.backend.core.service.payment.InvoiceService;
+import com.astracine.backend.core.service.payment.PayOSService;
 import com.astracine.backend.infrastructure.client.GeminiClient;
 import com.astracine.backend.infrastructure.client.GeminiClient.GeminiResult;
 import com.astracine.backend.presentation.dto.chat.ChatBookingStateDTO;
@@ -428,6 +430,7 @@ public class ClientChatboxService {
                     totalAmount,
                     null,
                     session.getComboItems(),
+                    null,
                     null);
 
             session.setOrderCode(payment.getOrderCode());
@@ -1023,7 +1026,8 @@ public class ClientChatboxService {
 
         Matcher comboIndexMatcher = COMBO_INDEX_SELECTION_PATTERN.matcher(normalizedMessage);
         while (comboIndexMatcher.find()) {
-            int quantity = comboIndexMatcher.group(1) == null ? 1 : Math.max(Integer.parseInt(comboIndexMatcher.group(1)), 1);
+            int quantity = comboIndexMatcher.group(1) == null ? 1
+                    : Math.max(Integer.parseInt(comboIndexMatcher.group(1)), 1);
             int comboIndex = Integer.parseInt(comboIndexMatcher.group(2));
             if (comboIndex < 1 || comboIndex > suggestions.size()) {
                 continue;
@@ -1862,20 +1866,25 @@ public class ClientChatboxService {
 
     private LocalTime extractTargetTime(String normalizedConversation) {
         Matcher explicitMatcher = EXPLICIT_TIME_PATTERN.matcher(normalizedConversation);
+        LocalTime explicitTime = null;
         while (explicitMatcher.find()) {
             int hour = Integer.parseInt(explicitMatcher.group(1));
             int minute = Integer.parseInt(explicitMatcher.group(2));
             if (minute >= 0 && minute <= 59) {
-                return LocalTime.of(hour, minute);
+                explicitTime = LocalTime.of(hour, minute);
             }
+        }
+        if (explicitTime != null) {
+            return explicitTime;
         }
 
         Matcher hourOnlyMatcher = HOUR_ONLY_PATTERN.matcher(normalizedConversation);
+        LocalTime hourOnlyTime = null;
         while (hourOnlyMatcher.find()) {
             int hour = Integer.parseInt(hourOnlyMatcher.group(1));
-            return LocalTime.of(hour, 0);
+            hourOnlyTime = LocalTime.of(hour, 0);
         }
-        return null;
+        return hourOnlyTime;
     }
 
     private boolean matchesGenrePreference(Movie movie, UserPreference preference) {

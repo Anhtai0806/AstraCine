@@ -3,6 +3,8 @@ package com.astracine.backend.presentation.dto.staffschedule;
 import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.enums.SchedulePlanStatus;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,10 +24,31 @@ public class StaffScheduleDTO {
         @NotNull
         @FutureOrPresent
         private LocalDate businessDate;
-
         private Integer windowMinutes = 30;
-
         private Boolean overwrite = true;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GeneratePlanRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate businessDate;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GenerateSimplePlanRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate businessDate;
+
+        @NotNull
+        @Min(4)
+        @Max(6)
+        private Integer requiredStaffPerShift;
     }
 
     @Data
@@ -40,15 +63,6 @@ public class StaffScheduleDTO {
         private Integer checkinRequired;
         private Integer concessionRequired;
         private Integer multiRequired;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GeneratePlanRequest {
-        @NotNull
-        @FutureOrPresent
-        private LocalDate businessDate;
     }
 
     @Data

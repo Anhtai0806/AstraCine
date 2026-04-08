@@ -1,4 +1,4 @@
-    package com.astracine.backend.presentation.controller.admin;
+package com.astracine.backend.presentation.controller.admin;
 
 import com.astracine.backend.core.service.StaffScheduleService;
 import com.astracine.backend.core.service.StaffingDemandService;
@@ -20,12 +20,8 @@ public class AdminStaffSchedulingController {
     private final StaffScheduleService staffScheduleService;
 
     @PostMapping("/demands/generate")
-    public ResponseEntity<List<StaffScheduleDTO.DemandWindowResponse>> generateDemand(
-            @Valid @RequestBody StaffScheduleDTO.GenerateDemandRequest request) {
-        return ResponseEntity.ok(staffingDemandService.generate(
-                request.getBusinessDate(),
-                request.getWindowMinutes(),
-                Boolean.TRUE.equals(request.getOverwrite())));
+    public ResponseEntity<List<StaffScheduleDTO.DemandWindowResponse>> generateDemand(@Valid @RequestBody StaffScheduleDTO.GenerateDemandRequest request) {
+        return ResponseEntity.ok(staffingDemandService.generate(request.getBusinessDate(), request.getWindowMinutes(), Boolean.TRUE.equals(request.getOverwrite())));
     }
 
     @GetMapping("/demands")
@@ -34,9 +30,13 @@ public class AdminStaffSchedulingController {
     }
 
     @PostMapping("/plans/generate")
-    public ResponseEntity<StaffScheduleDTO.PlanResponse> generatePlan(
-            @Valid @RequestBody StaffScheduleDTO.GeneratePlanRequest request) {
+    public ResponseEntity<StaffScheduleDTO.PlanResponse> generatePlan(@Valid @RequestBody StaffScheduleDTO.GeneratePlanRequest request) {
         return ResponseEntity.ok(staffScheduleService.generatePlan(request.getBusinessDate()));
+    }
+
+    @PostMapping("/plans/generate-simple")
+    public ResponseEntity<StaffScheduleDTO.PlanResponse> generateSimplePlan(@Valid @RequestBody StaffScheduleDTO.GenerateSimplePlanRequest request) {
+        return ResponseEntity.ok(staffScheduleService.generateSimplePlan(request.getBusinessDate(), request.getRequiredStaffPerShift()));
     }
 
     @GetMapping("/plans")

@@ -136,6 +136,13 @@ const ShowtimeManager = () => {
     const [previewShowtimes, setPreviewShowtimes] = useState([]);
     const [previewRequest, setPreviewRequest] = useState(null);
     const [previewMessage, setPreviewMessage] = useState('');
+    const [savingPreview, setSavingPreview] = useState(false);
+    const [cleanupDeleting, setCleanupDeleting] = useState(false);
+    const [cleanupForm, setCleanupForm] = useState({
+        deleteAll: false,
+        roomIds: [],
+        movieIds: [],
+    });
 
     useEffect(() => {
         loadData();
@@ -154,6 +161,27 @@ const ShowtimeManager = () => {
         () => [...showtimes, ...previewShowtimes],
         [showtimes, previewShowtimes]
     );
+    const selectedScheduleDate = useMemo(() => formatDateKey(date), [date]);
+    const dayPersistedShowtimes = useMemo(
+        () => showtimes.filter((showtime) => showtime.startTime.startsWith(selectedScheduleDate)),
+        [showtimes, selectedScheduleDate]
+    );
+    const cleanupTargetShowtimes = useMemo(() => {
+        if (cleanupForm.deleteAll) {
+            return dayPersistedShowtimes;
+        }
+
+        return dayPersistedShowtimes.filter((showtime) => {
+            const matchesRoom = cleanupForm.roomIds.length
+                ? cleanupForm.roomIds.includes(Number(showtime.roomId))
+                : true;
+            const matchesMovie = cleanupForm.movieIds.length
+                ? cleanupForm.movieIds.includes(Number(showtime.movieId))
+                : true;
+            return matchesRoom && matchesMovie;
+        });
+    }, [cleanupForm.deleteAll, cleanupForm.movieIds, cleanupForm.roomIds, dayPersistedShowtimes]);
+    const hasCleanupCriteria = cleanupForm.roomIds.length > 0 || cleanupForm.movieIds.length > 0;
 
     const nextPreviewKey = () => {
         previewKeyCounterRef.current += 1;
@@ -406,29 +434,6 @@ const ShowtimeManager = () => {
         }
     };
 
-    const handleDeleteDayShowtimes = async () => {
-        const scheduleDate = formatDateKey(date);
-        const dayShowtimes = showtimes.filter((showtime) => showtime.startTime.startsWith(scheduleDate));
-
-        if (!dayShowtimes.length) {
-            alert('Không có lịch chiếu nào trong ngày được chọn');
-            return;
-        }
-
-        if (!window.confirm(`Bạn có chắc muốn xóa toàn bộ ${dayShowtimes.length} suất chiếu trong ngày ${scheduleDate}?`)) {
-            return;
-        }
-
-        try {
-            await axiosClient.delete('/admin/showtimes', { params: { scheduleDate } });
-            alert('Đã xóa toàn bộ lịch chiếu trong ngày');
-            setModal(null);
-            await loadData();
-        } catch (error) {
-            alert(getErrorMessage(error, 'Không thể xóa toàn bộ lịch chiếu trong ngày'));
-        }
-    };
-
     const openAutoModal = () => {
         const scheduleDate = formatDateKey(date);
         const availableMovieIds = activeMovies
@@ -484,9 +489,10 @@ const ShowtimeManager = () => {
     };
 
     const handleSavePreview = async () => {
-        if (!previewRequest || !previewShowtimes.length) return;
+        if (!previewRequest || !previewShowtimes.length || savingPreview) return;
 
         try {
+            setSavingPreview(true);
             const response = await axiosClient.post('/admin/showtimes/generate/confirm', {
                 scheduleDate: previewRequest.scheduleDate,
                 showtimes: previewShowtimes.map((showtime) => ({
@@ -500,6 +506,82 @@ const ShowtimeManager = () => {
             await loadData();
         } catch (error) {
             alert(getErrorMessage(error, 'Không thể lưu lịch chiếu xem trước'));
+        } finally {
+            setSavingPreview(false);
+        }
+    };
+
+    const openCleanupModal = () => {
+        setCleanupForm({
+            deleteAll: false,
+            roomIds: [],
+            movieIds: [],
+        });
+        setModal({ type: 'cleanup' });
+    };
+
+    const toggleCleanupSelection = (key, id) => {
+        setCleanupForm((prev) => ({
+            ...prev,
+            [key]: prev[key].includes(id)
+                ? prev[key].filter((value) => value !== id)
+                : [...prev[key], id],
+        }));
+    };
+
+    const handleCleanupSubmit = async (event) => {
+        event.preventDefault();
+        if (cleanupDeleting) return;
+
+        if (!cleanupForm.deleteAll && !hasCleanupCriteria) {
+            alert('Vui lòng tích chọn ít nhất 1 phòng hoặc 1 phim, hoặc bật "Xóa tất cả"');
+            return;
+        }
+
+        if (!cleanupTargetShowtimes.length) {
+            alert('Không có lịch chiếu phù hợp với tiêu chí đã chọn');
+            return;
+        }
+
+        const selectedRoomNames = rooms
+            .filter((room) => cleanupForm.roomIds.includes(room.id))
+            .map((room) => room.name);
+        const selectedMovieTitles = movies
+            .filter((movie) => cleanupForm.movieIds.includes(movie.id))
+            .map((movie) => movie.title);
+        const filterLabel = cleanupForm.deleteAll
+            ? 'tất cả suất chiếu'
+            : `${cleanupForm.roomIds.length ? `phòng (${selectedRoomNames.join(', ')})` : 'tất cả phòng'}${cleanupForm.roomIds.length && cleanupForm.movieIds.length ? ' và ' : ''}${cleanupForm.movieIds.length ? `phim (${selectedMovieTitles.join(', ')})` : (cleanupForm.roomIds.length ? '' : 'tất cả phim')}`;
+
+        if (!window.confirm(`Bạn có chắc muốn xóa ${cleanupTargetShowtimes.length} suất chiếu (${filterLabel}) trong ngày ${selectedScheduleDate}?`)) {
+            return;
+        }
+
+        try {
+            setCleanupDeleting(true);
+            if (cleanupForm.deleteAll) {
+                await axiosClient.delete('/admin/showtimes', { params: { scheduleDate: selectedScheduleDate } });
+                alert('Đã xóa toàn bộ lịch chiếu trong ngày');
+            } else {
+                const results = await Promise.allSettled(
+                    cleanupTargetShowtimes.map((showtime) => axiosClient.delete(`/admin/showtimes/${showtime.id}`))
+                );
+                const successCount = results.filter((result) => result.status === 'fulfilled').length;
+                const failedCount = results.length - successCount;
+
+                if (failedCount > 0) {
+                    alert(`Đã xóa ${successCount}/${results.length} suất chiếu. Có ${failedCount} suất chưa thể xóa.`);
+                } else {
+                    alert(`Đã xóa ${successCount} suất chiếu theo tiêu chí đã chọn`);
+                }
+            }
+
+            setModal(null);
+            await loadData();
+        } catch (error) {
+            alert(getErrorMessage(error, 'Không thể dọn dẹp lịch chiếu'));
+        } finally {
+            setCleanupDeleting(false);
         }
     };
 
@@ -561,12 +643,13 @@ const ShowtimeManager = () => {
                                     .map((showtime) => {
                                         const meta = getTimelineCardMeta(showtime, date);
                                         const isPreview = showtime.status === 'PREVIEW';
+                                        const isPast = new Date(showtime.endTime).getTime() < Date.now();
                                         const showtimeKey = showtime.id ?? `preview-${showtime.roomId}-${showtime.movieId}-${showtime.startTime}`;
 
                                         return (
                                             <div
                                                 key={showtimeKey}
-                                                className={`show-card c-${showtime.movieId % 5} ${isPreview ? 'is-preview' : ''} ${meta.isCompact ? 'is-compact' : ''} ${meta.isTiny ? 'is-tiny' : ''} ${meta.startsBeforeDay ? 'is-continued-left' : ''} ${meta.endsAfterDay ? 'is-continued-right' : ''} ${meta.needsReadableBoost ? 'is-readable-boost' : ''}`}
+                                                className={`show-card c-${showtime.movieId % 5} ${isPreview ? 'is-preview' : ''} ${isPast ? 'is-past' : ''} ${meta.isCompact ? 'is-compact' : ''} ${meta.isTiny ? 'is-tiny' : ''} ${meta.startsBeforeDay ? 'is-continued-left' : ''} ${meta.endsAfterDay ? 'is-continued-right' : ''} ${meta.needsReadableBoost ? 'is-readable-boost' : ''}`}
                                                 style={meta.style}
                                                 title={`${isPreview ? '[Xem trước] ' : ''}${showtime.movieTitle}\n${showtime.startTime.split('T')[1].slice(0, 5)} - ${showtime.endTime.split('T')[1].slice(0, 5)}`}
                                                 onClick={(event) => {
@@ -658,7 +741,7 @@ const ShowtimeManager = () => {
 
                 <div className="header-actions">
                     <button className="btn-secondary" onClick={openAutoModal}>Tạo Tự Động</button>
-                    <button className="btn-danger-soft" onClick={handleDeleteDayShowtimes}>Xóa Lịch Trong Ngày</button>
+                    <button className="btn-danger-soft" onClick={openCleanupModal}>Dọn dẹp lịch</button>
                     <button className="btn-create" onClick={() => openCreateModal()}>+ Tạo Mới</button>
                 </div>
             </div>
@@ -670,17 +753,113 @@ const ShowtimeManager = () => {
                         <span>{previewMessage || 'Kiểm tra timeline, nếu ổn hãy lưu xuống database.'}</span>
                     </div>
                     <div className="preview-banner-actions">
-                        <button type="button" className="btn-outline" onClick={clearPreview}>
+                        <button type="button" className="btn-outline" onClick={clearPreview} disabled={savingPreview}>
                             Hủy xem trước
                         </button>
-                        <button type="button" className="btn-create" onClick={handleSavePreview}>
-                            Lưu xuống Database
+                        <button type="button" className="btn-create preview-save-button" onClick={handleSavePreview} disabled={savingPreview}>
+                            {savingPreview && <span className="button-spinner" aria-hidden="true" />}
+                            {savingPreview ? 'Đang lưu...' : 'Lưu xuống Database'}
                         </button>
                     </div>
                 </div>
             )}
 
             {loading ? <div className="empty-state">Đang tải dữ liệu lịch chiếu...</div> : view === 'timeline' ? renderTimeline() : renderCalendar()}
+
+            {modal?.type === 'cleanup' && (
+                <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
+                    <div className="modal-panel create-modal cleanup-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="create-modal-header">
+                            <div className="create-modal-header-icon">🧹</div>
+                            <div>
+                                <h3>Dọn dẹp lịch</h3>
+                                <p className="create-modal-subtitle">Xóa lịch chiếu theo tiêu chí trong ngày đang chọn</p>
+                            </div>
+                            <button className="create-modal-close" onClick={() => setModal(null)}>✕</button>
+                        </div>
+                        <div className="create-modal-body">
+                            <form onSubmit={handleCleanupSubmit}>
+                                <div className="create-form-group">
+                                    <label className="create-form-label">Ngày áp dụng</label>
+                                    <input type="date" className="create-form-input" value={selectedScheduleDate} disabled />
+                                </div>
+
+                                <label className="cleanup-all-toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={cleanupForm.deleteAll}
+                                        onChange={(event) => {
+                                            const checked = event.target.checked;
+                                            setCleanupForm((prev) => ({
+                                                ...prev,
+                                                deleteAll: checked,
+                                                roomIds: checked ? [] : prev.roomIds,
+                                                movieIds: checked ? [] : prev.movieIds,
+                                            }));
+                                        }}
+                                    />
+                                    <span>Xóa tất cả suất chiếu trong ngày</span>
+                                </label>
+
+                                <div className="create-form-group">
+                                    <label className="create-form-label">Tích chọn phòng</label>
+                                    <div className={`cleanup-selection-grid ${cleanupForm.deleteAll ? 'is-disabled' : ''}`}>
+                                        {rooms.map((room) => (
+                                            <label key={room.id} className="selection-card">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={cleanupForm.roomIds.includes(room.id)}
+                                                    onChange={() => toggleCleanupSelection('roomIds', room.id)}
+                                                    disabled={cleanupForm.deleteAll}
+                                                />
+                                                <span>{room.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="create-form-group">
+                                    <label className="create-form-label">Tích chọn phim</label>
+                                    <div className={`cleanup-selection-grid ${cleanupForm.deleteAll ? 'is-disabled' : ''}`}>
+                                        {activeMovies.map((movie) => (
+                                            <label key={movie.id} className="selection-card">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={cleanupForm.movieIds.includes(movie.id)}
+                                                    onChange={() => toggleCleanupSelection('movieIds', movie.id)}
+                                                    disabled={cleanupForm.deleteAll}
+                                                />
+                                                <span>{movie.title}</span>
+                                            </label>
+                                        ))}
+                                        {!activeMovies.length && (
+                                            <div className="info-note cleanup-info-note">Không có phim khả dụng để chọn.</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="info-note">
+                                    Sẽ xóa <strong>{cleanupTargetShowtimes.length}</strong> suất chiếu trong ngày {selectedScheduleDate}.
+                                </div>
+
+                                <div className="modal-action-row">
+                                    <button
+                                        type="submit"
+                                        className="btn-danger cleanup-submit"
+                                        disabled={cleanupDeleting || !cleanupTargetShowtimes.length || (!cleanupForm.deleteAll && !hasCleanupCriteria)}
+                                    >
+                                        {cleanupDeleting && <span className="button-spinner" aria-hidden="true" />}
+                                        {cleanupDeleting ? 'Đang xoá...' : 'Xác nhận xoá'}
+                                    </button>
+                                    <button type="button" className="btn-outline" onClick={() => setModal(null)} disabled={cleanupDeleting}>
+                                        Hủy
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {modal?.type === 'create' && (
                 <div className="showtime-modal-backdrop" onClick={() => setModal(null)}>
@@ -906,4 +1085,3 @@ const ShowtimeManager = () => {
 };
 
 export default ShowtimeManager;
-

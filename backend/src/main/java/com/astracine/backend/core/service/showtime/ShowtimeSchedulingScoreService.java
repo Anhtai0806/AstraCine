@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.showtime;
 
 import com.astracine.backend.core.entity.Movie;
 import org.springframework.stereotype.Service;
