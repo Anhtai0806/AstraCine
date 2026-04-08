@@ -50,6 +50,9 @@ public class Seat {
     @Column(name = "status", length = 20)
     private SeatStatus status;
 
+    @Column(name = "paired_seat_id")
+    private Long pairedSeatId;
+
     public Seat(Long roomId, String rowLabel, Integer columnNumber,
             SeatType seatType, BigDecimal basePrice) {
         this.roomId = roomId;

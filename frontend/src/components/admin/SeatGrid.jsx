@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './SeatGrid.css';
 
 const SEAT_TYPES = {
@@ -9,6 +9,8 @@ const SEAT_TYPES = {
 };
 
 const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, priceMultiplier }) => {
+    const [hoveredSeat, setHoveredSeat] = useState(null);
+
     if (!seats || seats.length === 0) {
         return <div style={{ padding: 20, color: '#888' }}>Không có dữ liệu ghế</div>;
     }
@@ -45,12 +47,21 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, p
                     const title = (getTitle && getTitle(seat))
                         || `Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\n${priceLabel}: ${priceDisplay}\nTrạng thái: ${seatStatus}`;
 
+                    const isPairHovered = hoveredSeat && (
+                        seat.id === hoveredSeat.id ||
+                        (seat.pairedSeatId && seat.pairedSeatId === hoveredSeat.id) ||
+                        (hoveredSeat.pairedSeatId && hoveredSeat.pairedSeatId === seat.id)
+                    );
+                    const pairHoverClass = isPairHovered ? 'seat-pair-hover' : '';
+
                     return (
                         <div
                             key={seat.id}
-                            className={`seat-item ${config.class} ${extra}`}
+                            className={`seat-item ${config.class} ${extra} ${pairHoverClass}`}
                             data-status={seatStatus}
                             onClick={() => onSeatClick && onSeatClick(seat)}
+                            onMouseEnter={() => setHoveredSeat(seat)}
+                            onMouseLeave={() => setHoveredSeat(null)}
                             title={title}
                         >
                             {seat.rowLabel}{seat.columnNumber}

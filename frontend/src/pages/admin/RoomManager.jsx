@@ -167,8 +167,18 @@ const RoomManager = () => {
 
     // --- SEAT EDITOR LOGIC ---
     const handleSeatClick = (seat) => {
-        const types = ['NORMAL', 'VIP', 'COUPLE', 'PREMIUM'];
-        const nextType = types[(types.indexOf(seat.seatType) + 1) % types.length];
+        // Prevent editing COUPLE seat or converting to it
+        if (seat.seatType === 'COUPLE') {
+            showToast("Không thể chuyển đổi ghế đôi sang loại ghế khác.", 'error');
+            return;
+        }
+
+        const types = ['NORMAL', 'VIP', 'PREMIUM'];
+        const currentTypeIndex = types.indexOf(seat.seatType);
+        const nextType = currentTypeIndex !== -1 
+            ? types[(currentTypeIndex + 1) % types.length] 
+            : types[0];
+
         const newSeats = seats.map(s => s.id === seat.id ? { ...s, seatType: nextType } : s);
         setSeats(newSeats);
 
