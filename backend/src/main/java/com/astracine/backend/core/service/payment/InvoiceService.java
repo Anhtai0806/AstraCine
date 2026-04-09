@@ -66,15 +66,15 @@ public class InvoiceService {
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
-            BigDecimal amount, String promotionCode,
+            BigDecimal amount, List<String> promotionCodes, // <--- 1. Đổi thành List<String>
             List<ComboCartItemDTO> comboItems,
-            long showtimeId, List<Long> seatIds, int pointsUsed) { // <--- 1. Thêm int pointsUsed vào đây
+            long showtimeId, List<Long> seatIds, int pointsUsed) { 
 
         return createInvoiceInternal(
                 holdId,
                 userId,
                 amount,
-                promotionCode,
+                promotionCodes, // <--- Truyền List<String> vào hàm Internal
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -84,14 +84,14 @@ public class InvoiceService {
                 null,
                 "PAYOS",
                 String.valueOf(orderCode),
-                pointsUsed); // <--- 2. Truyền pointsUsed vào hàm Internal
+                pointsUsed); 
     }
 
     @Transactional
     public Invoice createCounterInvoice(String holdId,
             String staffUsername,
             BigDecimal amount,
-            String promotionCode,
+            List<String> promotionCodes, // <--- 2. Đổi thành List<String>
             List<ComboCartItemDTO> comboItems,
             long showtimeId,
             List<Long> seatIds,
@@ -108,7 +108,7 @@ public class InvoiceService {
                 holdId,
                 staffUsername,
                 amount,
-                promotionCode,
+                promotionCodes, // <--- Truyền List<String>
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -118,13 +118,13 @@ public class InvoiceService {
                 customerPhone,
                 paymentMethod,
                 generateCounterTransactionCode(),
-                0); // <--- 3. Bán tại quầy truyền số 0
+                0); 
     }
 
     private Invoice createInvoiceInternal(String holdId,
             String actorUserId,
             BigDecimal amount,
-            String promotionCode,
+            List<String> promotionCodes, // <--- 3. Đổi thành List<String>
             List<ComboCartItemDTO> comboItems,
             long showtimeId,
             List<Long> seatIds,
@@ -134,7 +134,7 @@ public class InvoiceService {
             String customerPhone,
             String paymentMethod,
             String transactionCode,
-            int pointsUsed) { // <--- 4. Thêm int pointsUsed vào cuối hàm này
+            int pointsUsed) { 
 
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new IllegalStateException("Showtime not found: " + showtimeId));
@@ -180,7 +180,7 @@ public class InvoiceService {
         }
 
         saveInvoiceCombos(invoice, comboItems);
-        saveInvoicePromotion(invoice, promotionCode);
+        saveInvoicePromotion(invoice, promotionCodes); // <--- 4. Gọi hàm xử lý lưu List Mảng Promotion
 
         try {
             seatHoldService.confirmHoldToSold(holdId, actorUserId);
@@ -211,7 +211,7 @@ public class InvoiceService {
                                 return customerRepository.save(c);
                             });
 
-                    // 5. 👇 TRỪ ĐIỂM NGAY TẠI ĐÂY (TRƯỚC KHI TÍNH TOÁN TIỀN CỘNG)
+                    // Trừ điểm ngay tại đây
                     if (pointsUsed > 0) {
                         try {
                             memberService.applyPoints(customer, pointsUsed);
@@ -220,7 +220,7 @@ public class InvoiceService {
                         }
                     }
 
-                    // 1. Tính tổng tiền GỐC của Vé và Combo
+                    // Tính tổng tiền GỐC của Vé và Combo
                     BigDecimal rawTicketAmount = ticketRepository.findByInvoiceId(invoice.getId())
                             .stream()
                             .map(Ticket::getPrice)
@@ -231,53 +231,54 @@ public class InvoiceService {
                             .map(ic -> ic.getPrice().multiply(BigDecimal.valueOf(ic.getQuantity())))
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    // 2. Lấy số tiền THỰC TẾ khách đã thanh toán
-                    BigDecimal actualPaid = invoice.getTotalAmount();
-                    BigDecimal totalRaw = rawTicketAmount.add(rawComboAmount);
-
-                    // 3. Tính số tiền được giảm giá
-                    BigDecimal discount = totalRaw.subtract(actualPaid);
-                    if (discount.compareTo(BigDecimal.ZERO) < 0) {
-                        discount = BigDecimal.ZERO;
-                    }
-
-                    // 4. Lấy thông tin xem Mã giảm giá này áp dụng cho cái gì?
-                    String applyType = "ALL"; // Mặc định
-                    if (promotionCode != null && !promotionCode.isBlank()) {
-                        Optional<Promotion> appliedPromo = promotionRepository.findByCode(promotionCode);
-                        if (appliedPromo.isPresent() && appliedPromo.get().getApplicableTo() != null) {
-                            applyType = appliedPromo.get().getApplicableTo().toUpperCase();
-                        }
-                    }
-
                     BigDecimal actualTicketAmount = rawTicketAmount;
                     BigDecimal actualComboAmount = rawComboAmount;
+                    BigDecimal totalRaw = rawTicketAmount.add(rawComboAmount);
 
-                    // 5. Phân bổ số tiền giảm giá CHUẨN XÁC
-                    if ("TICKET".equals(applyType)) {
-                        actualTicketAmount = rawTicketAmount.subtract(discount);
-                        if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) {
-                            actualTicketAmount = BigDecimal.ZERO;
-                        }
-                    } else if ("COMBO".equals(applyType)) {
-                        actualComboAmount = rawComboAmount.subtract(discount);
-                        if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) {
-                            actualComboAmount = BigDecimal.ZERO;
-                        }
-                    } else {
-                        // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
-                        actualTicketAmount = rawTicketAmount.subtract(discount);
-                        if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) {
-                            BigDecimal remainingDiscount = actualTicketAmount.abs();
-                            actualComboAmount = actualComboAmount.subtract(remainingDiscount);
-                            actualTicketAmount = BigDecimal.ZERO;
-                        }
-                        if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) {
-                            actualComboAmount = BigDecimal.ZERO;
+                    // 👇 5. TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER (Double Voucher Logic)
+                    if (promotionCodes != null && !promotionCodes.isEmpty()) {
+                        for (String code : promotionCodes) {
+                            Optional<Promotion> appliedPromo = promotionRepository.findByCode(code);
+                            if (appliedPromo.isPresent()) {
+                                Promotion p = appliedPromo.get();
+                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase() : "ALL";
+                                
+                                BigDecimal discountValue = p.getDiscountValue();
+                                BigDecimal discountAmt = BigDecimal.ZERO;
+
+                                if ("TICKET".equals(applyType)) {
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
+                                        ? rawTicketAmount.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
+                                        : discountValue;
+                                    actualTicketAmount = actualTicketAmount.subtract(discountAmt);
+                                } else if ("COMBO".equals(applyType)) {
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
+                                        ? rawComboAmount.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
+                                        : discountValue;
+                                    actualComboAmount = actualComboAmount.subtract(discountAmt);
+                                } else {
+                                    // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
+                                        ? totalRaw.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
+                                        : discountValue;
+                                    
+                                    BigDecimal temp = actualTicketAmount.subtract(discountAmt);
+                                    if(temp.compareTo(BigDecimal.ZERO) < 0) {
+                                        actualComboAmount = actualComboAmount.add(temp); // Cộng số âm = trừ
+                                        actualTicketAmount = BigDecimal.ZERO;
+                                    } else {
+                                        actualTicketAmount = temp;
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // 6. Gọi hàm cộng điểm với SỐ TIỀN THỰC TRẢ ĐÃ PHÂN BỔ ĐÚNG
+                    // Chốt chặn cuối cùng: Không để tiền bị âm
+                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) actualTicketAmount = BigDecimal.ZERO;
+                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) actualComboAmount = BigDecimal.ZERO;
+
+                    // Gọi hàm cộng điểm với SỐ TIỀN THỰC TRẢ ĐÃ PHÂN BỔ ĐÚNG
                     memberService.processAfterPayment(customer, actualTicketAmount, actualComboAmount);
 
                     customerRepository.save(customer);
@@ -306,8 +307,7 @@ public class InvoiceService {
 
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
-                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi
-                // proxy/chưa commit
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
 
                 // Tạo một luồng mới để gửi thư
@@ -364,16 +364,21 @@ public class InvoiceService {
         }
     }
 
-    private void saveInvoicePromotion(Invoice invoice, String promotionCode) {
-        if (promotionCode == null || promotionCode.isBlank()) {
+    // 👇 6. Nâng cấp hàm lưu lịch sử sử dụng khuyến mãi thành Vòng lặp List<String>
+    private void saveInvoicePromotion(Invoice invoice, List<String> promotionCodes) {
+        if (promotionCodes == null || promotionCodes.isEmpty()) {
             return;
         }
 
-        promotionRepository.findByCode(promotionCode).ifPresentOrElse(promo -> {
-            invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
-            promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
-            promotionRepository.save(promo);
-        }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", promotionCode));
+        for (String code : promotionCodes) {
+            if (code != null && !code.isBlank()) {
+                promotionRepository.findByCode(code).ifPresentOrElse(promo -> {
+                    invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
+                    promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
+                    promotionRepository.save(promo);
+                }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", code));
+            }
+        }
     }
 
     private String resolveCustomerUsername(
@@ -540,15 +545,11 @@ public class InvoiceService {
                     .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
                     .seats(seats)
                     .combos(comboItems)
-                    .orderCode(transCode) // 👈 NHÉT CHÌA KHÓA VÀO ĐÂY LÀ XONG!
+                    .orderCode(transCode)
                     .build();
         }).toList();
     }
 
-    /**
-     * Lấy thông tin E-ticket theo orderCode (transactionCode trong bảng
-     * payments). Dùng cho trang hiển thị vé sau khi thanh toán thành công.
-     */
     @Transactional(readOnly = true)
     public ETicketDTO getETicketByOrderCode(String orderCode) {
         // 1. Tìm Payment theo transactionCode = orderCode

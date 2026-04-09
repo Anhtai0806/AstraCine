@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,7 @@ import java.util.List;
 public class StaffingDemandService {
 
     private static final int MAX_STAFF_PER_SHIFT = 6;
+    private static final long MAX_GENERATE_RANGE_DAYS = 31;
 
     private final ShowtimeRepository showtimeRepository;
     private final StaffingDemandRepository staffingDemandRepository;
@@ -89,12 +91,63 @@ public class StaffingDemandService {
                 .toList();
     }
 
+    public StaffScheduleDTO.DemandRangeResponse generateRange(
+            LocalDate startDate,
+            LocalDate endDate,
+            Integer windowMinutes,
+            boolean overwrite
+    ) {
+        validateDateRange(startDate, endDate);
+
+        List<StaffScheduleDTO.DemandWindowResponse> allDemands = new ArrayList<>();
+        List<StaffScheduleDTO.RangeIssueResponse> issues = new ArrayList<>();
+        int successDays = 0;
+
+        for (LocalDate currentDate = startDate; !currentDate.isAfter(endDate); currentDate = currentDate.plusDays(1)) {
+            try {
+                List<StaffScheduleDTO.DemandWindowResponse> dayDemands = generate(currentDate, windowMinutes, overwrite);
+                allDemands.addAll(dayDemands);
+                successDays++;
+            } catch (RuntimeException ex) {
+                issues.add(new StaffScheduleDTO.RangeIssueResponse(currentDate, ex.getMessage()));
+            }
+        }
+
+        long totalDaysRequested = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+
+        return new StaffScheduleDTO.DemandRangeResponse(
+                startDate,
+                endDate,
+                Math.toIntExact(totalDaysRequested),
+                successDays,
+                issues.size(),
+                allDemands.size(),
+                allDemands,
+                issues
+        );
+    }
+
     @Transactional(readOnly = true)
     public List<StaffScheduleDTO.DemandWindowResponse> getByDate(LocalDate businessDate) {
         return staffingDemandRepository.findByBusinessDateOrderByWindowStartAsc(businessDate)
                 .stream()
                 .map(this::mapDemand)
                 .toList();
+    }
+
+    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new RuntimeException("Start date và end date không được để trống");
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new RuntimeException("End date phải lớn hơn hoặc bằng start date");
+        }
+
+        long totalDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        if (totalDays > MAX_GENERATE_RANGE_DAYS) {
+            throw new RuntimeException("Chỉ được generate tối đa " + MAX_GENERATE_RANGE_DAYS + " ngày trong một lần");
+        }
     }
 
     private StaffingDemand buildShiftDemand(

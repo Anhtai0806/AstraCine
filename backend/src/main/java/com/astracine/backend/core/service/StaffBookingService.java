@@ -40,11 +40,16 @@ public class StaffBookingService {
 
         SeatHoldService.HoldSnapshot holdSnapshot = seatHoldService.getHoldSnapshot(request.getHoldId(), staffUsername);
 
+        // 👇 ĐÃ SỬA: Biến request.getPromotionCode() (String) thành List<String>
+        List<String> promotionCodes = request.getPromotionCode() != null && !request.getPromotionCode().isBlank()
+                ? java.util.Collections.singletonList(request.getPromotionCode())
+                : java.util.Collections.emptyList();
+
         Invoice invoice = invoiceService.createCounterInvoice(
                 request.getHoldId(),
                 staffUsername,
                 request.getTotalAmount(),
-                request.getPromotionCode(),
+                promotionCodes, // <--- Truyền cái List vừa tạo vào đây
                 request.getComboItems(),
                 holdSnapshot.getShowtimeId(),
                 holdSnapshot.getSeatIds(),
