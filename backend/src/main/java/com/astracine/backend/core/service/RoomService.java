@@ -60,7 +60,7 @@ public class RoomService {
                 }
             }
         }
-        
+
         if (updatedPairs) {
             seatRepository.saveAll(seats);
         }
