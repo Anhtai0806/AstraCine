@@ -32,6 +32,20 @@ public class AdminStaffSchedulingController {
         );
     }
 
+    @PostMapping("/demands/generate-range")
+    public ResponseEntity<StaffScheduleDTO.DemandRangeResponse> generateDemandRange(
+            @Valid @RequestBody StaffScheduleDTO.GenerateDemandRangeRequest request
+    ) {
+        return ResponseEntity.ok(
+                staffingDemandService.generateRange(
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        request.getWindowMinutes(),
+                        Boolean.TRUE.equals(request.getOverwrite())
+                )
+        );
+    }
+
     @GetMapping("/demands")
     public ResponseEntity<List<StaffScheduleDTO.DemandWindowResponse>> getDemandByDate(
             @RequestParam LocalDate businessDate
@@ -44,6 +58,13 @@ public class AdminStaffSchedulingController {
             @Valid @RequestBody StaffScheduleDTO.GeneratePlanRequest request
     ) {
         return ResponseEntity.ok(staffScheduleService.generatePlan(request.getBusinessDate()));
+    }
+
+    @PostMapping("/plans/generate-range")
+    public ResponseEntity<StaffScheduleDTO.PlanRangeResponse> generatePlanRange(
+            @Valid @RequestBody StaffScheduleDTO.GeneratePlanRangeRequest request
+    ) {
+        return ResponseEntity.ok(staffScheduleService.generatePlanRange(request.getStartDate(), request.getEndDate()));
     }
 
     @GetMapping("/plans")

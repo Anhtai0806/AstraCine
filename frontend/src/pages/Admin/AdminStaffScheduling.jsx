@@ -5,11 +5,46 @@ import "./AdminStaffScheduling.css";
 const MAX_STAFF_PER_SHIFT = 6;
 
 const formatDateValue = (date) => {
-    const d = date instanceof Date ? date : new Date(date);
+    const d = date instanceof Date ? new Date(date) : new Date(date);
+    if (Number.isNaN(d.getTime())) return "";
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+};
+
+const addDays = (dateValue, amount) => {
+    const base = new Date(dateValue);
+    if (Number.isNaN(base.getTime())) return dateValue;
+    base.setDate(base.getDate() + amount);
+    return formatDateValue(base);
+};
+
+const getMonthRange = (dateValue) => {
+    const base = new Date(dateValue);
+    if (Number.isNaN(base.getTime())) {
+        return { startDate: "", endDate: "" };
+    }
+
+    const start = new Date(base.getFullYear(), base.getMonth(), 1);
+    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+
+    return {
+        startDate: formatDateValue(start),
+        endDate: formatDateValue(end),
+    };
+};
+
+const countInclusiveDays = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+        return 0;
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
 };
 
 const formatDateTime = (value) => {
@@ -66,13 +101,68 @@ const getLoadLevel = (total) => {
     return { label: "Nhẹ", className: "low" };
 };
 
+const buildRangeSummary = (startDate, endDate) => {
+    const totalDays = countInclusiveDays(startDate, endDate);
+    if (!totalDays) return "Chưa chọn khoảng ngày hợp lệ.";
+    if (totalDays === 1) return `Đang thao tác trong ngày ${startDate}.`;
+    return `Đang thao tác từ ${startDate} đến ${endDate} (${totalDays} ngày).`;
+};
+
+const buildDemandSuccessMessage = (data) => {
+    const totalDays = data?.totalDaysRequested || 0;
+    const successDays = data?.successDays || 0;
+    const failedDays = data?.failedDays || 0;
+    const totalDemandWindows = data?.totalDemandWindows || 0;
+
+    let message = `Đã ước lượng nhu cầu cho ${successDays}/${totalDays} ngày`;
+    if (totalDemandWindows > 0) {
+        message += `, tạo ${totalDemandWindows} khung demand`;
+    }
+    if (failedDays > 0) {
+        message += `. Có ${failedDays} ngày lỗi, xem chi tiết bên dưới.`;
+    } else {
+        message += ".";
+    }
+
+    return message;
+};
+
+const buildPlanSuccessMessage = (data) => {
+    const totalDays = data?.totalDaysRequested || 0;
+    const successDays = data?.successDays || 0;
+    const failedDays = data?.failedDays || 0;
+    const totalAssignments = data?.totalAssignments || 0;
+    const totalPlans = Array.isArray(data?.plans) ? data.plans.length : 0;
+
+    let message = `Đã tạo plan cho ${successDays}/${totalDays} ngày`;
+    if (totalPlans > 0) {
+        message += `, sinh ${totalPlans} plan`;
+    }
+    if (totalAssignments > 0) {
+        message += ` và ${totalAssignments} assignment`;
+    }
+    if (failedDays > 0) {
+        message += `. Có ${failedDays} ngày lỗi, xem chi tiết bên dưới.`;
+    } else {
+        message += ".";
+    }
+
+    return message;
+};
+
 export default function AdminStaffScheduling() {
-    const [businessDate, setBusinessDate] = useState(formatDateValue(new Date()));
+    const today = formatDateValue(new Date());
+    const currentMonthRange = getMonthRange(today);
+
+    const [businessDate, setBusinessDate] = useState(today);
+    const [rangeStartDate, setRangeStartDate] = useState(today);
+    const [rangeEndDate, setRangeEndDate] = useState(currentMonthRange.endDate || today);
     const [windowMinutes, setWindowMinutes] = useState(30);
     const [demands, setDemands] = useState([]);
     const [plans, setPlans] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [selectedExplanation, setSelectedExplanation] = useState(null);
+    const [batchResult, setBatchResult] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -123,6 +213,11 @@ export default function AdminStaffScheduling() {
         [plans]
     );
 
+    const selectedRangeDays = useMemo(
+        () => countInclusiveDays(rangeStartDate, rangeEndDate),
+        [rangeStartDate, rangeEndDate]
+    );
+
     const stats = useMemo(() => {
         const totalCounter = enrichedDemands.reduce((sum, item) => sum + (item.counterRequired || 0), 0);
         const totalCheckin = enrichedDemands.reduce((sum, item) => sum + (item.checkinRequired || 0), 0);
@@ -156,18 +251,68 @@ export default function AdminStaffScheduling() {
         };
     }, [enrichedDemands, plans, assignments]);
 
+    const syncDetailDateAfterBatch = async (startDate, endDate) => {
+        const nextViewDate = businessDate >= startDate && businessDate <= endDate
+            ? businessDate
+            : startDate;
+
+        if (nextViewDate !== businessDate) {
+            setBusinessDate(nextViewDate);
+            return;
+        }
+
+        await loadPage(nextViewDate);
+    };
+
+    const handleApplySingleDayPreset = () => {
+        setRangeStartDate(businessDate);
+        setRangeEndDate(businessDate);
+    };
+
+    const handleApplyWeekPreset = () => {
+        setRangeStartDate(businessDate);
+        setRangeEndDate(addDays(businessDate, 6));
+    };
+
+    const handleApplyMonthPreset = () => {
+        const monthRange = getMonthRange(businessDate);
+        setRangeStartDate(monthRange.startDate);
+        setRangeEndDate(monthRange.endDate);
+    };
+
     const handleGenerateDemand = async () => {
+        if (!selectedRangeDays) {
+            setError("Khoảng ngày không hợp lệ. Hãy kiểm tra lại từ ngày và đến ngày.");
+            return;
+        }
+
         try {
             setActionKey("generate-demand");
             setError("");
             setSuccess("");
-            await staffSchedulingAdminApi.generateDemand({
-                businessDate,
+            setBatchResult(null);
+
+            if (selectedRangeDays === 1) {
+                await staffSchedulingAdminApi.generateDemand({
+                    businessDate: rangeStartDate,
+                    windowMinutes: Number(windowMinutes),
+                    overwrite: true,
+                });
+                setSuccess(`Đã ước lượng nhu cầu nhân sự cho ngày ${rangeStartDate}.`);
+                await syncDetailDateAfterBatch(rangeStartDate, rangeEndDate);
+                return;
+            }
+
+            const response = await staffSchedulingAdminApi.generateDemandRange({
+                startDate: rangeStartDate,
+                endDate: rangeEndDate,
                 windowMinutes: Number(windowMinutes),
                 overwrite: true,
             });
-            setSuccess("Đã ước lượng nhu cầu nhân sự theo ca.");
-            await loadPage(businessDate);
+
+            setBatchResult({ type: "demand", data: response.data });
+            setSuccess(buildDemandSuccessMessage(response.data));
+            await syncDetailDateAfterBatch(rangeStartDate, rangeEndDate);
         } catch (err) {
             setError(getErrorMessage(err, "Không thể ước lượng nhu cầu theo ca."));
         } finally {
@@ -176,13 +321,32 @@ export default function AdminStaffScheduling() {
     };
 
     const handleGeneratePlan = async () => {
+        if (!selectedRangeDays) {
+            setError("Khoảng ngày không hợp lệ. Hãy kiểm tra lại từ ngày và đến ngày.");
+            return;
+        }
+
         try {
             setActionKey("generate-plan");
             setError("");
             setSuccess("");
-            await staffSchedulingAdminApi.generatePlan({ businessDate });
-            setSuccess("Đã tạo lịch làm việc theo ca.");
-            await loadPage(businessDate);
+            setBatchResult(null);
+
+            if (selectedRangeDays === 1) {
+                await staffSchedulingAdminApi.generatePlan({ businessDate: rangeStartDate });
+                setSuccess(`Đã tạo lịch làm việc cho ngày ${rangeStartDate}.`);
+                await syncDetailDateAfterBatch(rangeStartDate, rangeEndDate);
+                return;
+            }
+
+            const response = await staffSchedulingAdminApi.generatePlanRange({
+                startDate: rangeStartDate,
+                endDate: rangeEndDate,
+            });
+
+            setBatchResult({ type: "plan", data: response.data });
+            setSuccess(buildPlanSuccessMessage(response.data));
+            await syncDetailDateAfterBatch(rangeStartDate, rangeEndDate);
         } catch (err) {
             setError(getErrorMessage(err, "Không thể tạo lịch theo ca."));
         } finally {
@@ -232,11 +396,29 @@ export default function AdminStaffScheduling() {
 
                 <div className="staff-scheduling-toolbar">
                     <label>
-                        Ngày làm việc
+                        Ngày xem chi tiết
                         <input
                             type="date"
                             value={businessDate}
                             onChange={(e) => setBusinessDate(e.target.value)}
+                        />
+                    </label>
+
+                    <label>
+                        Từ ngày
+                        <input
+                            type="date"
+                            value={rangeStartDate}
+                            onChange={(e) => setRangeStartDate(e.target.value)}
+                        />
+                    </label>
+
+                    <label>
+                        Đến ngày
+                        <input
+                            type="date"
+                            value={rangeEndDate}
+                            onChange={(e) => setRangeEndDate(e.target.value)}
                         />
                     </label>
 
@@ -254,13 +436,39 @@ export default function AdminStaffScheduling() {
 
                     <button
                         type="button"
+                        className="secondary"
+                        onClick={handleApplySingleDayPreset}
+                    >
+                        Dùng ngày đang xem
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary"
+                        onClick={handleApplyWeekPreset}
+                    >
+                        Dùng 7 ngày tính từ hiện tại
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary"
+                        onClick={handleApplyMonthPreset}
+                    >
+                        Dùng tháng hiện tại
+                    </button>
+
+                    <button
+                        type="button"
                         className="primary"
                         onClick={handleGenerateDemand}
                         disabled={actionKey === "generate-demand"}
                     >
                         {actionKey === "generate-demand"
                             ? "Đang xử lý..."
-                            : "Ước lượng nhu cầu theo ca"}
+                            : selectedRangeDays > 1
+                                ? `Ước lượng nhu cầu ${selectedRangeDays} ngày`
+                                : "Ước lượng nhu cầu theo ca"}
                     </button>
 
                     <button
@@ -271,7 +479,9 @@ export default function AdminStaffScheduling() {
                     >
                         {actionKey === "generate-plan"
                             ? "Đang tạo..."
-                            : "Tạo lịch theo ca"}
+                            : selectedRangeDays > 1
+                                ? `Tạo lịch ${selectedRangeDays} ngày`
+                                : "Tạo lịch theo ca"}
                     </button>
 
                     {latestDraftPlan && (
@@ -289,8 +499,99 @@ export default function AdminStaffScheduling() {
                 </div>
             </div>
 
+            <div className="staff-scheduling-insight">
+                <div>
+                    <strong>Khoảng generate:</strong> {buildRangeSummary(rangeStartDate, rangeEndDate)}
+                </div>
+                <div>
+                    Màn hình bên dưới vẫn hiển thị chi tiết của ngày <strong>{businessDate}</strong> để bạn
+                    kiểm tra demand, plan và assignment mà không phải nhìn một mớ dữ liệu cả tháng như mê cung.
+                </div>
+            </div>
+
             {error && <div className="staff-scheduling-banner error">{error}</div>}
             {success && <div className="staff-scheduling-banner success">{success}</div>}
+
+            {batchResult && (
+                <section className="staff-scheduling-panel">
+                    <div className="panel-head">
+                        <div>
+                            <h2>Kết quả generate hàng loạt</h2>
+                            <p className="panel-subtitle">
+                                Tóm tắt đợt xử lý theo khoảng ngày vừa chạy.
+                            </p>
+                        </div>
+                        <span>
+                            {batchResult.type === "demand" ? "Demand batch" : "Plan batch"}
+                        </span>
+                    </div>
+
+                    <div className="staff-scheduling-stats">
+                        <div className="staff-scheduling-stat-card highlight">
+                            <span>Khoảng ngày</span>
+                            <strong>
+                                {batchResult.data?.startDate} → {batchResult.data?.endDate}
+                            </strong>
+                            <small>{batchResult.data?.totalDaysRequested || 0} ngày được yêu cầu</small>
+                        </div>
+
+                        <div className="staff-scheduling-stat-card">
+                            <span>Ngày thành công</span>
+                            <strong>{batchResult.data?.successDays || 0}</strong>
+                            <small>Số ngày generate hoàn tất</small>
+                        </div>
+
+                        <div className="staff-scheduling-stat-card">
+                            <span>Ngày lỗi</span>
+                            <strong>{batchResult.data?.failedDays || 0}</strong>
+                            <small>Lỗi từng ngày sẽ hiện phía dưới</small>
+                        </div>
+
+                        <div className="staff-scheduling-stat-card">
+                            <span>
+                                {batchResult.type === "demand" ? "Khung demand" : "Assignments"}
+                            </span>
+                            <strong>
+                                {batchResult.type === "demand"
+                                    ? batchResult.data?.totalDemandWindows || 0
+                                    : batchResult.data?.totalAssignments || 0}
+                            </strong>
+                            <small>
+                                {batchResult.type === "demand"
+                                    ? "Tổng demand windows được tạo"
+                                    : "Tổng assignment được sinh ra"}
+                            </small>
+                        </div>
+                    </div>
+
+                    {Array.isArray(batchResult.data?.issues) && batchResult.data.issues.length > 0 ? (
+                        <div className="table-shell" style={{ marginTop: 16 }}>
+                            <table className="staff-table">
+                                <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Lỗi</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {batchResult.data.issues.map((issue, index) => (
+                                    <tr key={`${issue.businessDate}-${index}`}>
+                                        <td>
+                                            <strong>{issue.businessDate}</strong>
+                                        </td>
+                                        <td>{issue.message}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="empty-state" style={{ marginTop: 16 }}>
+                            Không có ngày nào bị lỗi trong đợt generate này.
+                        </div>
+                    )}
+                </section>
+            )}
 
             <div className="staff-scheduling-stats">
                 <div className="staff-scheduling-stat-card highlight">
@@ -351,7 +652,8 @@ export default function AdminStaffScheduling() {
                         <div>
                             <h2>Nhu cầu nhân sự theo ca</h2>
                             <p className="panel-subtitle">
-                                Mỗi ca hiển thị tổng nhân sự đề xuất, tải vận hành và cơ cấu vị trí.
+                                Chi tiết demand của ngày đang xem. Dùng khu vực trên để generate cho nhiều ngày,
+                                rồi quay lại đây để soi từng ngày.
                             </p>
                         </div>
                         <span>{enrichedDemands.length} ca</span>
@@ -428,7 +730,7 @@ export default function AdminStaffScheduling() {
                         <div>
                             <h2>Plans trong ngày</h2>
                             <p className="panel-subtitle">
-                                Quản lý phiên bản plan trước khi staff xác nhận.
+                                Quản lý phiên bản plan của ngày đang xem trước khi staff xác nhận.
                             </p>
                         </div>
                         <span>{plans.length} plan</span>
@@ -480,7 +782,7 @@ export default function AdminStaffScheduling() {
                     <div>
                         <h2>Phân công nhân sự</h2>
                         <p className="panel-subtitle">
-                            Danh sách assignment theo ca, vị trí và trạng thái xác nhận.
+                            Danh sách assignment theo ca, vị trí và trạng thái xác nhận của ngày đang xem.
                         </p>
                     </div>
                     <span>{assignments.length} assignment</span>
@@ -518,15 +820,15 @@ export default function AdminStaffScheduling() {
                                         <div className="shift-label">
                                             <strong>{item.shiftName || item.shiftCode || "Ca làm việc"}</strong>
                                             <span>
-                                                    {formatDateTime(item.shiftStart)} - {formatDateTime(item.shiftEnd)}
-                                                </span>
+                                                {formatDateTime(item.shiftStart)} - {formatDateTime(item.shiftEnd)}
+                                            </span>
                                         </div>
                                     </td>
 
                                     <td>
-                                            <span className={`status-chip ${item.status?.toLowerCase() || ""}`}>
-                                                {assignmentStatusLabel[item.status] || item.status}
-                                            </span>
+                                        <span className={`status-chip ${item.status?.toLowerCase() || ""}`}>
+                                            {assignmentStatusLabel[item.status] || item.status}
+                                        </span>
                                     </td>
 
                                     <td>
