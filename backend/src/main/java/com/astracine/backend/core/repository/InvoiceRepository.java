@@ -15,6 +15,30 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     List<Invoice> findByCustomerUsernameOrderByCreatedAtDesc(String customerUsername);
 
+    // ── Admin queries ────────────────────────────────────────────────────────
+
+    /** Tất cả hóa đơn, mới nhất trước */
+    List<Invoice> findAllByOrderByCreatedAtDesc();
+
+    /** Filter theo status */
+    List<Invoice> findByStatusOrderByCreatedAtDesc(String status);
+
+    /** Tìm theo tên khách (chứa keyword, ignore case) */
+    List<Invoice> findByCustomerUsernameContainingIgnoreCaseOrderByCreatedAtDesc(String keyword);
+
+    /** Filter theo khoảng ngày */
+    List<Invoice> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime from, LocalDateTime to);
+
+    /** Filter theo status + khoảng ngày */
+    List<Invoice> findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
+            String status, LocalDateTime from, LocalDateTime to);
+
+    /** Tìm theo tên khách + khoảng ngày */
+    List<Invoice> findByCustomerUsernameContainingIgnoreCaseAndCreatedAtBetweenOrderByCreatedAtDesc(
+            String keyword, LocalDateTime from, LocalDateTime to);
+
+    // ── Dashboard / Revenue queries ──────────────────────────────────────────
+
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM invoices WHERE status = :status", nativeQuery = true)
     BigDecimal sumTotalRevenueByStatus(@Param("status") String status);
 

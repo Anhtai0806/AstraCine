@@ -16,6 +16,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { IoIosLogOut } from "react-icons/io";
 import { LuPopcorn } from "react-icons/lu";
 import { BiTimeFive } from "react-icons/bi";
+import { FaFileInvoiceDollar } from "react-icons/fa";
 
 const AdminLayout = () => {
     const { logout } = useAuth();
@@ -149,6 +150,15 @@ const AdminLayout = () => {
                         }
                     >
                         <LuPopcorn className="icon-admin-layout" /> Bắp &amp; Nước
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/invoices"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaFileInvoiceDollar className="icon-admin-layout" /> Hóa Đơn
                     </NavLink>
                 </nav>
 

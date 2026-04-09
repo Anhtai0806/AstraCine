@@ -1,6 +1,7 @@
 package com.astracine.backend.core.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -31,12 +32,7 @@ import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
-import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
-import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
-import lombok.Builder;
-import lombok.Data;
-import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 
 import lombok.RequiredArgsConstructor;
@@ -376,67 +372,125 @@ public class InvoiceService {
         List<Invoice> invoices = invoiceRepository
                 .findByCustomerUsernameOrderByCreatedAtDesc(user.getUsername());
 
-        return invoices.stream().map(inv -> {
-            Showtime showtime = inv.getShowtime();
+        return invoices.stream().map(inv -> mapInvoiceToDTO(inv)).toList();
+    }
 
-            String movieTitle = null;
-            String moviePosterUrl = null;
-            if (showtime != null && showtime.getMovieId() != null) {
-                Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
-                if (movieOpt.isPresent()) {
-                    movieTitle = movieOpt.get().getTitle();
-                    moviePosterUrl = movieOpt.get().getPosterUrl();
-                }
+    /**
+     * Admin: lấy tất cả hóa đơn với filter tuỳ chọn.
+     *
+     * @param search   tìm theo customerUsername (nullable)
+     * @param status   filter theo status PAID/CANCELLED (nullable)
+     * @param from     từ ngày (nullable)
+     * @param to       đến ngày (nullable)
+     */
+    @Transactional(readOnly = true)
+    public List<InvoiceHistoryDTO> getAllInvoicesForAdmin(
+            String search, String status,
+            LocalDateTime from, LocalDateTime to) {
+
+        List<Invoice> invoices;
+
+        boolean hasSearch = search != null && !search.isBlank();
+        boolean hasStatus = status != null && !status.isBlank();
+        boolean hasDate   = from != null && to != null;
+
+        if (hasSearch && hasDate) {
+            invoices = invoiceRepository
+                    .findByCustomerUsernameContainingIgnoreCaseAndCreatedAtBetweenOrderByCreatedAtDesc(
+                            search.trim(), from, to);
+            // filter thêm status nếu có
+            if (hasStatus) {
+                final String s = status;
+                invoices = invoices.stream().filter(i -> s.equalsIgnoreCase(i.getStatus())).toList();
             }
-
-            List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
-            List<InvoiceHistoryDTO.SeatItem> seats = tickets.stream().map(t -> {
-                ShowtimeSeat ss = t.getShowtimeSeat();
-                Seat seat = ss != null ? ss.getSeat() : null;
-                String code = seat != null ? seat.getRowLabel() + seat.getColumnNumber() : "?";
-                String type = seat != null && seat.getSeatType() != null ? seat.getSeatType().name() : "";
-                return InvoiceHistoryDTO.SeatItem.builder()
-                        .seatCode(code)
-                        .seatType(type)
-                        .price(t.getPrice())
-                        .build();
-            }).toList();
-
-            List<InvoiceCombo> combos = invoiceComboRepository.findByInvoiceId(inv.getId());
-            List<InvoiceHistoryDTO.ComboItem> comboItems = combos.stream().map(ic -> {
-                String comboName = ic.getCombo() != null ? ic.getCombo().getName() : "Combo";
-                return InvoiceHistoryDTO.ComboItem.builder()
-                        .comboName(comboName)
-                        .quantity(ic.getQuantity())
-                        .price(ic.getPrice())
-                        .build();
-            }).toList();
-
-            String transCode = null;
-            // Lấy Payment theo invoiceId
-            Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
-            if (paymentOpt.isPresent()) {
-                transCode = paymentOpt.get().getTransactionCode();
+        } else if (hasSearch) {
+            invoices = invoiceRepository
+                    .findByCustomerUsernameContainingIgnoreCaseOrderByCreatedAtDesc(search.trim());
+            if (hasStatus) {
+                final String s = status;
+                invoices = invoices.stream().filter(i -> s.equalsIgnoreCase(i.getStatus())).toList();
             }
+        } else if (hasStatus && hasDate) {
+            invoices = invoiceRepository
+                    .findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(status, from, to);
+        } else if (hasStatus) {
+            invoices = invoiceRepository.findByStatusOrderByCreatedAtDesc(status);
+        } else if (hasDate) {
+            invoices = invoiceRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        } else {
+            invoices = invoiceRepository.findAllByOrderByCreatedAtDesc();
+        }
 
-            return InvoiceHistoryDTO.builder()
-                    .invoiceId(inv.getId())
-                    .status(inv.getStatus())
-                    .totalAmount(inv.getTotalAmount())
-                    .createdAt(inv.getCreatedAt())
-                    .showtimeId(showtime != null ? showtime.getId() : null)
-                    .movieId(showtime != null ? showtime.getMovieId() : null)
-                    .movieTitle(movieTitle)
-                    .moviePosterUrl(moviePosterUrl)
-                    .startTime(showtime != null ? showtime.getStartTime() : null)
-                    .endTime(showtime != null ? showtime.getEndTime() : null)
-                    .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
-                    .seats(seats)
-                    .combos(comboItems)
-                    .orderCode(transCode) // 👈 NHÉT CHÌA KHÓA VÀO ĐÂY LÀ XONG!
+        return invoices.stream().map(this::mapInvoiceToDTO).toList();
+    }
+
+    // ── Private helper: map Invoice → InvoiceHistoryDTO ─────────────────────
+
+    private InvoiceHistoryDTO mapInvoiceToDTO(Invoice inv) {
+        Showtime showtime = inv.getShowtime();
+
+        String movieTitle = null;
+        String moviePosterUrl = null;
+        if (showtime != null && showtime.getMovieId() != null) {
+            Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
+            if (movieOpt.isPresent()) {
+                movieTitle = movieOpt.get().getTitle();
+                moviePosterUrl = movieOpt.get().getPosterUrl();
+            }
+        }
+
+        List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
+        List<InvoiceHistoryDTO.SeatItem> seats = tickets.stream().map(t -> {
+            ShowtimeSeat ss = t.getShowtimeSeat();
+            Seat seat = ss != null ? ss.getSeat() : null;
+            String code = seat != null ? seat.getRowLabel() + seat.getColumnNumber() : "?";
+            String type = seat != null && seat.getSeatType() != null ? seat.getSeatType().name() : "";
+            return InvoiceHistoryDTO.SeatItem.builder()
+                    .seatCode(code)
+                    .seatType(type)
+                    .price(t.getPrice())
                     .build();
         }).toList();
+
+        List<InvoiceCombo> combos = invoiceComboRepository.findByInvoiceId(inv.getId());
+        List<InvoiceHistoryDTO.ComboItem> comboItems = combos.stream().map(ic -> {
+            String comboName = ic.getCombo() != null ? ic.getCombo().getName() : "Combo";
+            return InvoiceHistoryDTO.ComboItem.builder()
+                    .comboName(comboName)
+                    .quantity(ic.getQuantity())
+                    .price(ic.getPrice())
+                    .build();
+        }).toList();
+
+        String transCode = null;
+        String paymentMethod = null;
+        Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
+        if (paymentOpt.isPresent()) {
+            transCode = paymentOpt.get().getTransactionCode();
+            paymentMethod = paymentOpt.get().getPaymentMethod();
+        }
+
+        return InvoiceHistoryDTO.builder()
+                .invoiceId(inv.getId())
+                .status(inv.getStatus())
+                .totalAmount(inv.getTotalAmount())
+                .createdAt(inv.getCreatedAt())
+                .customerUsername(inv.getCustomerUsername())
+                .paymentMethod(paymentMethod)
+                .showtimeId(showtime != null ? showtime.getId() : null)
+                .movieId(showtime != null ? showtime.getMovieId() : null)
+                .movieTitle(movieTitle)
+                .moviePosterUrl(moviePosterUrl)
+                .startTime(showtime != null ? showtime.getStartTime() : null)
+                .endTime(showtime != null ? showtime.getEndTime() : null)
+                .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
+                .seats(seats)
+                .combos(comboItems)
+                .orderCode(transCode)
+                .build();
     }
+
+
 
     /**
      * Lấy thông tin E-ticket theo orderCode (transactionCode trong bảng payments).

@@ -16,6 +16,10 @@ public class InvoiceHistoryDTO {
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
     private String orderCode;
+
+    // Thông tin khách hàng (dùng cho Admin view)
+    private String customerUsername;
+    private String paymentMethod;  // PAYOS / CASH / CARD
     
     // Thông tin phim / suất chiếu
     private Long showtimeId;
