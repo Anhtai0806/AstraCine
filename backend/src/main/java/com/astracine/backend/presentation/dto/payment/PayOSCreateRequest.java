@@ -25,7 +25,7 @@ public class PayOSCreateRequest {
     private Long amount;
 
     /** Mã khuyến mãi đã áp dụng (tùy chọn) */
-    private String promotionCode;
+    private List<String> promotionCodes;
 
     /** Số tiền được giảm (tùy chọn, để hiển thị trong PayOS items) */
     private Long discountAmount;

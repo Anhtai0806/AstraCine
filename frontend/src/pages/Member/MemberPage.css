@@ -103,7 +103,7 @@
 }
 
 /* TABLE */
-table {
+/* table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 15px;
@@ -117,7 +117,7 @@ th, td {
 
 th {
     background: #f9f9f9;
-}
+} */
 
 /* LOADING */
 .member-loading {
