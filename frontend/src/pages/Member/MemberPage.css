@@ -1,126 +1,552 @@
-.member-container {
-    max-width: 1000px;
-    margin: auto;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-    color: #fff;
-}
+/* ─────────────────────────────────────────
+   MemberPage.css
+   ───────────────────────────────────────── */
 
-/* HEADER */
-.member-header {
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Loading */
+.mp-loading {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 20px;
-}
-
-.member-level {
-    color: #2b5cff;
-    font-weight: bold;
-}
-
-.member-points {
-    font-size: 20px;
-    font-weight: bold;
-}
-
-/* TABS */
-.member-tabs {
-    display: flex;
-    gap: 20px;
-    border-bottom: 2px solid #eee;
-    margin-bottom: 20px;
-}
-
-.member-tabs button {
-    background: none;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    color: #eee;
-}
-
-
-.member-tabs .active {
-    color: #2b5cff;
-    border-bottom: 3px solid #2b5cff;
-}
-
-/* CARD */
-.member-card {
-    background: #1e1e1e;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    color: #fff;
-}
-
-/* GRID */
-.grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-/* PROGRESS */
-.progress-box {
-    margin-top: 20px;
-}
-
-.progress-bar {
-    height: 10px;
-    background: #eee;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #2b5cff, #00c6ff);
-}
-
-.progress-text {
-    margin-top: 10px;
-}
-
-.progress-next {
-    color: #666;
+    justify-content: center;
+    gap: 14px;
+    padding: 80px 20px;
+    color: #888;
     font-size: 14px;
 }
 
-/* POINT */
-.points-box {
+.mp-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: mp-spin 0.75s linear infinite;
+}
+
+@keyframes mp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Container */
+.mp-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #f1f5f9;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ── Hero ─────────────────────────────── */
+.mp-hero {
+    background: #161b2e;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 28px 28px 24px;
+    margin-bottom: 16px;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.mp-hero-left {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Tier badge */
+.mp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+}
+
+.mp-badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.mp-badge-standard {
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+}
+
+.mp-badge-standard .mp-badge-dot {
+    background: #94a3b8;
+}
+
+.mp-badge-vip {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+}
+
+.mp-badge-vip .mp-badge-dot {
+    background: #fbbf24;
+}
+
+.mp-badge-vvip {
+    background: linear-gradient(135deg, #ca0813 0%, #8b0000 100%);
+    color: #ffffff;
+    border: 1px solid rgba(225, 29, 72, 0.4);
+    box-shadow: 0 4px 12px rgba(139, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.mp-badge-vvip::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: mp-shimmer 3s infinite;
+}
+
+@keyframes mp-shimmer {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+
+    100% {
+        transform: translateX(100%) rotate(45deg);
+    }
+}
+
+.mp-badge-vvip .mp-badge-dot {
+    background: #ffffff;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.mp-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.mp-name-vvip {
+    background: linear-gradient(135deg, #e11d48 0%, #ca0813 50%, #8b0000 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(202, 8, 19, 0.4);
+    font-weight: 800;
+}
+
+.mp-card-no {
+    font-size: 13px;
+    color: #8fa3bf;
+    margin: 4px 0 0;
+}
+
+/* ── Avatar & Profile ──────────────────── */
+.mp-profile-head {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.mp-avatar-container {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+}
+
+.mp-avatar-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.mp-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mp-avatar-icon {
+    font-size: 24px;
+    color: #475569;
+}
+
+.mp-hero-right {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.mp-pts-hero-label {
+    font-size: 12px;
+    color: #8fa3bf;
+    margin: 0 0 4px;
+}
+
+.mp-pts-hero-num {
+    font-size: 30px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.mp-pts-hero-sub {
+    font-size: 12px;
+    color: #8fa3bf;
+    margin: 4px 0 0;
+}
+
+/* Progress */
+.mp-progress-block {
     margin-top: 20px;
 }
 
-.note {
-    margin-top: 10px;
-    color: #999;
+.mp-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #8fa3bf;
+    margin-bottom: 8px;
+}
+
+.mp-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.mp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+    border-radius: 999px;
+    transition: width 0.6s ease;
+}
+
+.mp-progress-sub {
+    font-size: 12px;
+    color: #8fa3bf;
+    margin: 0;
+}
+
+.mp-progress-sub strong {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.mp-progress-max {
+    color: #fb7185 !important;
+}
+
+.mp-progress-max strong {
+    color: #fda4af !important;
+    font-weight: 600;
+}
+
+/* ── Stats ────────────────────────────── */
+.mp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.mp-stat {
+    background: #161b2e;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mp-stat-label {
+    font-size: 11px;
+    color: #8fa3bf;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mp-stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.mp-stat-unit {
+    font-size: 11px;
+    color: #7a92aa;
+}
+
+/* ── Tabs ─────────────────────────────── */
+.mp-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin-bottom: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.mp-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.mp-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #8fa3bf;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    margin-bottom: -1px;
+}
+
+.mp-tab:hover:not(.mp-tab-active) {
+    color: #e2e8f0;
+}
+
+.mp-tab-active {
+    color: #60a5fa;
+    border-bottom-color: #3b82f6;
+}
+
+/* ── Card ─────────────────────────────── */
+.mp-card {
+    background: #161b2e;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.mp-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #b0c4d8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 20px;
+}
+
+/* ── Info grid ────────────────────────── */
+.mp-grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.mp-info-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.mp-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mp-info-label {
+    font-size: 11px;
+    color: #7a92aa;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mp-info-value {
+    font-size: 14px;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+/* ── Points panel ─────────────────────── */
+.mp-points-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.mp-pts-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mp-pts-label {
+    font-size: 12px;
+    color: #8fa3bf;
+}
+
+.mp-pts-num {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.02em;
+}
+
+.mp-note {
+    font-size: 12px;
+    color: #7a92aa;
+    margin: 0;
+}
+
+/* ── Table ────────────────────────────── */
+.mp-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 13px;
 }
 
-/* TABLE */
-/* table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-
-th, td {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
+.mp-table thead th {
     text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7a92aa;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 12px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-th {
-    background: #f9f9f9;
-} */
+.mp-table tbody td {
+    padding: 14px 12px;
+    color: #cbd5e1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+}
 
-/* LOADING */
-.member-loading {
+.mp-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.mp-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.mp-row-active td {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+/* Tier badges inside table */
+.mp-tier-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+}
+
+.mp-tier-standard {
+    background: rgba(255, 255, 255, 0.07);
+    color: #94a3b8;
+}
+
+.mp-tier-vip {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+.mp-tier-vvip {
+    background: linear-gradient(135deg, #ca0813 0%, #8b0000 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(139, 0, 0, 0.3);
+}
+
+/* Points positive / negative */
+.mp-pts-pos {
+    color: #34d399;
+    font-weight: 600;
+}
+
+.mp-pts-neg {
+    color: #f87171;
+    font-weight: 600;
+}
+
+.mp-date {
+    color: #8fa3bf;
+}
+
+/* Empty state */
+.mp-empty {
     text-align: center;
-    padding: 50px;
+    padding: 32px 0;
+    color: #7a92aa;
+    font-size: 13px;
+}
+
+/* ── Responsive ───────────────────────── */
+@media (max-width: 640px) {
+    .mp-hero {
+        flex-direction: column;
+    }
+
+    .mp-hero-right {
+        text-align: left;
+    }
+
+    .mp-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mp-stats .mp-stat:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .mp-grid2 {
+        grid-template-columns: 1fr;
+    }
+
+    .mp-points-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mp-table {
+        font-size: 12px;
+    }
+
+    .mp-table thead th,
+    .mp-table tbody td {
+        padding: 10px 8px;
+    }
 }
