@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { roomService } from '../../services/roomService';
 import SeatGrid from '../../components/admin/SeatGrid';
 import './RoomManager.css';
@@ -7,8 +7,64 @@ import { VscLock } from "react-icons/vsc";
 import { FaUnlockKeyhole } from "react-icons/fa6";
 import { RiDeleteBin6Line, RiMovie2Line } from "react-icons/ri";
 
+const CustomScreenTypeSelect = ({ value, onChange, options, onAdd, onRemove }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [newType, setNewType] = useState('');
+    const dropdownRef = useRef(null);
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
+    return (
+        <div className={`custom-select-container ${isOpen ? 'open' : ''}`} ref={dropdownRef}>
+            <div className="custom-select-trigger form-input" onClick={() => setIsOpen(!isOpen)}>
+                {value || 'Chọn loại màn hình'}
+                <span className="dropdown-arrow">▼</span>
+            </div>
+            {isOpen && (
+                <div className="custom-select-menu">
+                    <ul className="custom-select-list">
+                        {options.map(opt => (
+                            <li key={opt} className={`custom-select-item ${value === opt ? 'selected' : ''}`}>
+                                <span onClick={() => { onChange(opt); setIsOpen(false); }} className="custom-select-text">
+                                    {opt}
+                                </span>
+                                <button type="button" className="custom-select-delete" onClick={(e) => { e.stopPropagation(); onRemove(opt); }} title="Xóa loại này">
+                                    ✕
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="custom-select-add">
+                        <input 
+                            type="text" 
+                            placeholder="Nhập loại mới..." 
+                            value={newType} 
+                            onChange={e => setNewType(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if(newType.trim()) { onAdd(newType.trim()); setNewType(''); }
+                                }
+                            }}
+                        />
+                        <button type="button" onClick={(e) => {
+                             e.preventDefault();
+                             if(newType.trim()) { onAdd(newType.trim()); setNewType(''); }
+                        }}>Thêm</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const RoomManager = () => {
     // --- STATE ---
@@ -16,6 +72,26 @@ const RoomManager = () => {
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [seats, setSeats] = useState([]);
     const [formData, setFormData] = useState({ name: '', totalRows: 10, totalColumns: 12, screenType: '2D', priceMultiplier: 1.0 });
+
+    const defaultScreenTypes = ['2D', '3D', 'IMAX', '4DX', 'ScreenX'];
+    const [screenTypesList, setScreenTypesList] = useState(() => {
+        const saved = localStorage.getItem('astra_screen_types');
+        return saved ? JSON.parse(saved) : defaultScreenTypes;
+    });
+
+    const updateScreenTypesList = (newList) => {
+        setScreenTypesList(newList);
+        localStorage.setItem('astra_screen_types', JSON.stringify(newList));
+    };
+
+    const addScreenType = (type) => {
+        if (!type || screenTypesList.includes(type)) return;
+        updateScreenTypesList([...screenTypesList, type]);
+    };
+
+    const removeScreenType = (type) => {
+        updateScreenTypesList(screenTypesList.filter(t => t !== type));
+    };
 
     // Batch Logic
     const [pendingChanges, setPendingChanges] = useState(new Set());
@@ -175,8 +251,8 @@ const RoomManager = () => {
 
         const types = ['NORMAL', 'VIP', 'PREMIUM'];
         const currentTypeIndex = types.indexOf(seat.seatType);
-        const nextType = currentTypeIndex !== -1 
-            ? types[(currentTypeIndex + 1) % types.length] 
+        const nextType = currentTypeIndex !== -1
+            ? types[(currentTypeIndex + 1) % types.length]
             : types[0];
 
         const newSeats = seats.map(s => s.id === seat.id ? { ...s, seatType: nextType } : s);
@@ -206,7 +282,6 @@ const RoomManager = () => {
         if (window.confirm("Hủy mọi thay đổi?")) handleSelectRoom(selectedRoom);
     };
 
-    // --- RENDER ---
     return (
         <div className="room-manager-layout">
             {/* TOAST NOTIFICATION */}
@@ -232,16 +307,20 @@ const RoomManager = () => {
                                 value={formData.totalColumns} onChange={e => setFormData({ ...formData, totalColumns: e.target.value })}
                             />
                         </div>
-                        <select className="form-input" value={formData.screenType}
-                            onChange={e => {
-                                const type = e.target.value;
-                                const defaultMultipliers = { '2D': 1.0, '3D': 1.3, 'IMAX': 1.5 };
-                                setFormData({ ...formData, screenType: type, priceMultiplier: defaultMultipliers[type] || 1.0 });
-                            }}>
-                            <option value="2D">2D</option>
-                            <option value="3D">3D</option>
-                            <option value="IMAX">IMAX</option>
-                        </select>
+                        <CustomScreenTypeSelect 
+                            value={formData.screenType}
+                            options={screenTypesList}
+                            onAdd={addScreenType}
+                            onRemove={removeScreenType}
+                            onChange={type => {
+                                const defaultMultipliers = { '2D': 1.0, '3D': 1.3, 'IMAX': 1.5, '4DX': 2.0, 'ScreenX': 1.8 };
+                                const update = { screenType: type };
+                                if (defaultMultipliers[type] !== undefined) {
+                                    update.priceMultiplier = defaultMultipliers[type];
+                                }
+                                setFormData({ ...formData, ...update });
+                            }}
+                        />
                         <div className="form-group-inline">
                             <label className="form-label-inline">Hệ số giá (×)</label>
                             <input className="form-input" type="number" step="0.01" min="0.5" max="5.0"
@@ -363,12 +442,20 @@ const RoomManager = () => {
                                 />
 
                                 <label className="form-label">Loại màn hình</label>
-                                <select className="form-input" value={editFormData.screenType}
-                                    onChange={e => setEditFormData({ ...editFormData, screenType: e.target.value })}>
-                                    <option value="2D">2D</option>
-                                    <option value="3D">3D</option>
-                                    <option value="IMAX">IMAX</option>
-                                </select>
+                                <CustomScreenTypeSelect 
+                                    value={editFormData.screenType}
+                                    options={screenTypesList}
+                                    onAdd={addScreenType}
+                                    onRemove={removeScreenType}
+                                    onChange={type => {
+                                        const defaultMultipliers = { '2D': 1.0, '3D': 1.3, 'IMAX': 1.5, '4DX': 2.0, 'ScreenX': 1.8 };
+                                        const update = { screenType: type };
+                                        if (defaultMultipliers[type] !== undefined) {
+                                            update.priceMultiplier = defaultMultipliers[type];
+                                        }
+                                        setEditFormData({ ...editFormData, ...update });
+                                    }}
+                                />
 
                                 <label className="form-label">Số hàng ghế</label>
                                 <input className="form-input form-input-disabled" type="number"
