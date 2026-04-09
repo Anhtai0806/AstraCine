@@ -54,7 +54,7 @@ public class PayOSController {
                 req.getReturnUrl(),
                 req.getCancelUrl(),
                 req.getAmount(),
-                req.getPromotionCode(),
+                req.getPromotionCodes(),
                 req.getComboItems(),
                 req.getDiscountAmount(),
                 req.getPointsUsed());

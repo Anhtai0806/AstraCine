@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { createPaymentLink } from '../../api/payosApi';
 import { getAllPromotions, validatePromotion } from '../../api/promotionApi';
-import { memberApi } from '../../api/memberApi'; // Thêm API lấy điểm thành viên
+import { memberApi } from '../../api/memberApi';
 import './InvoiceSummary.css';
 
 const formatCurrency = (amount) =>
@@ -95,31 +95,29 @@ const InvoiceSummary = () => {
         roomName,
     } = location.state || {};
 
-    // ── Promotion state ──────────────────────────────────────────
     const [promotions, setPromotions] = useState([]);
     const [promoLoading, setPromoLoading] = useState(true);
-    const [selectedPromo, setSelectedPromo] = useState(null);
     const [codeInput, setCodeInput] = useState('');
     const [codeError, setCodeError] = useState(null);
     const [codeValidating, setCodeValidating] = useState(false);
 
-    // ── Points state ──────────────────────────────────────────────
+    // Khe cắm Mã Khuyến Mãi
+    const [promoTicket, setPromoTicket] = useState(null); 
+    const [promoCombo, setPromoCombo] = useState(null);   
+
     const [availablePoints, setAvailablePoints] = useState(0);
     const [pointsUsed, setPointsUsed] = useState(0);
     const [pointInput, setPointInput] = useState('');
 
-    // ── Payment state ─────────────────────────────────────────────
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState(null);
 
-    // ── Gọi API lấy Thông tin Điểm & Khuyến mãi ───────────────────
     useEffect(() => {
         if (!user) {
             navigate("/login", { state: { returnUrl: `/booking/showtimes/${showtimeId}` } });
             return;
         }
 
-        // Lấy số điểm hiện có của khách
         const userId = user.id || user.userId;
         if (userId) {
             memberApi.getProfile(userId)
@@ -127,7 +125,6 @@ const InvoiceSummary = () => {
                 .catch(err => console.error("Lỗi lấy điểm thành viên:", err));
         }
 
-        // Lấy khuyến mãi
         getAllPromotions()
             .then(data => {
                 const valid = (data || []).filter(isPromoValid);
@@ -137,26 +134,20 @@ const InvoiceSummary = () => {
             .finally(() => setPromoLoading(false));
     }, [user, navigate, showtimeId]);
 
-    // ── Tự động tính toán các loại tiền ───────────────────────────
     const eligiblePromotions = useMemo(
         () => promotions.filter((promo) => isPromoEligibleForOrder(promo, seatTotal, comboTotal, grandTotal)),
         [promotions, seatTotal, comboTotal, grandTotal]
     );
 
     useEffect(() => {
-        // Tự động gỡ mã nếu giỏ hàng thay đổi khiến mã không còn hợp lệ
-        if (selectedPromo && !isPromoEligibleForOrder(selectedPromo, seatTotal, comboTotal, grandTotal)) {
-            setSelectedPromo(null);
-        }
-    }, [selectedPromo, seatTotal, comboTotal, grandTotal]);
+        if (promoTicket && !isPromoEligibleForOrder(promoTicket, seatTotal, comboTotal, grandTotal)) setPromoTicket(null);
+        if (promoCombo && !isPromoEligibleForOrder(promoCombo, seatTotal, comboTotal, grandTotal)) setPromoCombo(null);
+    }, [promoTicket, promoCombo, seatTotal, comboTotal, grandTotal]);
 
-    // Tiền giảm từ Khuyến mãi
-    const discountAmount = useMemo(() =>
-        calcDiscountFromPromo(selectedPromo, seatTotal, comboTotal, grandTotal),
-        [selectedPromo, seatTotal, comboTotal, grandTotal]
-    );
+    const ticketDiscountAmount = useMemo(() => calcDiscountFromPromo(promoTicket, seatTotal, comboTotal, grandTotal), [promoTicket, seatTotal, comboTotal, grandTotal]);
+    const comboDiscountAmount = useMemo(() => calcDiscountFromPromo(promoCombo, seatTotal, comboTotal, grandTotal), [promoCombo, seatTotal, comboTotal, grandTotal]);
+    const discountAmount = ticketDiscountAmount + comboDiscountAmount;
 
-    // Xử lý logic Điểm thông minh: Tự động giảm số điểm dùng nếu tiền cần thanh toán ít hơn điểm
     useEffect(() => {
         const remainingBill = Math.max(0, grandTotal - discountAmount);
         const maxPointsNeeded = Math.ceil(remainingBill / 1000);
@@ -166,16 +157,37 @@ const InvoiceSummary = () => {
         }
     }, [discountAmount, grandTotal, pointsUsed, pointInput]);
 
-    // Tiền giảm từ Điểm & Tổng thanh toán
     const pointsDiscountAmount = pointsUsed * 1000;
     const totalDiscount = discountAmount + pointsDiscountAmount;
     const finalTotal = Math.max(0, grandTotal - totalDiscount);
 
-    // ── Handlers ──────────────────────────────────────────────────
-    const handleSelectChip = (promo) => {
+    // 🚀 ĐÃ SỬA: Hàm tự động thay thế mã cực kỳ thông minh
+    const applyPromoToSlot = (promo) => {
         setCodeError(null);
         setCodeInput('');
-        setSelectedPromo(prev => prev?.id === promo.id ? null : promo);
+
+        // Bấm lại mã đang chọn -> Hủy chọn
+        if (promoTicket?.id === promo.id) { setPromoTicket(null); return; }
+        if (promoCombo?.id === promo.id) { setPromoCombo(null); return; }
+
+        if (promo.applicableTo === 'ALL') {
+            // Áp mã ALL -> Xóa sạch mã Vé và Bắp hiện tại, một mình nó ôm hết
+            setPromoTicket(promo);
+            setPromoCombo(null);
+        } 
+        else if (promo.applicableTo === 'TICKET') {
+            // Áp mã Vé -> Đè lên mã vé cũ. Nếu đang có mã ALL thì mã ALL bị đá bay luôn
+            setPromoTicket(promo);
+            if (promoCombo?.applicableTo === 'ALL') setPromoCombo(null); 
+        } 
+        else if (promo.applicableTo === 'COMBO') {
+            // Áp mã Bắp -> Đè lên mã bắp cũ
+            setPromoCombo(promo);
+            // Nếu đang xài mã ALL (lưu ở khe vé), phải đá mã ALL đi để tránh giảm kép
+            if (promoTicket?.applicableTo === 'ALL') {
+                setPromoTicket(null);
+            }
+        }
     };
 
     const handleValidateCode = async () => {
@@ -202,8 +214,7 @@ const InvoiceSummary = () => {
                 throw new Error(errorMsg);
             }
 
-            setSelectedPromo(promo);
-            setCodeInput('');
+            applyPromoToSlot(promo);
         } catch (err) {
             setCodeError(err?.message || 'Mã không hợp lệ hoặc đã hết hạn.');
         } finally {
@@ -214,13 +225,11 @@ const InvoiceSummary = () => {
     const handleApplyPoints = () => {
         const pts = parseInt(pointInput, 10) || 0;
         
-        // Nếu nhập 0 hoặc xóa trống thì reset về 0
         if (pts <= 0) {
             setPointsUsed(0);
             return;
         }
 
-        // 🚀 LUẬT MỚI: CHẶN DƯỚI 20 ĐIỂM
         if (pts < 20) {
             alert("Bạn phải đổi ít nhất 20 điểm (20.000đ) mỗi lần sử dụng!");
             return;
@@ -235,7 +244,6 @@ const InvoiceSummary = () => {
         const maxPointsNeeded = Math.ceil(remainingBill / 1000);
 
         if (pts > maxPointsNeeded) {
-            // Nếu đơn hàng cần ít hơn 20 điểm (ví dụ mua combo 15k), báo cho khách biết không thể dùng
             if (maxPointsNeeded < 20) {
                 alert(`Đơn hàng của bạn chỉ cần ${maxPointsNeeded} điểm để thanh toán, nhưng hệ thống yêu cầu dùng tối thiểu 20 điểm. Vui lòng thanh toán bằng phương thức khác!`);
                 setPointsUsed(0);
@@ -270,15 +278,15 @@ const InvoiceSummary = () => {
                 subtotal: item.subtotal,
             }));
 
-            // Tạm thời truyền totalDiscount. Sau này nhớ thêm tham số pointsUsed vào createPaymentLink 
-            // để BE trừ điểm trong Database nhé!
+            const appliedCodes = [promoTicket?.code, promoCombo?.code].filter(Boolean);
+
             const result = await createPaymentLink(
                 holdId, returnUrl, cancelUrl,
                 finalTotal,
-                selectedPromo?.code ?? null,
+                appliedCodes.length > 0 ? appliedCodes : null, 
                 comboPayload,
                 totalDiscount > 0 ? totalDiscount : null,
-                pointsUsed > 0 ? pointsUsed : 0 // Gửi pointsUsed xuống BE (nếu payosApi đã được cấu hình)
+                pointsUsed > 0 ? pointsUsed : 0
             );
 
             if (result?.checkoutUrl) {
@@ -385,14 +393,14 @@ const InvoiceSummary = () => {
                         )}
                     </section>
 
-                    {/* --- Khối Đổi Điểm Thành Viên --- */}
                     <section className="invoice-card">
                         <div className="invoice-card-header">
                             <span className="card-icon">⭐</span>
                             <h2 className="card-title">Đổi điểm thành viên</h2>
                         </div>
                         <p className="discount-hint">
-                            Bạn đang có: <strong>{availablePoints} điểm</strong> (1 điểm = 1.000đ)
+                            Bạn đang có: <strong>{availablePoints} điểm</strong> (1 điểm = 1.000đ)<br/>
+                            <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>* Sử dụng tối thiểu 20 điểm/lần</span>
                         </p>
                         <div className="promo-input-row">
                             <input
@@ -403,11 +411,12 @@ const InvoiceSummary = () => {
                                 min="0"
                                 max={availablePoints}
                                 onChange={e => setPointInput(e.target.value)}
+                                disabled={availablePoints < 20}
                             />
                             <button
                                 className="btn-apply-code"
                                 onClick={handleApplyPoints}
-                                disabled={availablePoints === 0}
+                                disabled={availablePoints < 20}
                             >
                                 Đổi điểm
                             </button>
@@ -425,7 +434,7 @@ const InvoiceSummary = () => {
                     <section className="invoice-card">
                         <div className="invoice-card-header">
                             <span className="card-icon">🏷️</span>
-                            <h2 className="card-title">Mã giảm giá</h2>
+                            <h2 className="card-title">Mã giảm giá (Tối đa 1 Vé + 1 Bắp)</h2>
                         </div>
                         {promoLoading ? (
                             <p className="discount-hint">Đang tải mã giảm giá...</p>
@@ -436,12 +445,13 @@ const InvoiceSummary = () => {
                                 <p className="discount-hint">Chọn một mã hoặc nhập thủ công:</p>
                                 <div className="discount-list">
                                     {eligiblePromotions.map(promo => {
-                                        const isSelected = selectedPromo?.id === promo.id;
+                                        const isSelected = promoTicket?.id === promo.id || promoCombo?.id === promo.id;
                                         const saving = calcDiscountFromPromo(promo, seatTotal, comboTotal, grandTotal);
                                         
                                         let typeText = "";
                                         if (promo.applicableTo === "TICKET") typeText = " (Vé)";
                                         else if (promo.applicableTo === "COMBO") typeText = " (Bắp nước)";
+                                        else if (promo.applicableTo === "ALL") typeText = " (Toàn bộ)";
 
                                         const label = promo.discountType === 'PERCENTAGE'
                                             ? `Giảm ${promo.discountValue}%${typeText}`
@@ -451,7 +461,7 @@ const InvoiceSummary = () => {
                                             <button
                                                 key={promo.id}
                                                 className={`discount-chip ${isSelected ? 'selected' : ''}`}
-                                                onClick={() => handleSelectChip(promo)}
+                                                onClick={() => applyPromoToSlot(promo)}
                                                 title={promo.description || label}
                                             >
                                                 <span className="chip-code">{promo.code}</span>
@@ -467,7 +477,7 @@ const InvoiceSummary = () => {
                             </>
                         )}
 
-                        <div className="promo-input-row">
+                        <div className="promo-input-row" style={{ marginTop: '15px' }}>
                             <input
                                 type="text"
                                 className="promo-input"
@@ -486,17 +496,24 @@ const InvoiceSummary = () => {
                         </div>
                         {codeError && <p className="code-error">{codeError}</p>}
 
-                        {selectedPromo && (
-                            <div className="discount-applied">
-                                <span>✅ Đã áp dụng: <strong>{selectedPromo.code}</strong></span>
-                                <span className="discount-saving">– {formatCurrency(discountAmount)}</span>
-                                <button className="btn-remove-promo" onClick={() => setSelectedPromo(null)}>✕</button>
+                        {promoTicket && (
+                            <div className="discount-applied" style={{ marginTop: '10px' }}>
+                                <span>🎟️ Mã {promoTicket.applicableTo === 'ALL' ? 'Toàn bộ' : 'Vé'}: <strong>{promoTicket.code}</strong></span>
+                                <span className="discount-saving">– {formatCurrency(ticketDiscountAmount)}</span>
+                                <button className="btn-remove-promo" onClick={() => setPromoTicket(null)}>✕</button>
+                            </div>
+                        )}
+                        
+                        {promoCombo && (
+                            <div className="discount-applied" style={{ marginTop: '10px' }}>
+                                <span>🍿 Mã bắp: <strong>{promoCombo.code}</strong></span>
+                                <span className="discount-saving">– {formatCurrency(comboDiscountAmount)}</span>
+                                <button className="btn-remove-promo" onClick={() => setPromoCombo(null)}>✕</button>
                             </div>
                         )}
                     </section>
                 </div>
 
-                {/* ===== RIGHT COLUMN: Thanh toán ===== */}
                 <aside className="invoice-right">
                     <div className="payment-card">
                         <h2 className="payment-title">💰 Thông tin thanh toán</h2>
@@ -540,14 +557,19 @@ const InvoiceSummary = () => {
                                 <span>{formatCurrency(grandTotal)}</span>
                             </div>
 
-                            {selectedPromo && discountAmount > 0 && (
+                            {promoTicket && ticketDiscountAmount > 0 && (
                                 <div className="payment-row discount-row">
-                                    <span>Giảm giá <em>({selectedPromo.code})</em></span>
-                                    <span className="discount-value">– {formatCurrency(discountAmount)}</span>
+                                    <span>Giảm giá {promoTicket.applicableTo === 'ALL' ? 'đơn' : 'vé'} <em>({promoTicket.code})</em></span>
+                                    <span className="discount-value">– {formatCurrency(ticketDiscountAmount)}</span>
+                                </div>
+                            )}
+                            {promoCombo && comboDiscountAmount > 0 && (
+                                <div className="payment-row discount-row">
+                                    <span>Giảm giá bắp <em>({promoCombo.code})</em></span>
+                                    <span className="discount-value">– {formatCurrency(comboDiscountAmount)}</span>
                                 </div>
                             )}
 
-                            {/* Dòng trừ tiền điểm thành viên */}
                             {pointsUsed > 0 && (
                                 <div className="payment-row discount-row">
                                     <span>Dùng {pointsUsed} điểm</span>
