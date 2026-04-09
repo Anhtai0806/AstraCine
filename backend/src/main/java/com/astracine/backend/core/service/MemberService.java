@@ -35,7 +35,7 @@ public class MemberService {
         return (int) Math.floor(ticketPoints + comboPoints);
     }
 
-    // 🏆 Update hạng và Bóp cò phát quà
+    // Update hạng và Bóp cò phát quà
     public void updateMembership(Customer customer) {
 
         BigDecimal currentSpent = customer.getTotalSpent() != null
@@ -53,12 +53,13 @@ public class MemberService {
 
         if (newLevel != null) {
             MembershipLevel oldLevel = customer.getMembership();
-            
+
             // So sánh xem có phải thăng hạng không (ID mới lớn hơn ID cũ)
-            // Nếu khách mới tinh (oldLevel == null) mà được nhảy thẳng lên VIP (do mua nhiều) thì cũng tính là Upgraded
+            // Nếu khách mới tinh (oldLevel == null) mà được nhảy thẳng lên VIP (do mua
+            // nhiều) thì cũng tính là Upgraded
             boolean isUpgraded = false;
             if (oldLevel == null && newLevel.getId() > 1) {
-                isUpgraded = true; 
+                isUpgraded = true;
             } else if (oldLevel != null && newLevel.getId() > oldLevel.getId()) {
                 isUpgraded = true;
             }
@@ -87,13 +88,14 @@ public class MemberService {
         if (numCodes > 0) {
             // 1. Sinh mã tự động
             List<String> rewardCodes = promotionService.generateUpgradeRewards(customer.getId(), levelName, numCodes);
-            
+
             // 2. In ra console để bạn dễ kiểm tra
             log.info("🎉🎉🎉 CHÚC MỪNG KHÁCH HÀNG THĂNG HẠNG {} 🎉🎉🎉", levelName);
             log.info("Tặng user ID {} các mã giảm 100% vé phim: {}", customer.getId(), rewardCodes);
-            
+
             // 3. (Gợi ý nâng cấp) Gọi EmailService gửi danh sách rewardCodes cho khách
-            // String targetEmail = customer.getEmail() != null ? customer.getEmail() : customer.getUser().getEmail();
+            // String targetEmail = customer.getEmail() != null ? customer.getEmail() :
+            // customer.getUser().getEmail();
             // emailService.sendUpgradeRewardEmail(targetEmail, levelName, rewardCodes);
         }
     }
@@ -120,7 +122,7 @@ public class MemberService {
         updateMembership(customer);
     }
 
-    // 💸 Dùng điểm
+    // Dùng điểm
     public BigDecimal applyPoints(Customer customer, int pointsUsed) {
 
         if (customer.getPoints() < pointsUsed) {
