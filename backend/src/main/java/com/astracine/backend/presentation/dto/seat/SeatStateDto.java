@@ -33,4 +33,6 @@ public class SeatStateDto {
 
     /** hold id hiện tại của ghế, chỉ có khi status=HELD */
     private String holdId;
+
+    private Long pairedSeatId;
 }

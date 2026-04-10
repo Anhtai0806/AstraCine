@@ -3,8 +3,6 @@ package com.astracine.backend.presentation.dto.staffschedule;
 import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.enums.SchedulePlanStatus;
 import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,31 +22,27 @@ public class StaffScheduleDTO {
         @NotNull
         @FutureOrPresent
         private LocalDate businessDate;
+
         private Integer windowMinutes = 30;
+
         private Boolean overwrite = true;
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class GeneratePlanRequest {
+    public static class GenerateDemandRangeRequest {
         @NotNull
         @FutureOrPresent
-        private LocalDate businessDate;
-    }
+        private LocalDate startDate;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GenerateSimplePlanRequest {
         @NotNull
         @FutureOrPresent
-        private LocalDate businessDate;
+        private LocalDate endDate;
 
-        @NotNull
-        @Min(4)
-        @Max(6)
-        private Integer requiredStaffPerShift;
+        private Integer windowMinutes = 30;
+
+        private Boolean overwrite = true;
     }
 
     @Data
@@ -63,6 +57,66 @@ public class StaffScheduleDTO {
         private Integer checkinRequired;
         private Integer concessionRequired;
         private Integer multiRequired;
+        private String shiftCode;
+        private String shiftName;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GeneratePlanRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate businessDate;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GeneratePlanRangeRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate startDate;
+
+        @NotNull
+        @FutureOrPresent
+        private LocalDate endDate;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RangeIssueResponse {
+        private LocalDate businessDate;
+        private String message;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DemandRangeResponse {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer totalDaysRequested;
+        private Integer successDays;
+        private Integer failedDays;
+        private Integer totalDemandWindows;
+        private List<DemandWindowResponse> demands;
+        private List<RangeIssueResponse> issues;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PlanRangeResponse {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer totalDaysRequested;
+        private Integer successDays;
+        private Integer failedDays;
+        private Integer totalAssignments;
+        private List<PlanResponse> plans;
+        private List<RangeIssueResponse> issues;
     }
 
     @Data

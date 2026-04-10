@@ -302,7 +302,8 @@ public class ShowtimeService {
                     seat.getSeatType(),
                     seat.getBasePrice(),
                     showtimeSeat.getFinalPrice(),
-                    showtimeSeat.getStatus());
+                    showtimeSeat.getStatus(),
+                    seat.getPairedSeatId());
 
             groupedSeats.computeIfAbsent(seat.getRowLabel(), ignored -> new ArrayList<>()).add(seatInfo);
         }

@@ -29,14 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Dịch vụ thanh toán PayOS (SDK v2).
- *
- * Redis keys:
- * payos:order:{orderCode} → JSON { holdId, userId, status, amount,
- * promotionCode, comboItems, pointsUsed }
- * payos:hold:{holdId} → orderCode (String)
- */
 @Slf4j
 @Service
 public class PayOSService {
@@ -83,9 +75,9 @@ public class PayOSService {
     // =========================================================
     public PayOSCreateResponse createPaymentLink(String holdId, String userId,
             String returnUrl, String cancelUrl,
-            Long frontendAmount, String promotionCode,
+            Long frontendAmount, List<String> promotionCodes, // <--- ĐÃ SỬA: Thay String thành List<String>
             List<ComboCartItemDTO> comboItems,
-            Long discountAmount, Integer pointsUsed) { // <--- THÊM pointsUsed VÀO ĐÂY
+            Long discountAmount, Integer pointsUsed) {
 
         HoldMeta hold = readHoldMeta(holdId, userId);
 
@@ -115,7 +107,7 @@ public class PayOSService {
                 : Math.max(hold.seatCount, 1) * FALLBACK_PRICE_PER_SEAT;
 
         long orderCode = generateOrderCode(holdId);
-        int finalPointsUsed = pointsUsed != null ? pointsUsed : 0; // Đảm bảo không null
+        int finalPointsUsed = pointsUsed != null ? pointsUsed : 0;
 
         if (amount == 0) {
             String holdRaw = redis.opsForValue().get(HOLD_SUMMARY_KEY_PREFIX + holdId);
@@ -124,8 +116,8 @@ public class PayOSService {
 
             try {
                 invoiceService.createInvoice(
-                        holdId, userId, orderCode, BigDecimal.ZERO, promotionCode,
-                        comboItems, showtimeId, seatIds, finalPointsUsed); // <--- Truyền pointsUsed
+                        holdId, userId, orderCode, BigDecimal.ZERO, promotionCodes,
+                        comboItems, showtimeId, seatIds, finalPointsUsed);
             } catch (Exception ex) {
                 log.error("[PayOS] Invoice creation failed for 0 VND orderCode={}: {}", orderCode, ex.getMessage(), ex);
                 throw new RuntimeException("Lỗi tạo hoá đơn 0đ: " + ex.getMessage(), ex);
@@ -136,15 +128,19 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PAID");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCode", promotionCode);
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
+<<<<<<< HEAD
             String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
                     + "&status=PAID";
             sessionData.put("checkoutUrl", returnUrlWithParams);
             sessionData.put("qrCode", "");
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
+=======
+            sessionData.put("pointsUsed", finalPointsUsed);
+>>>>>>> 7ee8f6b4d8cd205b52c3ecd2330b5e580b7d29fa
 
             try {
                 long ttlMillis = Math.max(60_000, hold.expiresAt - Instant.now().toEpochMilli());
@@ -164,8 +160,8 @@ public class PayOSService {
                     .build();
         }
 
-        String desc = (promotionCode != null && !promotionCode.isBlank())
-                ? "AC-" + (orderCode % 1_000_000L) + "-" + promotionCode
+        String desc = (promotionCodes != null && !promotionCodes.isEmpty())
+                ? "AC-" + (orderCode % 1_000_000L) + "-" + promotionCodes.get(0)
                 : "AstraCine-" + (orderCode % 1_000_000L);
         String description = desc.length() > 25 ? desc.substring(0, 25) : desc;
 
@@ -212,8 +208,8 @@ public class PayOSService {
 
         if (discount > 0) {
             String discountLabel = "Giam gia";
-            if (promotionCode != null && !promotionCode.isBlank()) {
-                String suffix = " (" + promotionCode + ")";
+            if (promotionCodes != null && !promotionCodes.isEmpty()) {
+                String suffix = " (" + String.join(",", promotionCodes) + ")";
                 discountLabel = ("Giam gia" + suffix).length() <= 50
                         ? "Giam gia" + suffix
                         : "Giam gia";
@@ -247,13 +243,17 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PENDING");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCode", promotionCode);
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
+<<<<<<< HEAD
             sessionData.put("checkoutUrl", response.getCheckoutUrl());
             sessionData.put("qrCode", response.getQrCode());
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
+=======
+            sessionData.put("pointsUsed", finalPointsUsed);
+>>>>>>> 7ee8f6b4d8cd205b52c3ecd2330b5e580b7d29fa
 
             Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
             redis.opsForValue().set(PAYOS_ORDER_KEY_PREFIX + orderCode,
@@ -312,7 +312,12 @@ public class PayOSService {
             if (isPaid && !"PAID".equals(currentStatus)) {
                 try {
                     BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-                    String promotionCode = (String) session.get("promotionCode");
+                    
+                    // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
+                    @SuppressWarnings("unchecked")
+                    List<String> promotionCodes = objectMapper.convertValue(
+                            session.getOrDefault("promotionCodes", Collections.emptyList()),
+                            new TypeReference<List<String>>() {});
 
                     @SuppressWarnings("unchecked")
                     List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
@@ -328,11 +333,10 @@ public class PayOSService {
                             new TypeReference<List<Long>>() {
                             });
 
-                    // <--- LẤY pointsUsed TỪ REDIS VÀ TRUYỀN XUỐNG
                     int pointsUsed = ((Number) session.getOrDefault("pointsUsed", 0)).intValue();
 
                     invoiceService.createInvoice(
-                            holdId, userId, orderCode, amount, promotionCode,
+                            holdId, userId, orderCode, amount, promotionCodes, // <--- ĐÃ SỬA
                             comboItems, showtimeId, seatIds, pointsUsed);
                 } catch (Exception ex) {
                     log.error("[PayOS] Invoice creation failed orderCode={}: {}", orderCode, ex.getMessage(), ex);
@@ -394,7 +398,12 @@ public class PayOSService {
             String holdId = (String) session.get("holdId");
             String userId = (String) session.get("userId");
             BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-            String promotionCode = (String) session.get("promotionCode");
+            
+            // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
+            @SuppressWarnings("unchecked")
+            List<String> promotionCodes = objectMapper.convertValue(
+                    session.getOrDefault("promotionCodes", Collections.emptyList()),
+                    new TypeReference<List<String>>() {});
 
             @SuppressWarnings("unchecked")
             List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
@@ -410,11 +419,10 @@ public class PayOSService {
                     new TypeReference<List<Long>>() {
                     });
 
-            // <--- LẤY pointsUsed TỪ REDIS VÀ TRUYỀN XUỐNG
             int pointsUsed = ((Number) session.getOrDefault("pointsUsed", 0)).intValue();
 
             invoiceService.createInvoice(
-                    holdId, userId, orderCode, amount, promotionCode,
+                    holdId, userId, orderCode, amount, promotionCodes, // <--- ĐÃ SỬA
                     comboItems, showtimeId, seatIds, pointsUsed);
 
             log.info("[PayOS] confirmPayment: Invoice created for orderCode={}", orderCode);

@@ -64,13 +64,13 @@ export default function StaffMySchedule() {
             setLoading(true);
             setError("");
             const response = await staffSchedulingStaffApi.getMySchedule(nextFrom, nextTo);
-
-
             const raw = response.data;
             setAssignments(
-                Array.isArray(raw) ? raw :
-                    Array.isArray(raw?.assignments) ? raw.assignments :
-                        []
+                Array.isArray(raw)
+                    ? raw
+                    : Array.isArray(raw?.assignments)
+                        ? raw.assignments
+                        : []
             );
         } catch (err) {
             setError(getErrorMessage(err, "Không tải được lịch làm việc của bạn."));
@@ -97,6 +97,12 @@ export default function StaffMySchedule() {
         confirmed: assignments.filter((item) => item.status === "CONFIRMED").length,
         pending: assignments.filter((item) => item.status === "PUBLISHED").length,
     }), [assignments]);
+
+    const nextPendingAssignment = useMemo(() => {
+        return assignments
+            .filter((item) => item.status === "PUBLISHED")
+            .sort((a, b) => new Date(a.shiftStart) - new Date(b.shiftStart))[0] || null;
+    }, [assignments]);
 
     const handleReload = async (event) => {
         event.preventDefault();
@@ -125,9 +131,11 @@ export default function StaffMySchedule() {
                     <div className="staff-my-schedule-kicker">Lịch làm việc cá nhân</div>
                     <h1>Xin chào {user?.fullName || user?.username}</h1>
                     <p>
-                        Xem lịch đã publish, kiểm tra vai trò từng ca và xác nhận để admin biết bạn đã nắm được lịch làm.
+                        Đây là lịch làm việc theo ca của bạn. Hãy xem kỹ vị trí được phân công,
+                        thời gian bắt đầu kết thúc và xác nhận khi đã nắm được lịch.
                     </p>
                 </div>
+
                 <form className="staff-my-schedule-filter" onSubmit={handleReload}>
                     <label>
                         Từ ngày
@@ -158,6 +166,17 @@ export default function StaffMySchedule() {
                 </div>
             </div>
 
+            {nextPendingAssignment && (
+                <div className="staff-next-shift-card">
+                    <span className="staff-next-shift-label">Ca gần nhất cần xác nhận</span>
+                    <strong>{nextPendingAssignment.shiftName || nextPendingAssignment.shiftCode || "Ca làm việc"}</strong>
+                    <div>
+                        {formatDateTime(nextPendingAssignment.shiftStart)} - {formatDateTime(nextPendingAssignment.shiftEnd)}
+                    </div>
+                    <div className="staff-next-shift-sub">{nextPendingAssignment.assignedPosition}</div>
+                </div>
+            )}
+
             {error && <div className="staff-my-schedule-banner error">{error}</div>}
             {success && <div className="staff-my-schedule-banner success">{success}</div>}
 
@@ -174,6 +193,7 @@ export default function StaffMySchedule() {
                             <h2>{formatDateOnly(`${dateKey}T00:00:00`)}</h2>
                             <span>{items.length} ca</span>
                         </div>
+
                         <div className="assignment-list">
                             {items.map((item) => (
                                 <article className="assignment-card" key={item.id}>
@@ -182,13 +202,20 @@ export default function StaffMySchedule() {
                                             <div className="assignment-role">{item.assignedPosition}</div>
                                             <h3>{item.shiftName || item.shiftCode || "Ca làm việc"}</h3>
                                             <p>{formatDateTime(item.shiftStart)} - {formatDateTime(item.shiftEnd)}</p>
-                                            <div className="assignment-sub">Plan #{item.planId} · @{item.staffUsername}</div>
+                                            <div className="assignment-sub">
+                                                Plan #{item.planId} · @{item.staffUsername}
+                                            </div>
                                         </div>
+
                                         <span className={`assignment-status ${item.status?.toLowerCase() || ""}`}>
                                             {statusLabels[item.status] || item.status}
                                         </span>
                                     </div>
-                                    <p className="assignment-note">{item.explanation || "Ca được hệ thống gợi ý dựa trên lịch chiếu và vị trí làm việc của bạn."}</p>
+
+                                    <p className="assignment-note">
+                                        {item.explanation || "Ca được hệ thống phân công dựa trên nhu cầu vận hành theo ca và vị trí làm việc của bạn."}
+                                    </p>
+
                                     {item.status === "PUBLISHED" && (
                                         <button
                                             type="button"

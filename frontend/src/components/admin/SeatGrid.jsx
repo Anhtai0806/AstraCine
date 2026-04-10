@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './SeatGrid.css';
 
 const SEAT_TYPES = {
@@ -9,6 +9,8 @@ const SEAT_TYPES = {
 };
 
 const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, priceMultiplier }) => {
+    const [hoveredSeat, setHoveredSeat] = useState(null);
+
     if (!seats || seats.length === 0) {
         return <div style={{ padding: 20, color: '#888' }}>Không có dữ liệu ghế</div>;
     }
@@ -37,20 +39,48 @@ const SeatGrid = ({ seats, totalColumns, onSeatClick, getExtraClass, getTitle, p
                     const config = SEAT_TYPES[seat.seatType] || SEAT_TYPES.NORMAL;
                     const rawPrice = seat.basePrice ?? seat.price ?? seat.finalPrice ?? null;
                     const multiplier = priceMultiplier || 1;
-                    const displayPrice = rawPrice ? rawPrice * multiplier : null;
-                    const priceDisplay = displayPrice ? formatPrice(displayPrice) : 'Chưa set giá';
+
+                    let posLabel = `${seat.rowLabel}${seat.columnNumber}`;
+                    let currentDisplayPrice = rawPrice ? rawPrice * multiplier : null;
+                    
+                    if (seat.seatType === 'COUPLE' && seat.pairedSeatId) {
+                        const pairedSeat = seats.find(s => s.id === seat.pairedSeatId);
+                        if (pairedSeat) {
+                            const p1 = seat.columnNumber;
+                            const p2 = pairedSeat.columnNumber;
+                            posLabel = p1 < p2 
+                                ? `${seat.rowLabel}${p1}-${seat.rowLabel}${p2}`
+                                : `${seat.rowLabel}${p2}-${seat.rowLabel}${p1}`;
+                                
+                            const pairedRaw = pairedSeat.basePrice ?? pairedSeat.price ?? pairedSeat.finalPrice ?? 0;
+                            if (currentDisplayPrice !== null) {
+                                currentDisplayPrice += (pairedRaw * multiplier);
+                            }
+                        }
+                    }
+
+                    const priceDisplay = currentDisplayPrice ? formatPrice(currentDisplayPrice) : 'Chưa set giá';
                     const extra = getExtraClass ? getExtraClass(seat) : '';
                     const seatStatus = seat.effectiveStatus || seat.status || 'AVAILABLE';
                     const priceLabel = multiplier !== 1 ? 'Giá ' : 'Giá';
                     const title = (getTitle && getTitle(seat))
-                        || `Vị trí: ${seat.rowLabel}${seat.columnNumber}\nLoại: ${seat.seatType}\n${priceLabel}: ${priceDisplay}\nTrạng thái: ${seatStatus}`;
+                        || `Vị trí: ${posLabel}\nLoại: ${seat.seatType}\n${priceLabel}: ${priceDisplay}\nTrạng thái: ${seatStatus}`;
+
+                    const isPairHovered = hoveredSeat && (
+                        seat.id === hoveredSeat.id ||
+                        (seat.pairedSeatId && seat.pairedSeatId === hoveredSeat.id) ||
+                        (hoveredSeat.pairedSeatId && hoveredSeat.pairedSeatId === seat.id)
+                    );
+                    const pairHoverClass = isPairHovered ? 'seat-pair-hover' : '';
 
                     return (
                         <div
                             key={seat.id}
-                            className={`seat-item ${config.class} ${extra}`}
+                            className={`seat-item ${config.class} ${extra} ${pairHoverClass}`}
                             data-status={seatStatus}
                             onClick={() => onSeatClick && onSeatClick(seat)}
+                            onMouseEnter={() => setHoveredSeat(seat)}
+                            onMouseLeave={() => setHoveredSeat(null)}
                             title={title}
                         >
                             {seat.rowLabel}{seat.columnNumber}

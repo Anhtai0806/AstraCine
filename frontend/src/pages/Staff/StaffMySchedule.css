@@ -6,7 +6,8 @@
 
 .staff-my-schedule-hero,
 .staff-my-schedule-panel,
-.staff-my-schedule-stat-card {
+.staff-my-schedule-stat-card,
+.staff-next-shift-card {
     background: #ffffff;
     border-radius: 22px;
     border: 1px solid #e8ecf8;
@@ -27,6 +28,7 @@
     letter-spacing: 0.08em;
     font-size: 0.82rem;
     margin-bottom: 8px;
+    font-weight: 700;
 }
 
 .staff-my-schedule-hero h1,
@@ -37,7 +39,8 @@
 
 .staff-my-schedule-hero p,
 .assignment-card p,
-.assignment-sub {
+.assignment-sub,
+.staff-next-shift-card div {
     color: #5c6783;
     line-height: 1.6;
 }
@@ -103,6 +106,31 @@
 
 .staff-my-schedule-stat-card.highlight {
     border-color: #cfd8ff;
+    background: linear-gradient(180deg, #ffffff, #f5f8ff);
+}
+
+.staff-next-shift-card {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.staff-next-shift-label {
+    color: #4c64d8;
+    font-weight: 700;
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.staff-next-shift-card strong {
+    font-size: 1.15rem;
+    color: #1c2740;
+}
+
+.staff-next-shift-sub {
+    font-weight: 600;
 }
 
 .staff-my-schedule-banner {
@@ -214,7 +242,8 @@
 
 @media (max-width: 768px) {
     .staff-my-schedule-hero,
-    .staff-my-schedule-panel {
+    .staff-my-schedule-panel,
+    .staff-next-shift-card {
         padding: 18px;
     }
 

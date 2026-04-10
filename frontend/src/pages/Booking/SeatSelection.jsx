@@ -271,17 +271,36 @@ export default function SeatSelection() {
         const seat = seatById.get(seatId);
         if (!seat) return;
 
+        let toToggleIds = [seatId];
+        if (seat.seatType === 'COUPLE' && seat.pairedSeatId) {
+            // Include paired seat if it's a COUPLE seat
+            toToggleIds.push(seat.pairedSeatId);
+        }
+
         const isMine =
             selectedSeatIds.includes(seatId) ||
             (seat.status === "HELD" && seat.heldByCurrentUser === true);
 
         // chỉ chặn nếu HELD/SOLD mà không phải ghế mình
-        if (seat.status === "SOLD") return;
-        if (seat.status === "HELD" && !seat.heldByCurrentUser && !isMine) return;
+        let hasConflict = false;
+        for (let id of toToggleIds) {
+            const s = seatById.get(id);
+            if (!s) continue;
+            const sMine = selectedSeatIds.includes(id) || (s.status === "HELD" && s.heldByCurrentUser);
+            if (s.status === "SOLD") hasConflict = true;
+            if (s.status === "HELD" && !s.heldByCurrentUser && !sMine) hasConflict = true;
+        }
+        if (hasConflict) return;
 
-        const next = isMine
-            ? selectedSeatIds.filter((id) => id !== seatId)
-            : [...selectedSeatIds, seatId];
+        let next;
+        if (isMine) {
+            next = selectedSeatIds.filter((id) => !toToggleIds.includes(id));
+        } else {
+            next = [...selectedSeatIds];
+            toToggleIds.forEach(id => {
+                if (!next.includes(id)) next.push(id);
+            });
+        }
 
         try {
             // ✅ set trước để tránh nhấp nháy status khi WS event đến nhanh

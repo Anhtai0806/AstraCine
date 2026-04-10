@@ -1,4 +1,4 @@
-﻿package com.astracine.backend.core.service;
+package com.astracine.backend.core.service;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
