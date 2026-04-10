@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.PaymentLink;
+import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
@@ -95,10 +97,12 @@ public class PayOSService {
                     Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {
                     });
                     String status = (String) prev.getOrDefault("status", "PENDING");
+                    String checkoutUrl = (String) prev.getOrDefault("checkoutUrl", "");
+                    String qrCode = (String) prev.getOrDefault("qrCode", "");
                     return PayOSCreateResponse.builder()
                             .orderCode(Long.parseLong(existingOrderCode))
-                            .checkoutUrl("")
-                            .qrCode("")
+                            .checkoutUrl(checkoutUrl)
+                            .qrCode(qrCode)
                             .status(status)
                             .build();
                 } catch (Exception ignored) {
@@ -136,6 +140,10 @@ public class PayOSService {
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
+            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
+                    + "&status=PAID";
+            sessionData.put("checkoutUrl", returnUrlWithParams);
+            sessionData.put("qrCode", "");
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
 
             try {
@@ -148,8 +156,6 @@ public class PayOSService {
             } catch (Exception ignored) {
             }
 
-            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
-                    + "&status=PAID";
             return PayOSCreateResponse.builder()
                     .orderCode(orderCode)
                     .checkoutUrl(returnUrlWithParams)
@@ -245,6 +251,8 @@ public class PayOSService {
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
+            sessionData.put("checkoutUrl", response.getCheckoutUrl());
+            sessionData.put("qrCode", response.getQrCode());
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
 
             Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
@@ -414,6 +422,22 @@ public class PayOSService {
 
         } catch (Exception e) {
             log.error("[PayOS] confirmPayment failed orderCode={}: {}", orderCode, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public boolean confirmPaymentWithProvider(long orderCode) {
+        try {
+            PaymentLink paymentLink = payOS.paymentRequests().get(orderCode);
+            PaymentLinkStatus status = paymentLink == null ? null : paymentLink.getStatus();
+            if (status != PaymentLinkStatus.PAID) {
+                log.info("[PayOS] confirmPaymentWithProvider: orderCode={} status={} (not PAID)",
+                        orderCode, status);
+                return false;
+            }
+            return confirmPayment(orderCode, "PAID");
+        } catch (Exception ex) {
+            log.warn("[PayOS] confirmPaymentWithProvider failed orderCode={}: {}", orderCode, ex.getMessage());
             return false;
         }
     }

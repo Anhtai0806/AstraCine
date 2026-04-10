@@ -93,7 +93,7 @@ public class PayOSController {
             @PathVariable("orderCode") long orderCode,
             @RequestParam(name = "status", defaultValue = "PAID") String status) {
         log.info("[PayOS] Confirm request for orderCode={} status={}", orderCode, status);
-        boolean ok = payOSService.confirmPayment(orderCode, status);
+        boolean ok = payOSService.confirmPaymentWithProvider(orderCode);
         if (ok) {
             return ResponseEntity.ok(Map.of("code", "00", "message", "Invoice created or already exists"));
         } else {
