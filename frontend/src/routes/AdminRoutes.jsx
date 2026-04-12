@@ -16,6 +16,8 @@ import AdminAttendance from '../pages/Admin/AdminAttendance';
 import AdminPayroll from '../pages/Admin/AdminPayroll';
 import CustomerManagement from '../pages/Admin/CustomerManagement';
 import AdminCombo from '../pages/Admin/Combo';
+import AdminInvoices from '../pages/Admin/AdminInvoices';
+import AdminBanner from '../pages/Admin/AdminBanner';
 
 const AdminRoutes = () => {
     const { user } = useAuth();
@@ -49,6 +51,8 @@ const AdminRoutes = () => {
                 <Route path="payroll" element={<AdminPayroll />} />
                 <Route path="customer-management" element={<CustomerManagement />} />
                 <Route path="combos" element={<AdminCombo />} />
+                <Route path="invoices" element={<AdminInvoices />} />
+                <Route path="banners" element={<AdminBanner />} />
             </Route>
         </Routes>
     );

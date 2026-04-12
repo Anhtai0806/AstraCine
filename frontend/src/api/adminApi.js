@@ -109,4 +109,15 @@ export const customerManagementAPI = {
     lock: (userId, reason) => adminApi.put(`/customers/${userId}/lock`, { reason }),
     unlock: (userId) => adminApi.put(`/customers/${userId}/unlock`)
 };
+
+// Banner APIs
+export const bannerAPI = {
+    getAll: () => adminApi.get('/banners'),
+    create: (formData) => adminApi.post('/banners', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    update: (id, params) => adminApi.put(`/banners/${id}`, null, { params }),
+    delete: (id) => adminApi.delete(`/banners/${id}`),
+};
+
 export default adminApi;
