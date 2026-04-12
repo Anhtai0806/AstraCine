@@ -128,19 +128,17 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PAID");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+                                                                                                                  // ĐÃ
+                                                                                                                  // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
-<<<<<<< HEAD
             String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
                     + "&status=PAID";
             sessionData.put("checkoutUrl", returnUrlWithParams);
             sessionData.put("qrCode", "");
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
-=======
-            sessionData.put("pointsUsed", finalPointsUsed);
->>>>>>> 7ee8f6b4d8cd205b52c3ecd2330b5e580b7d29fa
 
             try {
                 long ttlMillis = Math.max(60_000, hold.expiresAt - Instant.now().toEpochMilli());
@@ -243,17 +241,15 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PENDING");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+                                                                                                                  // ĐÃ
+                                                                                                                  // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
-<<<<<<< HEAD
             sessionData.put("checkoutUrl", response.getCheckoutUrl());
             sessionData.put("qrCode", response.getQrCode());
             sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
-=======
-            sessionData.put("pointsUsed", finalPointsUsed);
->>>>>>> 7ee8f6b4d8cd205b52c3ecd2330b5e580b7d29fa
 
             Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
             redis.opsForValue().set(PAYOS_ORDER_KEY_PREFIX + orderCode,
@@ -312,12 +308,13 @@ public class PayOSService {
             if (isPaid && !"PAID".equals(currentStatus)) {
                 try {
                     BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-                    
+
                     // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
                     @SuppressWarnings("unchecked")
                     List<String> promotionCodes = objectMapper.convertValue(
                             session.getOrDefault("promotionCodes", Collections.emptyList()),
-                            new TypeReference<List<String>>() {});
+                            new TypeReference<List<String>>() {
+                            });
 
                     @SuppressWarnings("unchecked")
                     List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
@@ -398,12 +395,13 @@ public class PayOSService {
             String holdId = (String) session.get("holdId");
             String userId = (String) session.get("userId");
             BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-            
+
             // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
             @SuppressWarnings("unchecked")
             List<String> promotionCodes = objectMapper.convertValue(
                     session.getOrDefault("promotionCodes", Collections.emptyList()),
-                    new TypeReference<List<String>>() {});
+                    new TypeReference<List<String>>() {
+                    });
 
             @SuppressWarnings("unchecked")
             List<ComboCartItemDTO> comboItems = objectMapper.convertValue(

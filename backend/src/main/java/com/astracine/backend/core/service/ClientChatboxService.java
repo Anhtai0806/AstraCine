@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+﻿package com.astracine.backend.core.service;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
@@ -71,6 +71,7 @@ public class ClientChatboxService {
     private static final int MAX_SHOWTIME_CONTEXT = 12;
     private static final int MAX_FINAL_SUGGESTIONS = 3;
     private static final int BOOKING_SESSION_TTL_MINUTES = 30;
+    private static final String BOOKING_CONTINUE_PROMPT = "Bạn có muốn tiếp tục đặt vé không, nếu có thì nhắn 'tiếp tục', nếu không thì nhắn 'huỷ'";
     private static final Set<String> GENERIC_MOVIE_TOKENS = Set.of(
             "phim", "movie", "rap", "ve", "suat", "chieu", "ngay", "mai", "hom", "nay",
             "nao", "nhung", "co", "toi", "muon", "biet", "xem");
@@ -84,7 +85,7 @@ public class ClientChatboxService {
     private static final Map<String, List<String>> INTENT_KEYWORDS = Map.ofEntries(
             Map.entry("BOOKING",
                     List.of("dat ve", "mua ve", "book ve", "giu ghe", "chon ghe", "dat cho", "thanh toan", "qr",
-                            "payos")),
+                            "payos", "dat lich", "dat lich phim", "book lich")),
             Map.entry("CANCEL", List.of("huy", "thoi khong dat", "bo qua", "cancel")),
             Map.entry("CONFIRM", List.of("xac nhan", "dong y", "oke", "ok", "chot don")),
             Map.entry("PAID", List.of("da thanh toan", "da chuyen khoan", "xong", "thanh toan xong")),
@@ -163,6 +164,21 @@ public class ClientChatboxService {
 
         if (session.isAwaitingPayment() && session.getOrderCode() != null) {
             return handlePendingPayment(request, userId, session, movieById);
+        }
+
+        if (existingSession != null && isOffTopicDuringBooking(request.getMessage(), normalizedMessage, movies)) {
+            saveBookingSession(userId, session);
+            return bookingResponse(
+                    BOOKING_CONTINUE_PROMPT,
+                    false,
+                    "booking-off-topic",
+                    movieSuggestionFromSession(session, movieById),
+                    showtimeSuggestionFromSession(session, movieById),
+                    sessionId,
+                    toBookingState(session, movieById),
+                    List.of(),
+                    null,
+                    null);
         }
 
         Long detectedMovieId = extractSpecificMovieId(normalizedMessage, movies);
@@ -260,7 +276,8 @@ public class ClientChatboxService {
                 .collect(Collectors.toMap(this::seatCode, seat -> seat, (left, right) -> left, LinkedHashMap::new));
         Map<String, SeatStateDto> selectableSeatMap = seatStates.stream()
                 .filter(seat -> seat.getStatus() == SeatBookingStatus.AVAILABLE
-                        || (seat.getStatus() == SeatBookingStatus.HELD && Boolean.TRUE.equals(seat.getHeldByCurrentUser())))
+                        || (seat.getStatus() == SeatBookingStatus.HELD
+                                && Boolean.TRUE.equals(seat.getHeldByCurrentUser())))
                 .collect(Collectors.toMap(this::seatCode, seat -> seat, (left, right) -> left, LinkedHashMap::new));
         Map<String, SeatStateDto> availableSeatMap = seatStates.stream()
                 .filter(seat -> seat.getStatus() == SeatBookingStatus.AVAILABLE)
@@ -307,8 +324,8 @@ public class ClientChatboxService {
                     null);
         }
 
-        List<Long> parsedSeatIds = parseSeatIdsFromMessage(request.getMessage(), selectableSeatMap);
-        List<Long> parsedSeatIdsForRemoval = parseSeatIdsFromMessage(request.getMessage(), seatStateByCode);
+        List<Long> parsedSeatIds = parseSeatIdsFromMessage(request.getMessage(), selectableSeatMap, true);
+        List<Long> parsedSeatIdsForRemoval = parseSeatIdsFromMessage(request.getMessage(), seatStateByCode, false);
         if (mentionsSeatRemoval(normalizedMessage)) {
             session.setSeatIds(removeSeatIds(session.getSeatIds(), parsedSeatIdsForRemoval));
             clearPendingPaymentState(session);
@@ -504,27 +521,29 @@ public class ClientChatboxService {
             Map<Long, Movie> movieById) {
         String normalizedMessage = normalize(request.getMessage());
 
-        if (!containsPaidIntent(normalizedMessage)) {
-            saveBookingSession(userId, session);
-            return bookingResponse(
-                    "Mình đang chờ xác nhận thanh toán cho đơn này. Sau khi chuyển khoản xong, bạn nhắn `đã thanh toán` để mình xuất vé điện tử.",
-                    false,
-                    "booking-await-payment",
-                    movieSuggestionFromSession(session, movieById),
-                    showtimeSuggestionFromSession(session, movieById),
-                    session.getSessionId(),
-                    toBookingState(session, movieById),
-                    activeComboSuggestions(),
-                    PayOSCreateResponse.builder().orderCode(session.getOrderCode()).status("PENDING").build(),
-                    null);
-        }
-
         try {
             boolean confirmed = payOSService.confirmPaymentWithProvider(session.getOrderCode());
-            if (!confirmed) {
+            if (confirmed) {
+                ETicketDTO ticket = invoiceService.getETicketByOrderCode(String.valueOf(session.getOrderCode()));
+                clearBookingSession(userId, session.getSessionId());
+                return bookingResponse(
+                        "Thanh toán đã được ghi nhận. Đây là vé điện tử của bạn.",
+                        false,
+                        "booking-ticket",
+                        movieSuggestionFromSession(session, movieById),
+                        showtimeSuggestionFromSession(session, movieById),
+                        session.getSessionId(),
+                        ChatBookingStateDTO.builder().active(false).stage("COMPLETED").orderCode(session.getOrderCode())
+                                .build(),
+                        List.of(),
+                        PayOSCreateResponse.builder().orderCode(session.getOrderCode()).status("PAID").build(),
+                        ticket);
+            }
+
+            if (!containsPaidIntent(normalizedMessage)) {
                 saveBookingSession(userId, session);
                 return bookingResponse(
-                        "Mình chưa ghi nhận thanh toán PayOS cho đơn này. Bạn vui lòng kiểm tra lại giao dịch rồi nhắn `đã thanh toán` lần nữa giúp mình.",
+                        "Mình đang chờ xác nhận thanh toán cho đơn này. Sau khi chuyển khoản xong, bạn nhắn `đã thanh toán` để mình xuất vé điện tử.",
                         false,
                         "booking-await-payment",
                         movieSuggestionFromSession(session, movieById),
@@ -536,20 +555,18 @@ public class ClientChatboxService {
                         null);
             }
 
-            ETicketDTO ticket = invoiceService.getETicketByOrderCode(String.valueOf(session.getOrderCode()));
-            clearBookingSession(userId, session.getSessionId());
+            saveBookingSession(userId, session);
             return bookingResponse(
-                    "Thanh toán đã được ghi nhận. Đây là vé điện tử của bạn.",
+                    "Mình chưa ghi nhận thanh toán PayOS cho đơn này. Bạn vui lòng kiểm tra lại giao dịch rồi nhắn `đã thanh toán` lần nữa giúp mình.",
                     false,
-                    "booking-ticket",
+                    "booking-await-payment",
                     movieSuggestionFromSession(session, movieById),
                     showtimeSuggestionFromSession(session, movieById),
                     session.getSessionId(),
-                    ChatBookingStateDTO.builder().active(false).stage("COMPLETED").orderCode(session.getOrderCode())
-                            .build(),
-                    List.of(),
-                    PayOSCreateResponse.builder().orderCode(session.getOrderCode()).status("PAID").build(),
-                    ticket);
+                    toBookingState(session, movieById),
+                    activeComboSuggestions(),
+                    PayOSCreateResponse.builder().orderCode(session.getOrderCode()).status("PENDING").build(),
+                    null);
         } catch (Exception ex) {
             log.error("Chat booking payment confirmation failed", ex);
             rollbackBookingSession(userId, session);
@@ -972,6 +989,9 @@ public class ClientChatboxService {
         if (prioritizedShowtimes.isEmpty()) {
             return null;
         }
+        if (mentionsSuggestedShowtimeSelection(normalizedMessage)) {
+            return prioritizedShowtimes.get(0).getId();
+        }
         if (preference.targetTime() != null && !hasExactShowtimeMatch(prioritizedShowtimes, preference.targetTime())) {
             return null;
         }
@@ -981,12 +1001,70 @@ public class ClientChatboxService {
         return null;
     }
 
-    private List<Long> parseSeatIdsFromMessage(String rawMessage, Map<String, SeatStateDto> availableSeatMap) {
+    private boolean mentionsSuggestedShowtimeSelection(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of(
+                "suat do",
+                "suat nay",
+                "suat chieu do",
+                "suat chieu nay",
+                "xem ghe suat do",
+                "xem ghe suat nay",
+                "dat ve suat do",
+                "dat ve suat nay",
+                "dat suat do",
+                "dat suat nay"));
+    }
+
+    private boolean containsContinueIntent(String normalizedMessage) {
+        return containsAny(normalizedMessage, List.of("tiep tuc", "continue"));
+    }
+
+    private boolean isOffTopicDuringBooking(String rawMessage, String normalizedMessage, List<Movie> movies) {
+        if (normalizedMessage == null || normalizedMessage.isBlank()) {
+            return false;
+        }
+        if (containsContinueIntent(normalizedMessage) || containsCancelIntent(normalizedMessage)
+                || containsConfirmIntent(normalizedMessage) || containsPaidIntent(normalizedMessage)
+                || containsComboSkipIntent(normalizedMessage) || mentionsSeatChange(normalizedMessage)
+                || mentionsSeatRemoval(normalizedMessage) || mentionsComboChange(normalizedMessage)
+                || mentionsComboRemoval(normalizedMessage) || mentionsComboSkip(normalizedMessage)
+                || mentionsSuggestedShowtimeSelection(normalizedMessage)) {
+            return false;
+        }
+        if (!parseSeatCodesFromMessage(rawMessage).isEmpty()) {
+            return false;
+        }
+        if (extractTargetTime(normalizedMessage) != null) {
+            return false;
+        }
+        if (extractSpecificMovieId(normalizedMessage, movies) != null) {
+            return false;
+        }
+        return !containsAny(normalizedMessage, List.of(
+                "dat", "ve", "phim", "suat", "chieu", "ghe", "combo",
+                "chon", "doi", "them", "bo", "thanh toan", "payos"));
+    }
+
+    private List<Long> parseSeatIdsFromMessage(String rawMessage, Map<String, SeatStateDto> availableSeatMap,
+            boolean requireAvailablePair) {
+        Map<Long, SeatStateDto> seatById = availableSeatMap.values().stream()
+                .collect(Collectors.toMap(SeatStateDto::getSeatId, seat -> seat, (left, right) -> left));
         LinkedHashSet<Long> seatIds = new LinkedHashSet<>();
         for (String code : parseSeatCodesFromMessage(rawMessage)) {
             SeatStateDto seat = availableSeatMap.get(code);
             if (seat != null) {
-                seatIds.add(seat.getSeatId());
+                if (seat.getPairedSeatId() != null) {
+                    SeatStateDto pairedSeat = seatById.get(seat.getPairedSeatId());
+                    if (requireAvailablePair && pairedSeat == null) {
+                        continue;
+                    }
+                    seatIds.add(seat.getSeatId());
+                    if (pairedSeat != null) {
+                        seatIds.add(pairedSeat.getSeatId());
+                    }
+                } else {
+                    seatIds.add(seat.getSeatId());
+                }
             }
         }
         return new ArrayList<>(seatIds);
