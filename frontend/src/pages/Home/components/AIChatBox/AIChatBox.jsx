@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./AIChatBox.css";
 import chatIcon from "../../../../assets/chat-icon.png";
 import { IoClose } from "react-icons/io5";
@@ -27,15 +27,26 @@ const formatDateTime = (value) =>
 
 const getSeatTypeClass = (seatType) => `seat-type-${String(seatType || "NORMAL").toLowerCase()}`;
 const getSeatStatusClass = (status) => `seat-status-${String(status || "AVAILABLE").toLowerCase()}`;
-const HIDDEN_SUGGESTION_SOURCES = new Set(["booking-no-exact-showtime"]);
+const HIDDEN_SUGGESTION_SOURCES = new Set([]);
 const HIDDEN_MOVIE_SOURCES = new Set(["booking-payment", "booking-await-payment", "booking-ticket"]);
 const HIDDEN_SHOWTIME_SOURCES = new Set(["booking-payment", "booking-await-payment", "booking-ticket"]);
-const HIDDEN_COMBO_SOURCES = new Set(["booking-collect-movie", "booking-payment", "booking-await-payment"]);
-const HIDDEN_BOOKING_STATE_SOURCES = new Set(["booking-collect-movie", "booking-ticket"]);
+const HIDDEN_COMBO_SOURCES = new Set([
+  "booking-collect-movie",
+  "booking-payment",
+  "booking-await-payment",
+  "booking-no-exact-showtime",
+]);
+const HIDDEN_BOOKING_STATE_SOURCES = new Set([
+  "booking-collect-movie",
+  "booking-ticket",
+  "booking-no-exact-showtime",
+]);
 const LEGACY_CHAT_STORAGE_KEY = "ai-chatbox-state-v1";
 const CHAT_STORAGE_PREFIX = "ai-chatbox-state-v2";
 const CHAT_STORAGE_LIMIT = 40;
 const CHAT_STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const AUTO_PAYMENT_SYNC_MESSAGE = "xong";
+const PENDING_PAYMENT_SOURCES = new Set(["booking-payment", "booking-await-payment"]);
 
 const readStoredUser = () => {
   try {
@@ -150,6 +161,7 @@ const saveStoredChatState = ({ storageKey, sessionId, messages }) => {
 
 const AIChatBox = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useAuth();
   const authUser = auth?.user || null;
   const [showGreeting, setShowGreeting] = useState(true);
@@ -158,8 +170,10 @@ const AIChatBox = () => {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+  const [syncingPayment, setSyncingPayment] = useState(false);
   const [storageKey, setStorageKey] = useState(null);
   const [storageReady, setStorageReady] = useState(false);
+  const autoPaymentSyncedOrderRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -195,6 +209,66 @@ const AIChatBox = () => {
     if (!open) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, open]);
+
+  useEffect(() => {
+    if (!sessionId || syncingPayment) return;
+    if (location.pathname !== "/payment/success") return;
+
+    const query = new URLSearchParams(location.search);
+    const orderCode = query.get("orderCode");
+    if (!orderCode) return;
+    if (autoPaymentSyncedOrderRef.current === orderCode) return;
+
+    const latestAssistant = [...messages].reverse().find((item) => item.role === "assistant");
+    if (!latestAssistant || !PENDING_PAYMENT_SOURCES.has(latestAssistant.source)) return;
+
+    const latestOrderCode =
+      latestAssistant?.payment?.orderCode != null
+        ? String(latestAssistant.payment.orderCode)
+        : null;
+    if (latestOrderCode && latestOrderCode !== orderCode) return;
+
+    autoPaymentSyncedOrderRef.current = orderCode;
+    setSyncingPayment(true);
+
+    (async () => {
+      try {
+        const response = await chatboxApi.sendMessage({
+          message: AUTO_PAYMENT_SYNC_MESSAGE,
+          history: buildHistoryPayload(messages),
+          sessionId,
+        });
+
+        if (response?.sessionId) {
+          setSessionId(response.sessionId);
+        }
+
+        setMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content:
+              response?.reply ||
+              "MÃ¬nh chÆ°a nháº­n Ä‘Æ°á»£c pháº£n há»“i phÃ¹ há»£p. Báº¡n thá»­ há»i láº¡i giÃºp mÃ¬nh nhÃ©.",
+            suggestedMovies: response?.suggestedMovies || [],
+            suggestedShowtimes: response?.suggestedShowtimes || [],
+            suggestedCombos: response?.suggestedCombos || [],
+            source: response?.source || "unknown",
+            usedAi: Boolean(response?.usedAi),
+            bookingState: response?.bookingState || null,
+            payment: response?.payment || null,
+            ticket: response?.ticket || null,
+          },
+        ]);
+      } catch (error) {
+        autoPaymentSyncedOrderRef.current = null;
+        console.error("Auto payment sync failed", error);
+      } finally {
+        setSyncingPayment(false);
+      }
+    })();
+  }, [location.pathname, location.search, messages, sessionId, syncingPayment]);
 
   const buildHistoryPayload = (items) =>
     items
