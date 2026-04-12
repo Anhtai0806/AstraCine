@@ -1,14 +1,7 @@
 import React from "react";
 import { useNavigate, Outlet, NavLink } from "react-router-dom";
 import "./AdminLayout.css";
-import {
-    FaRegChartBar,
-    FaPhotoVideo,
-    FaFilm,
-    FaBarcode,
-    FaUsers,
-    FaMoneyBillWave,
-} from "react-icons/fa";
+import { FaRegChartBar, FaPhotoVideo, FaFilm, FaBarcode, FaUsers, FaMoneyBillWave, FaImages } from "react-icons/fa";
 import { FaHouse } from "react-icons/fa6";
 import { MdAccessTime, MdOutlineManageAccounts, MdEventNote } from "react-icons/md";
 import { SlCalender } from "react-icons/sl";
@@ -159,6 +152,15 @@ const AdminLayout = () => {
                         }
                     >
                         <FaFileInvoiceDollar className="icon-admin-layout" /> Hóa Đơn
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/banners"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaImages className="icon-admin-layout" /> Quản lý Banner
                     </NavLink>
                 </nav>
 

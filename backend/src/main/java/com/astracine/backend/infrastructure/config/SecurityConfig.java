@@ -70,6 +70,9 @@ public class SecurityConfig {
                         // GET combos is public, POST/PUT/DELETE requires ADMIN
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/combos/**").permitAll()
 
+                        // GET banners is public (trang chủ)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/banners").permitAll()
+
                         // ===== ADMIN =====
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/seats/**").hasAuthority("ROLE_ADMIN")
