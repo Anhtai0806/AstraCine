@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.PaymentLink;
+import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
@@ -87,10 +89,12 @@ public class PayOSService {
                     Map<String, Object> prev = objectMapper.readValue(sessionRaw, new TypeReference<>() {
                     });
                     String status = (String) prev.getOrDefault("status", "PENDING");
+                    String checkoutUrl = (String) prev.getOrDefault("checkoutUrl", "");
+                    String qrCode = (String) prev.getOrDefault("qrCode", "");
                     return PayOSCreateResponse.builder()
                             .orderCode(Long.parseLong(existingOrderCode))
-                            .checkoutUrl("")
-                            .qrCode("")
+                            .checkoutUrl(checkoutUrl)
+                            .qrCode(qrCode)
                             .status(status)
                             .build();
                 } catch (Exception ignored) {
@@ -124,11 +128,17 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PAID");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+                                                                                                                  // ĐÃ
+                                                                                                                  // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
-            sessionData.put("pointsUsed", finalPointsUsed);
+            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
+                    + "&status=PAID";
+            sessionData.put("checkoutUrl", returnUrlWithParams);
+            sessionData.put("qrCode", "");
+            sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
 
             try {
                 long ttlMillis = Math.max(60_000, hold.expiresAt - Instant.now().toEpochMilli());
@@ -140,8 +150,6 @@ public class PayOSService {
             } catch (Exception ignored) {
             }
 
-            String returnUrlWithParams = returnUrl + (returnUrl.contains("?") ? "&" : "?") + "orderCode=" + orderCode
-                    + "&status=PAID";
             return PayOSCreateResponse.builder()
                     .orderCode(orderCode)
                     .checkoutUrl(returnUrlWithParams)
@@ -233,11 +241,15 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PENDING");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <--- ĐÃ SỬA
+            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+                                                                                                                  // ĐÃ
+                                                                                                                  // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
             sessionData.put("showtimeId", showtimeId);
             sessionData.put("seatIds", seatIds);
-            sessionData.put("pointsUsed", finalPointsUsed);
+            sessionData.put("checkoutUrl", response.getCheckoutUrl());
+            sessionData.put("qrCode", response.getQrCode());
+            sessionData.put("pointsUsed", finalPointsUsed); // <--- LƯU pointsUsed VÀO REDIS
 
             Duration ttl = Duration.ofMillis(Math.max(ttlMillis, 60_000L));
             redis.opsForValue().set(PAYOS_ORDER_KEY_PREFIX + orderCode,
@@ -296,12 +308,13 @@ public class PayOSService {
             if (isPaid && !"PAID".equals(currentStatus)) {
                 try {
                     BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-                    
+
                     // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
                     @SuppressWarnings("unchecked")
                     List<String> promotionCodes = objectMapper.convertValue(
                             session.getOrDefault("promotionCodes", Collections.emptyList()),
-                            new TypeReference<List<String>>() {});
+                            new TypeReference<List<String>>() {
+                            });
 
                     @SuppressWarnings("unchecked")
                     List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
@@ -382,12 +395,13 @@ public class PayOSService {
             String holdId = (String) session.get("holdId");
             String userId = (String) session.get("userId");
             BigDecimal amount = new BigDecimal(String.valueOf(session.getOrDefault("amount", 0)));
-            
+
             // 👇 ĐÃ SỬA: Đọc Mảng thay vì Chuỗi
             @SuppressWarnings("unchecked")
             List<String> promotionCodes = objectMapper.convertValue(
                     session.getOrDefault("promotionCodes", Collections.emptyList()),
-                    new TypeReference<List<String>>() {});
+                    new TypeReference<List<String>>() {
+                    });
 
             @SuppressWarnings("unchecked")
             List<ComboCartItemDTO> comboItems = objectMapper.convertValue(
@@ -414,6 +428,22 @@ public class PayOSService {
 
         } catch (Exception e) {
             log.error("[PayOS] confirmPayment failed orderCode={}: {}", orderCode, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public boolean confirmPaymentWithProvider(long orderCode) {
+        try {
+            PaymentLink paymentLink = payOS.paymentRequests().get(orderCode);
+            PaymentLinkStatus status = paymentLink == null ? null : paymentLink.getStatus();
+            if (status != PaymentLinkStatus.PAID) {
+                log.info("[PayOS] confirmPaymentWithProvider: orderCode={} status={} (not PAID)",
+                        orderCode, status);
+                return false;
+            }
+            return confirmPayment(orderCode, "PAID");
+        } catch (Exception ex) {
+            log.warn("[PayOS] confirmPaymentWithProvider failed orderCode={}: {}", orderCode, ex.getMessage());
             return false;
         }
     }

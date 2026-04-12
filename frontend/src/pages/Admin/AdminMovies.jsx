@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { movieAPI, genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa';
 import './AdminMovies.css';
@@ -26,6 +26,11 @@ const getTodayDateString = () => {
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_POSTER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
 const ALLOWED_TRAILER_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi'];
+const STATUS_DISPLAY_ORDER = {
+    NOW_SHOWING: 0,
+    COMING_SOON: 1,
+    STOPPED: 2
+};
 
 const getFileNameFromUrl = (url) => {
     if (!url) return '';
@@ -355,6 +360,13 @@ const AdminMovies = () => {
         }
     };
 
+    const sortedMovies = useMemo(() => {
+        return [...movies].sort((a, b) => {
+            const orderA = STATUS_DISPLAY_ORDER[a.status] ?? Number.MAX_SAFE_INTEGER;
+            const orderB = STATUS_DISPLAY_ORDER[b.status] ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
+    }, [movies]);
     if (loading && !movies.length) {
         return (
             <div className="admin-movies-page">
@@ -427,7 +439,7 @@ const AdminMovies = () => {
                                 </tr>
                             )}
 
-                            {movies.map((movie) => (
+                            {sortedMovies.map((movie) => (
                                 <tr key={movie.id}>
                                     <td>{movie.id}</td>
                                     <td>
