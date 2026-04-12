@@ -11,6 +11,7 @@ import com.astracine.backend.core.repository.InvoiceComboRepository;
 import com.astracine.backend.core.repository.MovieRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
+import com.astracine.backend.core.service.payment.InvoiceService;
 import com.astracine.backend.presentation.dto.staff.StaffCounterBookingRequest;
 import com.astracine.backend.presentation.dto.staff.StaffCounterBookingResponse;
 import com.astracine.backend.presentation.dto.staff.StaffTicketVerificationResponse;
@@ -39,11 +40,16 @@ public class StaffBookingService {
 
         SeatHoldService.HoldSnapshot holdSnapshot = seatHoldService.getHoldSnapshot(request.getHoldId(), staffUsername);
 
+        // 👇 ĐÃ SỬA: Biến request.getPromotionCode() (String) thành List<String>
+        List<String> promotionCodes = request.getPromotionCode() != null && !request.getPromotionCode().isBlank()
+                ? java.util.Collections.singletonList(request.getPromotionCode())
+                : java.util.Collections.emptyList();
+
         Invoice invoice = invoiceService.createCounterInvoice(
                 request.getHoldId(),
                 staffUsername,
                 request.getTotalAmount(),
-                request.getPromotionCode(),
+                promotionCodes, // <--- Truyền cái List vừa tạo vào đây
                 request.getComboItems(),
                 holdSnapshot.getShowtimeId(),
                 holdSnapshot.getSeatIds(),

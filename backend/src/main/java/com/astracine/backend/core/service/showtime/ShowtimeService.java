@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.showtime;
 
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Room;
@@ -52,22 +52,26 @@ public class ShowtimeService {
     private final TimeSlotRepository timeSlotRepository;
     private final RoomRepository roomRepository;
     private final MovieRepository movieRepository;
+    private final ShowtimeSchedulingScoreService showtimeSchedulingScoreService;
 
-    public Showtime createShowtime(ShowtimeDTO.CreateRequest request) {
+    public ShowtimeDTO.ManualCreateResponse createShowtime(ShowtimeDTO.CreateRequest request) {
         Room room = getActiveRoom(request.getRoomId());
         Movie movie = getSchedulableMovie(request.getMovieId(), request.getStartTime().toLocalDate());
-        validateShowtimeRules(room.getId(), movie.getId(), request.getStartTime(), movie.getDurationMinutes(), null);
-        return saveShowtime(movie, room, request.getStartTime());
+        validateRoomAvailability(room.getId(), request.getStartTime(),
+                request.getStartTime().plusMinutes(movie.getDurationMinutes()), null);
+        Showtime saved = saveShowtime(movie, room, request.getStartTime());
+        String warning = checkConsecutiveMovieWarning(room.getId(), movie.getId(), request.getStartTime(), null);
+        return new ShowtimeDTO.ManualCreateResponse(mapToResponse(saved), warning);
     }
 
-    public Showtime updateShowtime(Long showtimeId, ShowtimeDTO.CreateRequest request) {
+    public ShowtimeDTO.ManualCreateResponse updateShowtime(Long showtimeId, ShowtimeDTO.CreateRequest request) {
         Showtime existing = getShowtime(showtimeId);
         ensureShowtimeEditable(existing);
 
         Room room = getActiveRoom(request.getRoomId());
         Movie movie = getSchedulableMovie(request.getMovieId(), request.getStartTime().toLocalDate());
-        validateShowtimeRules(room.getId(), movie.getId(), request.getStartTime(), movie.getDurationMinutes(),
-                showtimeId);
+        validateRoomAvailability(room.getId(), request.getStartTime(),
+                request.getStartTime().plusMinutes(movie.getDurationMinutes()), showtimeId);
 
         deleteShowtimeSeats(existing.getId());
 
@@ -83,7 +87,9 @@ public class ShowtimeService {
 
         Showtime saved = showtimeRepository.save(existing);
         initializeShowtimeSeats(saved, room.getId(), timeSlot.getPriceMultiplier(), room.getPriceMultiplier());
-        return saved;
+
+        String warning = checkConsecutiveMovieWarning(room.getId(), movie.getId(), request.getStartTime(), showtimeId);
+        return new ShowtimeDTO.ManualCreateResponse(mapToResponse(saved), warning);
     }
 
     public void deleteShowtime(Long showtimeId) {
@@ -118,13 +124,61 @@ public class ShowtimeService {
     }
 
     public ShowtimeDTO.GenerateResponse generateShowtimes(ShowtimeDTO.GenerateRequest request) {
+        return generateShowtimesInternal(request, true);
+    }
+
+    public ShowtimeDTO.GenerateResponse previewGenerateShowtimes(ShowtimeDTO.GenerateRequest request) {
+        return generateShowtimesInternal(request, false);
+    }
+
+    public ShowtimeDTO.GenerateResponse confirmGeneratedShowtimes(ShowtimeDTO.ConfirmGenerateRequest request) {
+        List<ShowtimeDTO.ConfirmShowtimeItem> previewItems = request.getShowtimes() == null
+                ? List.of()
+                : request.getShowtimes().stream()
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(ShowtimeDTO.ConfirmShowtimeItem::getStartTime)
+                                .thenComparing(ShowtimeDTO.ConfirmShowtimeItem::getRoomId))
+                        .collect(Collectors.toList());
+
+        if (previewItems.isEmpty()) {
+            throw new RuntimeException("Không có suất chiếu xem trước để lưu");
+        }
+
+        List<ShowtimeDTO.Response> createdShowtimes = new ArrayList<>();
+
+        for (ShowtimeDTO.ConfirmShowtimeItem item : previewItems) {
+            Movie movie = getSchedulableMovie(item.getMovieId(), item.getStartTime().toLocalDate());
+            Room room = getActiveRoom(item.getRoomId());
+
+            validateRoomAvailability(
+                    room.getId(),
+                    item.getStartTime(),
+                    item.getStartTime().plusMinutes(movie.getDurationMinutes()),
+                    null);
+
+            Showtime saved = saveShowtime(movie, room, item.getStartTime());
+            createdShowtimes.add(mapToResponse(saved));
+        }
+
+        return new ShowtimeDTO.GenerateResponse(
+                request.getScheduleDate(),
+                CLEANUP_MINUTES,
+                createdShowtimes.size(),
+                false,
+                "Đã lưu lịch chiếu từ bản xem trước",
+                createdShowtimes);
+    }
+
+    private ShowtimeDTO.GenerateResponse generateShowtimesInternal(ShowtimeDTO.GenerateRequest request,
+            boolean persist) {
         LocalDate scheduleDate = request.getScheduleDate();
-        LocalDateTime windowStart = scheduleDate.atTime(
-                request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime());
+        LocalTime openingTime = request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime();
+        LocalTime closingTime = request.getClosingTime() == null ? DEFAULT_CLOSING_TIME : request.getClosingTime();
         LocalDateTime windowEnd = resolveWindowEnd(
                 scheduleDate,
-                request.getOpeningTime() == null ? DEFAULT_OPENING_TIME : request.getOpeningTime(),
-                request.getClosingTime() == null ? DEFAULT_CLOSING_TIME : request.getClosingTime());
+                openingTime,
+                closingTime);
+        LocalDateTime windowStart = resolveFutureWindowStart(scheduleDate, openingTime, windowEnd);
 
         List<Movie> movies = resolveMoviesForGeneration(request.getMovieIds(), scheduleDate);
         if (movies.isEmpty()) {
@@ -158,7 +212,6 @@ public class ShowtimeService {
         }
 
         List<ShowtimeDTO.Response> createdShowtimes = new ArrayList<>();
-        int roundRobinIndex = 0;
         boolean progress;
 
         do {
@@ -180,13 +233,13 @@ public class ShowtimeService {
                     continue;
                 }
 
-                Movie selectedMovie = chooseMovieGreedyRoundRobin(
+                Movie selectedMovie = chooseBestMovieForSlot(
                         state,
                         gapEnd,
+                        windowEnd,
                         movies,
                         movieCounts,
                         slotMovieUsage,
-                        roundRobinIndex,
                         nextAnchor == null ? null : nextAnchor.getMovieId());
 
                 if (selectedMovie == null) {
@@ -194,14 +247,16 @@ public class ShowtimeService {
                     continue;
                 }
 
-                Showtime saved = saveShowtime(selectedMovie, state.room, state.cursor);
-                createdShowtimes.add(mapToResponse(saved));
+                ShowtimeDTO.Response generatedShowtime = persist
+                        ? mapToResponse(saveShowtime(selectedMovie, state.room, state.cursor))
+                        : buildPreviewResponse(selectedMovie, state.room, state.cursor);
+                createdShowtimes.add(generatedShowtime);
                 movieCounts.merge(selectedMovie.getId(), 1, Integer::sum);
-                recordSlotUsage(slotMovieUsage, saved.getStartTime(), selectedMovie.getId());
+                recordSlotUsage(slotMovieUsage, generatedShowtime.getStartTime(), selectedMovie.getId());
 
                 state.previousMovieId = selectedMovie.getId();
-                state.cursor = saved.getEndTime().plusMinutes(CLEANUP_MINUTES);
-                roundRobinIndex = (indexOfMovie(movies, selectedMovie.getId()) + 1) % movies.size();
+                state.cursor = roundUpToFiveMinuteMark(
+                        generatedShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES));
                 progress = true;
             }
         } while (progress);
@@ -210,9 +265,12 @@ public class ShowtimeService {
                 scheduleDate,
                 CLEANUP_MINUTES,
                 createdShowtimes.size(),
+                !persist,
                 createdShowtimes.isEmpty()
                         ? "Không tìm thấy khoảng trống phù hợp để tạo thêm suất chiếu"
-                        : "Đã tạo lịch tự động thành công",
+                        : persist
+                                ? "Đã tạo lịch tự động thành công"
+                                : "Đã tạo xem trước lịch chiếu. Kiểm tra timeline trước khi lưu.",
                 createdShowtimes);
     }
 
@@ -244,7 +302,8 @@ public class ShowtimeService {
                     seat.getSeatType(),
                     seat.getBasePrice(),
                     showtimeSeat.getFinalPrice(),
-                    showtimeSeat.getStatus());
+                    showtimeSeat.getStatus(),
+                    seat.getPairedSeatId());
 
             groupedSeats.computeIfAbsent(seat.getRowLabel(), ignored -> new ArrayList<>()).add(seatInfo);
         }
@@ -283,10 +342,12 @@ public class ShowtimeService {
                 .collect(Collectors.toList());
 
         Showtime previousShowtime = findPreviousShowtime(existingShowtimes, windowStart);
-        LocalDateTime staggeredStart = windowStart.plusMinutes((long) roomIndex * ROOM_STAGGER_MINUTES);
+        LocalDateTime staggeredStart = roundUpToFiveMinuteMark(
+                windowStart.plusMinutes((long) roomIndex * ROOM_STAGGER_MINUTES));
         LocalDateTime initialCursor = previousShowtime == null
                 ? staggeredStart
-                : max(staggeredStart, previousShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES));
+                : max(staggeredStart,
+                        roundUpToFiveMinuteMark(previousShowtime.getEndTime().plusMinutes(CLEANUP_MINUTES)));
 
         return new RoomGenerationState(
                 room,
@@ -309,7 +370,9 @@ public class ShowtimeService {
                 return;
             }
 
-            state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
+            state.cursor = max(
+                    state.cursor,
+                    roundUpToFiveMinuteMark(nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES)));
             state.previousMovieId = nextAnchor.getMovieId();
             state.nextAnchorIndex++;
 
@@ -325,22 +388,29 @@ public class ShowtimeService {
             return;
         }
 
-        state.cursor = max(state.cursor, nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES));
+        state.cursor = max(
+                state.cursor,
+                roundUpToFiveMinuteMark(nextAnchor.getEndTime().plusMinutes(CLEANUP_MINUTES)));
         state.previousMovieId = nextAnchor.getMovieId();
         state.nextAnchorIndex++;
     }
 
-    private Movie chooseMovieGreedyRoundRobin(RoomGenerationState state,
+    /**
+     * Chọn phim bằng thuật toán chấm điểm mềm (soft rule).
+     *
+     * <p>
+     * Luật chiếu liên tiếp không còn là hard filter, mà được trừ điểm tùy theo
+     * priority để vẫn ưu tiên phim hot nhưng tránh lặp quá cứng giữa các suất.
+     */
+    private Movie chooseBestMovieForSlot(RoomGenerationState state,
             LocalDateTime gapEnd,
+            LocalDateTime windowEnd,
             List<Movie> movies,
             Map<Long, Integer> movieCounts,
             Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-            int roundRobinIndex,
             Long nextAnchorMovieId) {
         List<Movie> fittingMovies = movies.stream()
-                .filter(movie -> !Objects.equals(movie.getId(), state.previousMovieId))
-                .filter(movie -> state.cursor.plusMinutes(movie.getDurationMinutes()).isBefore(gapEnd)
-                        || state.cursor.plusMinutes(movie.getDurationMinutes()).isEqual(gapEnd))
+                .filter(movie -> endsWithinAllowedWindow(state.cursor, movie, gapEnd, windowEnd))
                 .filter(movie -> !Objects.equals(movie.getId(), nextAnchorMovieId))
                 .collect(Collectors.toList());
 
@@ -348,52 +418,21 @@ public class ShowtimeService {
             return null;
         }
 
-        int minCount = fittingMovies.stream()
-                .mapToInt(movie -> movieCounts.getOrDefault(movie.getId(), 0))
-                .min()
-                .orElse(0);
-
-        List<Movie> leastScheduledMovies = fittingMovies.stream()
-                .filter(movie -> movieCounts.getOrDefault(movie.getId(), 0) == minCount)
-                .collect(Collectors.toList());
-
-        return leastScheduledMovies.stream()
-                .sorted(Comparator
-                        .comparingInt((Movie movie) -> getRoundRobinDistance(movies, movie.getId(), roundRobinIndex))
-                        .thenComparingInt(
-                                movie -> getSameMovieAtSameTimePenalty(slotMovieUsage, state.cursor, movie.getId()))
-                        .thenComparingInt(movie -> getSlotLoadPenalty(slotMovieUsage, state.cursor))
-                        .thenComparing(Movie::getDurationMinutes)
-                        .thenComparing(Movie::getTitle))
-                .findFirst()
-                .orElse(null);
+        return showtimeSchedulingScoreService.pickBestMovie(
+                fittingMovies,
+                movieCounts,
+                slotMovieUsage,
+                state.cursor,
+                state.previousMovieId,
+                state.room.getId());
     }
 
-    private int getRoundRobinDistance(List<Movie> movies, Long movieId, int roundRobinIndex) {
-        int movieIndex = indexOfMovie(movies, movieId);
-        if (movieIndex < 0 || movies.isEmpty()) {
-            return 0;
-        }
-        return Math.floorMod(movieIndex - roundRobinIndex, movies.size());
-    }
-
-    private int indexOfMovie(List<Movie> movies, Long movieId) {
-        for (int index = 0; index < movies.size(); index++) {
-            if (Objects.equals(movies.get(index).getId(), movieId)) {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    private int getSameMovieAtSameTimePenalty(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
-            LocalDateTime startTime,
-            Long movieId) {
-        return slotMovieUsage.getOrDefault(startTime, Map.of()).getOrDefault(movieId, 0);
-    }
-
-    private int getSlotLoadPenalty(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage, LocalDateTime startTime) {
-        return slotMovieUsage.getOrDefault(startTime, Map.of()).values().stream().mapToInt(Integer::intValue).sum();
+    private boolean endsWithinAllowedWindow(LocalDateTime startTime,
+            Movie movie,
+            LocalDateTime gapEnd,
+            LocalDateTime windowEnd) {
+        LocalDateTime movieEnd = startTime.plusMinutes(movie.getDurationMinutes());
+        return !movieEnd.isAfter(gapEnd) && !movieEnd.isAfter(windowEnd);
     }
 
     private void recordSlotUsage(Map<LocalDateTime, Map<Long, Integer>> slotMovieUsage,
@@ -428,7 +467,24 @@ public class ShowtimeService {
         return saved;
     }
 
-    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal timeSlotMultiplier, BigDecimal roomMultiplier) {
+    private ShowtimeDTO.Response buildPreviewResponse(Movie movie, Room room, LocalDateTime startTime) {
+        resolveTimeSlot(startTime);
+
+        ShowtimeDTO.Response dto = new ShowtimeDTO.Response();
+        dto.setId(null);
+        dto.setMovieId(movie.getId());
+        dto.setRoomId(room.getId());
+        dto.setStartTime(startTime);
+        dto.setEndTime(startTime.plusMinutes(movie.getDurationMinutes()));
+        dto.setStatus("PREVIEW");
+        dto.setMovieTitle(movie.getTitle());
+        dto.setRoomName(room.getName());
+        dto.setMovieDuration(movie.getDurationMinutes());
+        return dto;
+    }
+
+    private void initializeShowtimeSeats(Showtime showtime, Long roomId, BigDecimal timeSlotMultiplier,
+            BigDecimal roomMultiplier) {
         List<Seat> originalSeats = seatRepository.findByRoomIdAndStatus(roomId, SeatStatus.ACTIVE);
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
         BigDecimal effectiveRoomMultiplier = roomMultiplier != null ? roomMultiplier : BigDecimal.ONE;
@@ -443,16 +499,6 @@ public class ShowtimeService {
         }
 
         showtimeSeatRepository.saveAll(showtimeSeats);
-    }
-
-    private void validateShowtimeRules(Long roomId,
-            Long movieId,
-            LocalDateTime startTime,
-            Integer durationMinutes,
-            Long excludedShowtimeId) {
-        LocalDateTime endTime = startTime.plusMinutes(durationMinutes);
-        validateRoomAvailability(roomId, startTime, endTime, excludedShowtimeId);
-        validateMovieAlternation(roomId, movieId, startTime, excludedShowtimeId);
     }
 
     private void validateRoomAvailability(Long roomId,
@@ -472,10 +518,13 @@ public class ShowtimeService {
         }
     }
 
-    private void validateMovieAlternation(Long roomId,
-            Long movieId,
-            LocalDateTime startTime,
-            Long excludedShowtimeId) {
+    /**
+     * [SOFT RULE - Option B] Kiểm tra cảnh báo khi chiếu cùng phim liên tiếp.
+     * Không ném exception, chỉ trả về message cảnh báo hoặc null nếu không có vấn
+     * đề.
+     */
+    private String checkConsecutiveMovieWarning(Long roomId, Long movieId,
+            LocalDateTime startTime, Long excludedShowtimeId) {
         List<Showtime> roomShowtimes = showtimeRepository.findByRoom_IdAndStatusNotOrderByStartTimeAsc(
                 roomId, ShowtimeStatus.CANCELLED).stream()
                 .filter(showtime -> !Objects.equals(showtime.getId(), excludedShowtimeId))
@@ -493,13 +542,14 @@ public class ShowtimeService {
             }
         }
 
-        if (previous != null && Objects.equals(previous.getMovieId(), movieId)) {
-            throw new RuntimeException("Không thể để cùng một phim chiếu liên tiếp trong cùng phòng");
-        }
+        boolean prevConflict = previous != null && Objects.equals(previous.getMovieId(), movieId);
+        boolean nextConflict = next != null && Objects.equals(next.getMovieId(), movieId);
 
-        if (next != null && Objects.equals(next.getMovieId(), movieId)) {
-            throw new RuntimeException("Không thể để cùng một phim chiếu liên tiếp trong cùng phòng");
+        if (prevConflict || nextConflict) {
+            return "Cảnh báo: Phim này đang được xếp chiếu liên tiếp trong cùng phòng. "
+                    + "Hệ thống vẫn tạo lịch thành công, nhưng bạn nên cân nhắc xếp xen kẽ với phim khác.";
         }
+        return null;
     }
 
     private List<Movie> resolveMoviesForGeneration(List<Long> requestedMovieIds, LocalDate scheduleDate) {
@@ -555,9 +605,41 @@ public class ShowtimeService {
         return end;
     }
 
+    private LocalDateTime resolveFutureWindowStart(LocalDate scheduleDate, LocalTime openingTime, LocalDateTime windowEnd) {
+        LocalDateTime requestedStart = scheduleDate.atTime(openingTime);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (!now.isBefore(windowEnd) && now.isAfter(requestedStart)) {
+            return windowEnd;
+        }
+
+        if (!now.isBefore(requestedStart)) {
+            return roundUpToFiveMinuteMark(now.plusSeconds(1));
+        }
+
+        return roundUpToFiveMinuteMark(requestedStart);
+    }
+
+    public static LocalDateTime roundUpToFiveMinuteMark(LocalDateTime value) {
+        int minute = value.getMinute();
+        int remainder = minute % 5;
+        if (remainder == 0 && value.getSecond() == 0 && value.getNano() == 0) {
+            return value.withSecond(0).withNano(0);
+        }
+
+        int minutesToAdd = remainder == 0 ? 5 : 5 - remainder;
+        return value.plusMinutes(minutesToAdd)
+                .withSecond(0)
+                .withNano(0);
+    }
+
     private TimeSlot resolveTimeSlot(LocalDateTime startTime) {
-        return timeSlotRepository.findByTime(startTime.toLocalTime())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy khung giờ phù hợp cho suất chiếu này"));
+        return timeSlotRepository.findMatchingByTime(startTime.toLocalTime()).stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy khung giờ phù hợp cho suất chiếu này tại mốc "
+                                + startTime.toLocalTime()
+                                + ". Hãy kiểm tra TimeSlot có bị hở biên giờ hoặc thiếu khung giờ hay không."));
     }
 
     private Room getActiveRoom(Long roomId) {
@@ -604,10 +686,8 @@ public class ShowtimeService {
     }
 
     private void deleteShowtimeSeats(Long showtimeId) {
-        List<ShowtimeSeat> showtimeSeats = showtimeSeatRepository.findByShowtimeId(showtimeId);
-        if (!showtimeSeats.isEmpty()) {
-            showtimeSeatRepository.deleteAll(showtimeSeats);
-        }
+        showtimeSeatRepository.deleteByShowtimeId(showtimeId);
+        showtimeSeatRepository.flush();
     }
 
     private Integer getMovieDuration(Long movieId) {

@@ -56,34 +56,92 @@ export default function SeatSelection() {
 
     const disconnectRef = useRef(null);
     const renewTimerRef = useRef(null);
+    const holdIdRef = useRef(restoredHoldId || null);
 
-    async function load() {
-        const data = await seatHoldApi.getSeats(sid);
-        setSeats(data || []);
+    function restoreMyHeldSeats(data) {
+        const myHeldSeats = (data || []).filter(
+            (seat) => seat.status === "HELD" && seat.heldByCurrentUser
+        );
+
+        if (!myHeldSeats.length) {
+            setHold((prev) => (prev?.expiresAt ? null : prev));
+            setSelectedSeatIds((prev) => (prev.length ? [] : prev));
+            return;
+        }
+
+        const nextHoldId = myHeldSeats.find((seat) => seat.holdId)?.holdId || null;
+        const nextExpiresAt = myHeldSeats.reduce((max, seat) => {
+            const value = Number(seat.heldExpiresAt || 0);
+            return value > max ? value : max;
+        }, 0);
+        const nextSeatIds = myHeldSeats.map((seat) => seat.seatId);
+
+        setHold((prev) => ({
+            holdId: nextHoldId || prev?.holdId || restoredHoldId || null,
+            expiresAt: nextExpiresAt || prev?.expiresAt || null,
+        }));
+        setSelectedSeatIds(nextSeatIds);
     }
+
+    async function load(options = {}) {
+        const { restoreSelection = false } = options;
+        const data = await seatHoldApi.getSeats(sid);
+        const nextSeats = data || [];
+        setSeats(nextSeats);
+
+        if (restoreSelection) {
+            restoreMyHeldSeats(nextSeats);
+        }
+
+        return nextSeats;
+    }
+
+    useEffect(() => {
+        holdIdRef.current = hold?.holdId || null;
+    }, [hold?.holdId]);
 
     useEffect(() => {
         if (!sid || Number.isNaN(sid)) return;
 
         setError(null);
 
-        load().catch((e) => {
+        load({ restoreSelection: true }).catch((e) => {
             console.error("load seats failed", e);
             setError(e);
         });
 
         disconnectRef.current = connectSeatSocket(sid, (evt) => {
-            setSeats((prev) => applySeatEvent(prev, evt));
+            setSeats((prev) => applySeatEvent(prev, evt, holdIdRef.current));
         });
 
         return () => {
             try {
                 disconnectRef.current?.();
-            } catch (_) { }
+            } catch (_) {}
             disconnectRef.current = null;
 
             if (renewTimerRef.current) clearInterval(renewTimerRef.current);
             renewTimerRef.current = null;
+        };
+    }, [sid]);
+
+    useEffect(() => {
+        if (!sid || Number.isNaN(sid)) return;
+
+        const reloadOnReturn = () => {
+            if (document.visibilityState === "hidden") return;
+
+            load({ restoreSelection: true }).catch((e) => {
+                console.error("reload seats failed", e);
+            });
+        };
+
+        window.addEventListener("focus", reloadOnReturn);
+        document.addEventListener("visibilitychange", reloadOnReturn);
+
+        return () => {
+            window.removeEventListener("focus", reloadOnReturn);
+            document.removeEventListener("visibilitychange", reloadOnReturn);
         };
     }, [sid]);
 
@@ -183,7 +241,9 @@ export default function SeatSelection() {
      */
     const seatsForGrid = useMemo(() => {
         return (sortedSeats || []).map((s) => {
-            const isSelected = selectedSeatIds.includes(s.seatId);
+            const isSelected =
+                selectedSeatIds.includes(s.seatId) ||
+                (s.status === "HELD" && s.heldByCurrentUser === true);
             const effectiveStatus = isSelected ? "SELECTED" : s.status;
             const displayPrice = getSeatDisplayPrice(s);
 
@@ -211,14 +271,36 @@ export default function SeatSelection() {
         const seat = seatById.get(seatId);
         if (!seat) return;
 
-        const isMine = selectedSeatIds.includes(seatId);
+        let toToggleIds = [seatId];
+        if (seat.seatType === 'COUPLE' && seat.pairedSeatId) {
+            // Include paired seat if it's a COUPLE seat
+            toToggleIds.push(seat.pairedSeatId);
+        }
+
+        const isMine =
+            selectedSeatIds.includes(seatId) ||
+            (seat.status === "HELD" && seat.heldByCurrentUser === true);
 
         // chỉ chặn nếu HELD/SOLD mà không phải ghế mình
-        if (seat.status !== "AVAILABLE" && !isMine) return;
+        let hasConflict = false;
+        for (let id of toToggleIds) {
+            const s = seatById.get(id);
+            if (!s) continue;
+            const sMine = selectedSeatIds.includes(id) || (s.status === "HELD" && s.heldByCurrentUser);
+            if (s.status === "SOLD") hasConflict = true;
+            if (s.status === "HELD" && !s.heldByCurrentUser && !sMine) hasConflict = true;
+        }
+        if (hasConflict) return;
 
-        const next = isMine
-            ? selectedSeatIds.filter((id) => id !== seatId)
-            : [...selectedSeatIds, seatId];
+        let next;
+        if (isMine) {
+            next = selectedSeatIds.filter((id) => !toToggleIds.includes(id));
+        } else {
+            next = [...selectedSeatIds];
+            toToggleIds.forEach(id => {
+                if (!next.includes(id)) next.push(id);
+            });
+        }
 
         try {
             // ✅ set trước để tránh nhấp nháy status khi WS event đến nhanh
@@ -231,7 +313,7 @@ export default function SeatSelection() {
 
             if (next.length === 0) {
                 setHold(null);
-                await load();
+                await load({ restoreSelection: false });
                 return;
             }
 
@@ -239,11 +321,12 @@ export default function SeatSelection() {
             const resp = await seatHoldApi.holdSeats(sid, next, clientRequestId);
 
             setHold(resp);
+            await load({ restoreSelection: true });
         } catch (e) {
             console.error("toggleSeat hold failed", e);
             setError(e);
             // rollback bằng snapshot mới
-            await load();
+            await load({ restoreSelection: true });
         }
     }
 
@@ -254,7 +337,7 @@ export default function SeatSelection() {
             await seatHoldApi.releaseHold(hold.holdId);
             setHold(null);
             setSelectedSeatIds([]);
-            await load();
+            await load({ restoreSelection: false });
         } catch (e) {
             console.error("release failed", e);
             setError(e);
@@ -300,18 +383,21 @@ export default function SeatSelection() {
                         {startTime && (
                             <span className="movie-info-time">
                                 ⏰ {new Date(startTime).toLocaleString("vi-VN", {
-                                    weekday: "short",
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                            })}
                                 {endTime && (
-                                    <> → {new Date(endTime).toLocaleTimeString("vi-VN", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}</>
+                                    <>
+                                        {" "}→{" "}
+                                        {new Date(endTime).toLocaleTimeString("vi-VN", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </>
                                 )}
                             </span>
                         )}
@@ -323,12 +409,24 @@ export default function SeatSelection() {
             {!user && (
                 <div className="login-notice">
                     <span className="notice-icon">🔐</span>
-                    <span>Vui lòng <button 
-                        className="login-link" 
-                        onClick={() => navigate("/login", { state: { returnUrl: isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}` } })}
-                    >
-                        đăng nhập
-                    </button> để chọn ghế và đặt vé.</span>
+                    <span>
+                        Vui lòng{" "}
+                        <button
+                            className="login-link"
+                            onClick={() =>
+                                navigate("/login", {
+                                    state: {
+                                        returnUrl: isStaffMode
+                                            ? `/staff/showtimes/${showtimeId}`
+                                            : `/booking/showtimes/${showtimeId}`,
+                                    },
+                                })
+                            }
+                        >
+                            đăng nhập
+                        </button>{" "}
+                        để chọn ghế và đặt vé.
+                    </span>
                 </div>
             )}
 
@@ -336,7 +434,9 @@ export default function SeatSelection() {
             {hold?.holdId && (
                 <div className="hold-timer-bar">
                     <span className="hold-timer-icon">⏱</span>
-                    <span>Đang giữ ghế · Còn lại: <strong>{remainingSeconds}s</strong></span>
+                    <span>
+                        Đang giữ ghế · Còn lại: <strong>{remainingSeconds}s</strong>
+                    </span>
                     <code className="hold-id">{hold.holdId.slice(0, 8)}...</code>
                 </div>
             )}
@@ -354,10 +454,18 @@ export default function SeatSelection() {
                     />
                     {/* Legend */}
                     <div className="seat-legend">
-
-                        <span className="legend-item"><span className="legend-dot selected"></span>Đang chọn</span>
-                        <span className="legend-item"><span className="legend-dot held"></span>Đang giữ</span>
-                        <span className="legend-item"><span className="legend-dot sold"></span>Đã bán</span>
+                        <span className="legend-item">
+                            <span className="legend-dot selected"></span>
+                            Đang chọn
+                        </span>
+                        <span className="legend-item">
+                            <span className="legend-dot held"></span>
+                            Đang giữ
+                        </span>
+                        <span className="legend-item">
+                            <span className="legend-dot sold"></span>
+                            Đã bán
+                        </span>
                     </div>
                 </div>
 
@@ -369,23 +477,29 @@ export default function SeatSelection() {
                     ) : (
                         <table className="summary-table">
                             <thead>
-                                <tr>
-                                    <th>Ghế</th>
-                                    <th>Loại</th>
-                                    <th style={{ textAlign: "right" }}>Giá</th>
-                                </tr>
+                            <tr>
+                                <th>Ghế</th>
+                                <th>Loại</th>
+                                <th style={{ textAlign: "right" }}>Giá</th>
+                            </tr>
                             </thead>
                             <tbody>
-                                {selectedSeatDetails
-                                    .slice()
-                                    .sort((a, b) => a.code.localeCompare(b.code))
-                                    .map((s) => (
-                                        <tr key={s.seatId}>
-                                            <td><span className="seat-code">{s.code}</span></td>
-                                            <td><span className="seat-type-badge">{s.seatType}</span></td>
-                                            <td style={{ textAlign: "right" }} className="price-cell">{formatCurrencyVND(s.finalPrice)}</td>
-                                        </tr>
-                                    ))}
+                            {selectedSeatDetails
+                                .slice()
+                                .sort((a, b) => a.code.localeCompare(b.code))
+                                .map((s) => (
+                                    <tr key={s.seatId}>
+                                        <td>
+                                            <span className="seat-code">{s.code}</span>
+                                        </td>
+                                        <td>
+                                            <span className="seat-type-badge">{s.seatType}</span>
+                                        </td>
+                                        <td style={{ textAlign: "right" }} className="price-cell">
+                                            {formatCurrencyVND(s.finalPrice)}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     )}
@@ -397,7 +511,9 @@ export default function SeatSelection() {
 
                     <div className="summary-actions">
                         {hold?.holdId && (
-                            <button className="btn-cancel" onClick={release}>Hủy ghế</button>
+                            <button className="btn-cancel" onClick={release}>
+                                Hủy ghế
+                            </button>
                         )}
                         <button
                             className="btn-continue"
@@ -413,7 +529,7 @@ export default function SeatSelection() {
     );
 }
 
-function applySeatEvent(prevSeats, evt) {
+function applySeatEvent(prevSeats, evt, currentHoldId = null) {
     if (!evt?.type) return prevSeats;
 
     const seatIdSet = new Set(evt.seatIds || []);
@@ -421,14 +537,33 @@ function applySeatEvent(prevSeats, evt) {
         if (!seatIdSet.has(s.seatId)) return s;
 
         if (evt.type === "SEAT_HELD") {
-            return { ...s, status: "HELD", heldExpiresAt: evt.expiresAt };
+            const isMyHold = !!currentHoldId && evt.holdId === currentHoldId;
+            return {
+                ...s,
+                status: "HELD",
+                heldExpiresAt: evt.expiresAt,
+                heldByCurrentUser: isMyHold,
+                holdId: evt.holdId || null,
+            };
         }
         if (evt.type === "SEAT_RELEASED") {
             if (s.status === "SOLD") return s;
-            return { ...s, status: "AVAILABLE", heldExpiresAt: null };
+            return {
+                ...s,
+                status: "AVAILABLE",
+                heldExpiresAt: null,
+                heldByCurrentUser: false,
+                holdId: null,
+            };
         }
         if (evt.type === "SEAT_SOLD") {
-            return { ...s, status: "SOLD", heldExpiresAt: null };
+            return {
+                ...s,
+                status: "SOLD",
+                heldExpiresAt: null,
+                heldByCurrentUser: false,
+                holdId: null,
+            };
         }
         return s;
     });

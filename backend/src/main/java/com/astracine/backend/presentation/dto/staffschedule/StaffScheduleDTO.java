@@ -31,6 +31,23 @@ public class StaffScheduleDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class GenerateDemandRangeRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate startDate;
+
+        @NotNull
+        @FutureOrPresent
+        private LocalDate endDate;
+
+        private Integer windowMinutes = 30;
+
+        private Boolean overwrite = true;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class DemandWindowResponse {
         private Long id;
         private LocalDate businessDate;
@@ -40,6 +57,8 @@ public class StaffScheduleDTO {
         private Integer checkinRequired;
         private Integer concessionRequired;
         private Integer multiRequired;
+        private String shiftCode;
+        private String shiftName;
     }
 
     @Data
@@ -49,6 +68,55 @@ public class StaffScheduleDTO {
         @NotNull
         @FutureOrPresent
         private LocalDate businessDate;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GeneratePlanRangeRequest {
+        @NotNull
+        @FutureOrPresent
+        private LocalDate startDate;
+
+        @NotNull
+        @FutureOrPresent
+        private LocalDate endDate;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RangeIssueResponse {
+        private LocalDate businessDate;
+        private String message;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DemandRangeResponse {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer totalDaysRequested;
+        private Integer successDays;
+        private Integer failedDays;
+        private Integer totalDemandWindows;
+        private List<DemandWindowResponse> demands;
+        private List<RangeIssueResponse> issues;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PlanRangeResponse {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer totalDaysRequested;
+        private Integer successDays;
+        private Integer failedDays;
+        private Integer totalAssignments;
+        private List<PlanResponse> plans;
+        private List<RangeIssueResponse> issues;
     }
 
     @Data

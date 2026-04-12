@@ -64,6 +64,22 @@ public class ShowtimeDTO {
         private Integer movieDuration;
     }
 
+    /**
+     * Response cho việc tạo/cập nhật showtime thủ công (Option B - Soft Warn).
+     * Nếu admin cố tình xếp cùng phim liên tiếp trong một phòng,
+     * hệ thống vẫn cho phép nhưng đính kèm cảnh báo trong trường {@code warning}.
+     * Khi không có vấn đề gì, {@code warning} sẽ là {@code null}.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ManualCreateResponse {
+        private Response showtime;
+
+        /** Null nếu không có vấn đề. Chứa message cảnh báo nếu vi phạm soft rule. */
+        private String warning;
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -71,8 +87,34 @@ public class ShowtimeDTO {
         private LocalDate scheduleDate;
         private Integer cleanupMinutes;
         private Integer createdCount;
+        private Boolean preview;
         private String message;
         private List<Response> createdShowtimes;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConfirmGenerateRequest {
+        @NotNull(message = "Ngày tạo lịch không được để trống")
+        private LocalDate scheduleDate;
+
+        @NotNull(message = "Danh sách suất chiếu xem trước không được để trống")
+        private List<ConfirmShowtimeItem> showtimes;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConfirmShowtimeItem {
+        @NotNull(message = "ID phim không được để trống")
+        private Long movieId;
+
+        @NotNull(message = "ID phòng không được để trống")
+        private Long roomId;
+
+        @NotNull(message = "Thời gian bắt đầu không được để trống")
+        private LocalDateTime startTime;
     }
 
     @Data
@@ -106,5 +148,6 @@ public class ShowtimeDTO {
         private BigDecimal basePrice;
         private BigDecimal finalPrice;
         private SeatBookingStatus status;
+        private Long pairedSeatId;
     }
 }

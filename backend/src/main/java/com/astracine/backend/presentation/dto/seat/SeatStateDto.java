@@ -26,4 +26,13 @@ public class SeatStateDto {
 
     /** epoch millis - chỉ có khi status=HELD */
     private Long heldExpiresAt;
+
+    /** true nếu ghế đang HELD bởi chính current user */
+    @Builder.Default
+    private Boolean heldByCurrentUser = false;
+
+    /** hold id hiện tại của ghế, chỉ có khi status=HELD */
+    private String holdId;
+
+    private Long pairedSeatId;
 }

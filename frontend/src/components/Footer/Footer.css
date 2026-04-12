@@ -3,8 +3,8 @@
    Theme: Dark cinema / cosmic starfield
    ================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 :root {
   --footer-bg: #000000;
@@ -24,7 +24,7 @@
   position: relative;
   background-color: var(--footer-bg);
   color: var(--footer-text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 15px;
   overflow: hidden;
   border-top: 1px solid var(--footer-border);
@@ -45,8 +45,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 15%; /* Phanh khung hình lên trên cùng để không cắt mất thân trên và đầu nhân vật */
-  opacity: 0.65; /* Giảm độ mờ một tí để thấy nhân vật rõ hơn */
+  object-position: center 15%;
+  /* Phanh khung hình lên trên cùng để không cắt mất thân trên và đầu nhân vật */
+  opacity: 0.65;
+  /* Giảm độ mờ một tí để thấy nhân vật rõ hơn */
   filter: saturate(1.2) contrast(1.1);
 }
 
@@ -98,6 +100,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -108,10 +111,21 @@
   animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.footer__col:nth-child(1) { animation-delay: 0.1s; }
-.footer__col:nth-child(2) { animation-delay: 0.2s; }
-.footer__col:nth-child(3) { animation-delay: 0.3s; }
-.footer__col:nth-child(4) { animation-delay: 0.4s; }
+.footer__col:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.footer__col:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.footer__col:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.footer__col:nth-child(4) {
+  animation-delay: 0.4s;
+}
 
 /* ── Brand column ── */
 .footer__logo {
@@ -128,23 +142,29 @@
 }
 
 @keyframes rotateStar {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes glowPulse {
-  from { 
-    filter: drop-shadow(0 0 2px var(--footer-accent)); 
-    transform: scale(0.95) rotate(0deg); 
+  from {
+    filter: drop-shadow(0 0 2px var(--footer-accent));
+    transform: scale(0.95) rotate(0deg);
   }
-  to { 
-    filter: drop-shadow(0 0 12px var(--footer-accent)); 
-    transform: scale(1.1) rotate(15deg); 
+
+  to {
+    filter: drop-shadow(0 0 12px var(--footer-accent));
+    transform: scale(1.1) rotate(15deg);
   }
 }
 
 .footer__logo-text {
-  font-family: 'Cinzel', serif;
+  font-family: 'Playfair Display', serif;
   font-size: 26px;
   font-weight: 600;
   color: var(--footer-text-bright);
@@ -225,7 +245,7 @@
 
 /* ── Column headings ── */
 .footer__heading {
-  font-family: 'Cinzel', serif;
+  font-family: 'Playfair Display', serif;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -375,6 +395,6 @@ a.footer__contact-value:hover {
 .footer__copy {
   font-size: 13px;
   color: var(--footer-text);
-  font-family: 'Cinzel', serif;
+  font-family: 'Playfair Display', serif;
   letter-spacing: 0.05em;
 }

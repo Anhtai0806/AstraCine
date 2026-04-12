@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { showtimeApi } from "../../api/showtimeApi.js";
 import { timeSlotApi } from "../../api/timeSlotApi.js";
 import movieApi from "../../api/movieApi.js";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "./ShowtimeBrowser.css";
 
 function formatDateTime(iso) {
@@ -31,6 +32,23 @@ function parseDate(iso) {
     return d;
 }
 
+function normalizeDateString(value) {
+    if (!value) return "";
+    return String(value).slice(0, 10);
+}
+
+function isMovieAvailableOnDate(movie, selectedDate) {
+    if (!movie || movie.status === "STOPPED" || !selectedDate) return false;
+
+    const releaseDate = normalizeDateString(movie.releaseDate);
+    const endDate = normalizeDateString(movie.endDate);
+
+    if (releaseDate && selectedDate < releaseDate) return false;
+    if (endDate && selectedDate > endDate) return false;
+
+    return true;
+}
+
 export default function ShowtimeBrowser() {
     const nav = useNavigate();
     const location = useLocation();
@@ -46,13 +64,15 @@ export default function ShowtimeBrowser() {
     // filter state — default to today
     const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local time
     const [date, setDate] = useState(todayStr);
-    const [activeSlotId, setActiveSlotId] = useState("ALL");
+    const [activeSlotId, _setActiveSlotId] = useState("ALL");
+    const [pageOffset, setPageOffset] = useState(0); // 0 = first page (today + 6 days)
 
-    // Build 7-day array starting from today
-    const sevenDays = useMemo(() => {
+    // Build 7-day array based on pageOffset
+    const visibleDays = useMemo(() => {
         const days = [];
         const DAY_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-        for (let i = 0; i < 7; i++) {
+        const startIndex = pageOffset * 7;
+        for (let i = startIndex; i < startIndex + 7; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
             const yyyy = d.getFullYear();
@@ -65,7 +85,7 @@ export default function ShowtimeBrowser() {
             });
         }
         return days;
-    }, []);
+    }, [pageOffset]);
 
     useEffect(() => {
         // Load all showtimes (sử dụng public endpoint)
@@ -153,25 +173,57 @@ export default function ShowtimeBrowser() {
      * If a movieId route param is present, only show that movie.
      */
     const groupedByMovie = useMemo(() => {
-        // Build a map: movieTitle → { movie info, showtimes[] }
-        const map = new Map(); // key: movie title (string)
+        // Build a map with stable keys to avoid overriding movies with same title.
+        const map = new Map(); // key: movie:<id> | title:<name>
+        const moviesById = new Map();
+        const moviesByTitle = new Map();
+
+        for (const movie of nowShowingMovies) {
+            moviesById.set(String(movie.id), movie);
+            moviesByTitle.set(movie.title, movie);
+        }
 
         // Seed map with all NOW_SHOWING movies (ensures empty-showtime films appear)
         for (const m of nowShowingMovies) {
             if (movieId && String(m.id) !== String(movieId)) continue;
-            if (!map.has(m.title)) {
-                map.set(m.title, { movieTitle: m.title, posterUrl: m.posterUrl, showtimes: [] });
+            if (!isMovieAvailableOnDate(m, date)) continue;
+            const key = `movie:${m.id}`;
+            if (!map.has(key)) {
+                map.set(key, {
+                    movieKey: key,
+                    movieTitle: m.title,
+                    posterUrl: m.posterUrl,
+                    showtimes: [],
+                });
             }
         }
 
         // Attach filtered showtimes to matching movies
         for (const s of filtered) {
             const title = s.movieTitle || `Phim #${s.movieId}`;
-            if (!map.has(title)) {
-                // showtime belongs to a movie not in NOW_SHOWING list — still show it
-                map.set(title, { movieTitle: title, posterUrl: null, showtimes: [] });
+            const sourceMovieId = s?.movieId ?? s?.movieID ?? s?.movie_id ?? s?.movie?.id ?? null;
+            const matchedMovie =
+                (sourceMovieId !== null ? moviesById.get(String(sourceMovieId)) : null)
+                || moviesByTitle.get(title);
+
+            if (matchedMovie && !isMovieAvailableOnDate(matchedMovie, date)) {
+                continue;
             }
-            map.get(title).showtimes.push(s);
+
+            const key = matchedMovie
+                ? `movie:${matchedMovie.id}`
+                : (sourceMovieId !== null ? `movie:${sourceMovieId}` : `title:${title}`);
+
+            if (!map.has(key)) {
+                // showtime belongs to a movie not in NOW_SHOWING list � still show it
+                map.set(key, {
+                    movieKey: key,
+                    movieTitle: matchedMovie?.title || title,
+                    posterUrl: matchedMovie?.posterUrl || null,
+                    showtimes: [],
+                });
+            }
+            map.get(key).showtimes.push(s);
         }
 
         // Sort showtimes within each movie by startTime
@@ -182,7 +234,7 @@ export default function ShowtimeBrowser() {
         }
 
         return Array.from(map.values());
-    }, [filtered, nowShowingMovies, movieId]);
+    }, [filtered, nowShowingMovies, movieId, date]);
 
     const handlePickShowtime = (s, movieTitle) => {
         // 1. Validate suất chiếu chưa qua
@@ -241,18 +293,38 @@ export default function ShowtimeBrowser() {
                 </div>
             )} */}
 
-            {/* 7-day picker */}
-            <div className="day-picker">
-                {sevenDays.map((d) => (
-                    <button
-                        key={d.value}
-                        className={`day-btn${date === d.value ? " active" : ""}`}
-                        onClick={() => setDate(d.value)}
-                    >
-                        <span className="day-label">{d.label}</span>
-                        <span className="day-date">{d.dayMonth}</span>
-                    </button>
-                ))}
+            {/* 7-day picker with navigation arrows */}
+            <div className="day-picker-wrapper">
+                <button
+                    className="day-nav-btn"
+                    onClick={() => setPageOffset((p) => Math.max(0, p - 1))}
+                    disabled={pageOffset === 0}
+                    title="Tuần trước"
+                >
+                    <FaChevronLeft />
+                </button>
+
+                <div className="day-picker">
+                    {visibleDays.map((d) => (
+                        <button
+                            key={d.value}
+                            className={`day-btn${date === d.value ? " active" : ""}`}
+                            onClick={() => setDate(d.value)}
+                        >
+                            <span className="day-label">{d.label}</span>
+                            <span className="day-date">{d.dayMonth}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    className="day-nav-btn"
+                    onClick={() => setPageOffset((p) => Math.min(1, p + 1))}
+                    disabled={pageOffset >= 1}
+                    title="Tuần sau"
+                >
+                    <FaChevronRight />
+                </button>
             </div>
 
             {error ? <pre className="error">{JSON.stringify(error, null, 2)}</pre> : null}
@@ -270,8 +342,8 @@ export default function ShowtimeBrowser() {
                             </tr>
                         </thead>
                         <tbody>
-                            {groupedByMovie.map(({ movieTitle, posterUrl, showtimes }) => (
-                                <tr key={movieTitle} className="schedule-row">
+                            {groupedByMovie.map(({ movieKey, movieTitle, posterUrl, showtimes }) => (
+                                <tr key={movieKey} className="schedule-row">
                                     <td className="col-movie">
                                         <div className="movie-name-cell">
                                             {posterUrl && (

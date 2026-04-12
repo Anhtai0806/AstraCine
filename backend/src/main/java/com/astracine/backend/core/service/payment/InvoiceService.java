@@ -10,17 +10,20 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.astracine.backend.core.entity.Customer;
 import com.astracine.backend.core.entity.Invoice;
 import com.astracine.backend.core.entity.InvoiceCombo;
 import com.astracine.backend.core.entity.InvoicePromotion;
 import com.astracine.backend.core.entity.Movie;
 import com.astracine.backend.core.entity.Payment;
+import com.astracine.backend.core.entity.Promotion;
 import com.astracine.backend.core.entity.Seat;
 import com.astracine.backend.core.entity.Showtime;
 import com.astracine.backend.core.entity.ShowtimeSeat;
 import com.astracine.backend.core.entity.Ticket;
 import com.astracine.backend.core.entity.User;
 import com.astracine.backend.core.repository.ComboRepository;
+import com.astracine.backend.core.repository.CustomerRepository;
 import com.astracine.backend.core.repository.InvoiceComboRepository;
 import com.astracine.backend.core.repository.InvoicePromotionRepository;
 import com.astracine.backend.core.repository.InvoiceRepository;
@@ -31,8 +34,8 @@ import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
-import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
+import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 
 import lombok.RequiredArgsConstructor;
@@ -56,18 +59,20 @@ public class InvoiceService {
     private final MovieRepository movieRepository;
     private final SeatHoldService seatHoldService;
     private final EmailService emailService;
+    private final MemberService memberService;
+    private final CustomerRepository customerRepository;
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
-            BigDecimal amount, String promotionCode,
-            List<ComboCartItemDTO> comboItems,
-            long showtimeId, List<Long> seatIds) {
+                                 BigDecimal amount, List<String> promotionCodes,
+                                 List<ComboCartItemDTO> comboItems,
+                                 long showtimeId, List<Long> seatIds, int pointsUsed) {
 
         return createInvoiceInternal(
                 holdId,
                 userId,
                 amount,
-                promotionCode,
+                promotionCodes,
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -76,21 +81,22 @@ public class InvoiceService {
                 null,
                 null,
                 "PAYOS",
-                String.valueOf(orderCode));
+                String.valueOf(orderCode),
+                pointsUsed);
     }
 
     @Transactional
     public Invoice createCounterInvoice(String holdId,
-            String staffUsername,
-            BigDecimal amount,
-            String promotionCode,
-            List<ComboCartItemDTO> comboItems,
-            long showtimeId,
-            List<Long> seatIds,
-            String customerName,
-            String customerEmail,
-            String customerPhone,
-            String paymentMethod) {
+                                        String staffUsername,
+                                        BigDecimal amount,
+                                        List<String> promotionCodes,
+                                        List<ComboCartItemDTO> comboItems,
+                                        long showtimeId,
+                                        List<Long> seatIds,
+                                        String customerName,
+                                        String customerEmail,
+                                        String customerPhone,
+                                        String paymentMethod) {
 
         Long staffId = userRepository.findByUsername(staffUsername)
                 .map(User::getId)
@@ -100,7 +106,7 @@ public class InvoiceService {
                 holdId,
                 staffUsername,
                 amount,
-                promotionCode,
+                promotionCodes,
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -109,32 +115,31 @@ public class InvoiceService {
                 customerEmail,
                 customerPhone,
                 paymentMethod,
-                generateCounterTransactionCode());
+                generateCounterTransactionCode(),
+                0);
     }
 
     private Invoice createInvoiceInternal(String holdId,
-            String actorUserId,
-            BigDecimal amount,
-            String promotionCode,
-            List<ComboCartItemDTO> comboItems,
-            long showtimeId,
-            List<Long> seatIds,
-            Long staffId,
-            String customerName,
-            String customerEmail,
-            String customerPhone,
-            String paymentMethod,
-            String transactionCode) {
+                                          String actorUserId,
+                                          BigDecimal amount,
+                                          List<String> promotionCodes,
+                                          List<ComboCartItemDTO> comboItems,
+                                          long showtimeId,
+                                          List<Long> seatIds,
+                                          Long staffId,
+                                          String customerName,
+                                          String customerEmail,
+                                          String customerPhone,
+                                          String paymentMethod,
+                                          String transactionCode,
+                                          int pointsUsed) {
 
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new IllegalStateException("Showtime not found: " + showtimeId));
 
         String customerUsername = resolveCustomerUsername(
-                actorUserId,
-                customerName,
-                customerEmail,
-                customerPhone,
-                staffId != null);
+                actorUserId, customerName, customerEmail, customerPhone, staffId != null);
+
         Invoice newInvoice = Invoice.builder()
                 .showtime(showtime)
                 .staffId(staffId)
@@ -173,7 +178,7 @@ public class InvoiceService {
         }
 
         saveInvoiceCombos(invoice, comboItems);
-        saveInvoicePromotion(invoice, promotionCode);
+        saveInvoicePromotion(invoice, promotionCodes);
 
         try {
             seatHoldService.confirmHoldToSold(holdId, actorUserId);
@@ -184,23 +189,125 @@ public class InvoiceService {
             markSeatsAsSold(showtimeId, seatIds);
         }
 
+        // ===== MEMBERSHIP LOGIC CỦA TEAM =====
+        try {
+            if (invoice.isMembershipProcessed()) {
+                log.warn("[Membership] Invoice {} already processed, skip", invoice.getId());
+            } else if (!"WALK_IN".equals(customerUsername)) {
+
+                Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(
+                        customerUsername, customerUsername, customerUsername);
+
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+
+                    Customer customer = customerRepository.findByUserId(user.getId())
+                            .orElseGet(() -> {
+                                Customer c = new Customer();
+                                c.setUser(user);
+                                c.setPoints(0);
+                                return customerRepository.save(c);
+                            });
+
+                    // Trừ điểm ngay tại đây
+                    if (pointsUsed > 0) {
+                        try {
+                            memberService.applyPoints(customer, pointsUsed);
+                        } catch (Exception e) {
+                            log.error("[Membership] Lỗi trừ điểm: {}", e.getMessage());
+                        }
+                    }
+
+                    // Tính tổng tiền GỐC của Vé và Combo
+                    BigDecimal rawTicketAmount = ticketRepository.findByInvoiceId(invoice.getId())
+                            .stream()
+                            .map(Ticket::getPrice)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal rawComboAmount = invoiceComboRepository.findByInvoiceId(invoice.getId())
+                            .stream()
+                            .map(ic -> ic.getPrice().multiply(BigDecimal.valueOf(ic.getQuantity())))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal actualTicketAmount = rawTicketAmount;
+                    BigDecimal actualComboAmount = rawComboAmount;
+                    BigDecimal totalRaw = rawTicketAmount.add(rawComboAmount);
+
+                    // TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER
+                    if (promotionCodes != null && !promotionCodes.isEmpty()) {
+                        for (String code : promotionCodes) {
+                            Optional<Promotion> appliedPromo = promotionRepository.findByCode(code);
+                            if (appliedPromo.isPresent()) {
+                                Promotion p = appliedPromo.get();
+                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase() : "ALL";
+
+                                BigDecimal discountValue = p.getDiscountValue();
+                                BigDecimal discountAmt = BigDecimal.ZERO;
+
+                                if ("TICKET".equals(applyType)) {
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? rawTicketAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
+                                    actualTicketAmount = actualTicketAmount.subtract(discountAmt);
+                                } else if ("COMBO".equals(applyType)) {
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? rawComboAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
+                                    actualComboAmount = actualComboAmount.subtract(discountAmt);
+                                } else {
+                                    // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? totalRaw.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
+
+                                    BigDecimal temp = actualTicketAmount.subtract(discountAmt);
+                                    if(temp.compareTo(BigDecimal.ZERO) < 0) {
+                                        actualComboAmount = actualComboAmount.add(temp); // Cộng số âm = trừ
+                                        actualTicketAmount = BigDecimal.ZERO;
+                                    } else {
+                                        actualTicketAmount = temp;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Chốt chặn cuối cùng: Không để tiền bị âm
+                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) actualTicketAmount = BigDecimal.ZERO;
+                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) actualComboAmount = BigDecimal.ZERO;
+
+                    // Gọi hàm cộng điểm với SỐ TIỀN THỰC TRẢ ĐÃ PHÂN BỔ ĐÚNG
+                    memberService.processAfterPayment(customer, actualTicketAmount, actualComboAmount);
+
+                    customerRepository.save(customer);
+
+                    invoice.setMembershipProcessed(true);
+                    invoiceRepository.save(invoice);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("[Membership] Error updating membership: {}", e.getMessage());
+        }
+
         // KÍCH HOẠT GỬI EMAIL VÉ
         try {
             String targetEmail = customerEmail;
-            
+
             // Nếu không có email tham số (ví dụ online booking), lấy từ user liên kết
             if (targetEmail == null || targetEmail.isBlank()) {
-                Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername, customerUsername);
+                Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername,
+                        customerUsername);
                 if (uOpt.isPresent() && uOpt.get().getEmail() != null && !uOpt.get().getEmail().isBlank()) {
                     targetEmail = uOpt.get().getEmail();
                 }
             }
-            
+
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
                 // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
-                
+
                 // Tạo một luồng mới để gửi thư
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
@@ -236,8 +343,8 @@ public class InvoiceService {
                 int requested = item.getQuantity();
                 if (currentStock < requested) {
                     throw new IllegalStateException(
-                        "Combo \"" + combo.getName() + "\" chỉ còn " + currentStock + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ")."
-                    );
+                            "Combo \"" + combo.getName() + "\" chỉ còn " + currentStock
+                                    + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ").");
                 }
 
                 // Trừ tồn kho
@@ -255,16 +362,20 @@ public class InvoiceService {
         }
     }
 
-    private void saveInvoicePromotion(Invoice invoice, String promotionCode) {
-        if (promotionCode == null || promotionCode.isBlank()) {
+    private void saveInvoicePromotion(Invoice invoice, List<String> promotionCodes) {
+        if (promotionCodes == null || promotionCodes.isEmpty()) {
             return;
         }
 
-        promotionRepository.findByCode(promotionCode).ifPresentOrElse(promo -> {
-            invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
-            promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
-            promotionRepository.save(promo);
-        }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", promotionCode));
+        for (String code : promotionCodes) {
+            if (code != null && !code.isBlank()) {
+                promotionRepository.findByCode(code).ifPresentOrElse(promo -> {
+                    invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
+                    promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
+                    promotionRepository.save(promo);
+                }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", code));
+            }
+        }
     }
 
     private String resolveCustomerUsername(
@@ -361,6 +472,8 @@ public class InvoiceService {
         }
     }
 
+    // ===== TÍNH NĂNG CỦA THANH (Admin Invoices) =====
+
     public List<InvoiceHistoryDTO> getInvoiceHistory(String username) {
         Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(username, username, username);
         if (userOpt.isEmpty()) {
@@ -372,17 +485,9 @@ public class InvoiceService {
         List<Invoice> invoices = invoiceRepository
                 .findByCustomerUsernameOrderByCreatedAtDesc(user.getUsername());
 
-        return invoices.stream().map(inv -> mapInvoiceToDTO(inv)).toList();
+        return invoices.stream().map(this::mapInvoiceToDTO).toList();
     }
 
-    /**
-     * Admin: lấy tất cả hóa đơn với filter tuỳ chọn.
-     *
-     * @param search   tìm theo customerUsername (nullable)
-     * @param status   filter theo status PAID/CANCELLED (nullable)
-     * @param from     từ ngày (nullable)
-     * @param to       đến ngày (nullable)
-     */
     @Transactional(readOnly = true)
     public List<InvoiceHistoryDTO> getAllInvoicesForAdmin(
             String search, String status,
@@ -423,8 +528,6 @@ public class InvoiceService {
 
         return invoices.stream().map(this::mapInvoiceToDTO).toList();
     }
-
-    // ── Private helper: map Invoice → InvoiceHistoryDTO ─────────────────────
 
     private InvoiceHistoryDTO mapInvoiceToDTO(Invoice inv) {
         Showtime showtime = inv.getShowtime();
@@ -490,12 +593,8 @@ public class InvoiceService {
                 .build();
     }
 
+    // =================================================
 
-
-    /**
-     * Lấy thông tin E-ticket theo orderCode (transactionCode trong bảng payments).
-     * Dùng cho trang hiển thị vé sau khi thanh toán thành công.
-     */
     @Transactional(readOnly = true)
     public ETicketDTO getETicketByOrderCode(String orderCode) {
         // 1. Tìm Payment theo transactionCode = orderCode
@@ -538,8 +637,9 @@ public class InvoiceService {
             Seat seat = ss != null ? ss.getSeat() : null;
 
             if (seat != null) {
-                if (i > 0)
+                if (i > 0) {
                     seatsBuilder.append(", ");
+                }
                 seatsBuilder.append(seat.getRowLabel()).append(seat.getColumnNumber());
 
                 // Lấy loại ghế từ ghế đầu tiên

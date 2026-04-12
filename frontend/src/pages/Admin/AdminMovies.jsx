@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { movieAPI, genreAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa';
 import './AdminMovies.css';
@@ -7,9 +7,10 @@ const emptyMovie = {
     title: '',
     description: '',
     duration: '',
+    priority: '',
     releaseDate: '',
     endDate: '',
-    ageRating: 'ALL_AGE',
+    ageRating: 'P',
     status: 'NOW_SHOWING',
     genreIds: [],
     poster: null,
@@ -25,6 +26,11 @@ const getTodayDateString = () => {
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_POSTER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
 const ALLOWED_TRAILER_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi'];
+const STATUS_DISPLAY_ORDER = {
+    NOW_SHOWING: 0,
+    COMING_SOON: 1,
+    STOPPED: 2
+};
 
 const getFileNameFromUrl = (url) => {
     if (!url) return '';
@@ -50,6 +56,7 @@ const AdminMovies = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const genreRequiredRef = useRef(null);
     const durationInputRef = useRef(null);
+    const priorityInputRef = useRef(null);
     const posterInputRef = useRef(null);
     const trailerInputRef = useRef(null);
     const today = getTodayDateString();
@@ -70,6 +77,12 @@ const AdminMovies = () => {
             durationInputRef.current.setCustomValidity('');
         }
     }, [currentMovie.duration]);
+
+    useEffect(() => {
+        if (priorityInputRef.current) {
+            priorityInputRef.current.setCustomValidity('');
+        }
+    }, [currentMovie.priority]);
 
     const fetchMovies = async () => {
         try {
@@ -112,9 +125,10 @@ const AdminMovies = () => {
             setCurrentMovie({
                 ...movie,
                 duration: movie.durationMinutes || '',
+                priority: movie.priority || '',
                 releaseDate: movie.releaseDate?.slice(0, 10) || '',
                 endDate: movie.endDate?.slice(0, 10) || '',
-                ageRating: movie.ageRating || 'ALL_AGE',
+                ageRating: movie.ageRating || 'P',
                 genreIds: (movie.genres || []).map((g) => String(g.id)),
                 poster: null,
                 trailer: null
@@ -244,6 +258,7 @@ const AdminMovies = () => {
         e.preventDefault();
 
         const durationValue = Number(currentMovie.duration);
+        const priorityValue = Number(currentMovie.priority);
 
         if (durationInputRef.current) {
             if (!currentMovie.duration) {
@@ -261,18 +276,34 @@ const AdminMovies = () => {
             durationInputRef.current.setCustomValidity('');
         }
 
+        if (priorityInputRef.current) {
+            if (!currentMovie.priority) {
+                priorityInputRef.current.setCustomValidity('Vui lòng nhập độ ưu tiên.');
+                priorityInputRef.current.reportValidity();
+                return;
+            }
+
+            if (!Number.isInteger(priorityValue) || priorityValue < 1 || priorityValue > 5) {
+                priorityInputRef.current.setCustomValidity('Độ ưu tiên phải là số tự nhiên từ 1 đến 5.');
+                priorityInputRef.current.reportValidity();
+                return;
+            }
+
+            priorityInputRef.current.setCustomValidity('');
+        }
+
         if (!currentMovie.releaseDate || !currentMovie.endDate) {
-            setError('Ngay khoi chieu va ngay ket thuc la bat buoc');
+            setError('Ngày khởi chiếu và ngày kết thúc là bắt buộc.');
             return;
         }
 
         if (!isEditing && currentMovie.releaseDate < today) {
-            setError('Ngay khoi chieu khong duoc nho hon ngay hien tai');
+            setError('Ngày khởi chiếu không được nhỏ hơn ngày hiện tại.');
             return;
         }
 
         if (new Date(currentMovie.endDate) <= new Date(currentMovie.releaseDate)) {
-            setError('Ngay ket thuc phai lon hon ngay khoi chieu');
+            setError('Ngày kết thúc phải lớn hơn ngày khởi chiếu.');
             return;
         }
 
@@ -292,6 +323,7 @@ const AdminMovies = () => {
         formData.append('title', currentMovie.title);
         formData.append('description', currentMovie.description);
         formData.append('durationMinutes', currentMovie.duration);
+        formData.append('priority', currentMovie.priority);
         formData.append('releaseDate', currentMovie.releaseDate);
         formData.append('endDate', currentMovie.endDate);
         formData.append('ageRating', currentMovie.ageRating);
@@ -312,7 +344,7 @@ const AdminMovies = () => {
             closeModal();
             fetchMovies();
         } catch {
-            setError('không thể lưu phim');
+            setError('Không thể lưu phim.');
         } finally {
             setLoading(false);
         }
@@ -328,6 +360,13 @@ const AdminMovies = () => {
         }
     };
 
+    const sortedMovies = useMemo(() => {
+        return [...movies].sort((a, b) => {
+            const orderA = STATUS_DISPLAY_ORDER[a.status] ?? Number.MAX_SAFE_INTEGER;
+            const orderB = STATUS_DISPLAY_ORDER[b.status] ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
+    }, [movies]);
     if (loading && !movies.length) {
         return (
             <div className="admin-movies-page">
@@ -382,6 +421,7 @@ const AdminMovies = () => {
                                 <th>Tên phim</th>
                                 <th>Thể loại</th>
                                 <th>Thời lượng</th>
+                                <th>Độ ưu tiên</th>
                                 <th>Độ tuổi</th>
                                 <th>Trạng thái</th>
                                 <th>Khởi chiếu</th>
@@ -393,13 +433,13 @@ const AdminMovies = () => {
                         <tbody>
                             {movies.length === 0 && (
                                 <tr>
-                                    <td colSpan="11" className="text-center text-muted no-data-message">
+                                    <td colSpan="12" className="text-center text-muted no-data-message">
                                         Không có phim nào
                                     </td>
                                 </tr>
                             )}
 
-                            {movies.map((movie) => (
+                            {sortedMovies.map((movie) => (
                                 <tr key={movie.id}>
                                     <td>{movie.id}</td>
                                     <td>
@@ -414,6 +454,7 @@ const AdminMovies = () => {
                                     <td className="movie-title">{movie.title}</td>
                                     <td>{movie.genres?.map((g) => g.name).join(', ')}</td>
                                     <td>{movie.durationMinutes} phút</td>
+                                    <td>{movie.priority}</td>
                                     <td>{movie.ageRating}</td>
                                     <td>
                                         <span className={`badge-custom ${movie.status === 'NOW_SHOWING' ? 'badge-success' : movie.status === 'COMING_SOON' ? 'badge-warning' : 'badge-secondary'}`}>
@@ -536,9 +577,39 @@ const AdminMovies = () => {
                                         </div>
                                         <div className="form-col">
                                             <div className="form-group-custom">
+                                                <label>Độ ưu tiên</label>
+                                                <input
+                                                    ref={priorityInputRef}
+                                                    className="form-control-custom"
+                                                    type="number"
+                                                    name="priority"
+                                                    min="1"
+                                                    max="5"
+                                                    step="1"
+                                                    value={currentMovie.priority}
+                                                    onChange={handleChange}
+                                                    onInvalid={(e) => {
+                                                        if (!e.target.value) {
+                                                            e.target.setCustomValidity('Vui lòng nhập độ ưu tiên.');
+                                                            return;
+                                                        }
+
+                                                        if (!Number.isInteger(Number(e.target.value)) || Number(e.target.value) < 1 || Number(e.target.value) > 5) {
+                                                            e.target.setCustomValidity('Độ ưu tiên phải là số tự nhiên từ 1 đến 5.');
+                                                            return;
+                                                        }
+
+                                                        e.target.setCustomValidity('Độ ưu tiên không hợp lệ.');
+                                                    }}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom">
                                                 <label>Độ tuổi</label>
                                                 <select className="form-control-custom" name="ageRating" value={currentMovie.ageRating} onChange={handleChange}>
-                                                    <option value="ALL_AGE">ALL_AGE</option>
+                                                    <option value="P">P</option>
                                                     <option value="16+">16+</option>
                                                     <option value="18+">18+</option>
                                                 </select>

@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
-import ComboMenu from "../pages/ComboMenu/ComboMenu"
+import ComboMenu from "../pages/ComboMenu/ComboMenu";
 import ProfilePage from "../pages/Profile/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 import ShowtimeBrowser from "../pages/Booking/ShowtimeBrowser";
@@ -15,12 +15,13 @@ import InvoiceSummary from "../pages/InvoiceSummary/InvoiceSummary";
 import PaymentSuccess from "../pages/Payment/PaymentSuccess";
 import PaymentCancel from "../pages/Payment/PaymentCancel";
 
-
 import MoviesPage from "../pages/Movies/MoviesPage";
 import MovieDetailPage from "../pages/MovieDetail/MovieDetailPage";
 import ForgotPassword from "../pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword/ResetPassword";
 import OrderHistory from "../pages/OrderHistory/OrderHistory";
+import MemberPage from "../pages/Member/MemberPage";
+import NewsPromotions from "../pages/NewsPromotions/NewsPromotions";
 
 export default function ClientRoutes() {
   const { user } = useAuth();
@@ -37,7 +38,11 @@ export default function ClientRoutes() {
           path="profile"
           element={
             <ProtectedRoute>
-              {isStaffUser ? <Navigate to="/staff/profile" replace /> : <ProfilePage />}
+              {isStaffUser ? (
+                <Navigate to="/staff/profile" replace />
+              ) : (
+                <ProfilePage />
+              )}
             </ProtectedRoute>
           }
         />
@@ -45,7 +50,23 @@ export default function ClientRoutes() {
           path="order-history"
           element={
             <ProtectedRoute>
-              {isStaffUser ? <Navigate to="/staff/profile" replace /> : <OrderHistory />}
+              {isStaffUser ? (
+                <Navigate to="/staff/profile" replace />
+              ) : (
+                <OrderHistory />
+              )}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="member"
+          element={
+            <ProtectedRoute>
+              {isStaffUser ? (
+                <Navigate to="/staff/profile" replace />
+              ) : (
+                <MemberPage />
+              )}
             </ProtectedRoute>
           }
         />
@@ -53,13 +74,25 @@ export default function ClientRoutes() {
         {/* Booking */}
         <Route path="booking" element={<ShowtimeBrowser />} />
         <Route path="booking/movies/:movieId" element={<ShowtimeBrowser />} />
-        <Route path="booking/showtimes/:showtimeId" element={<SeatSelection />} />
-        <Route path="booking/showtimes/:showtimeId/combo" element={<ComboMenu />} />
-        <Route path="booking/showtimes/:showtimeId/invoice" element={<InvoiceSummary />} />
+        <Route
+          path="booking/showtimes/:showtimeId"
+          element={<SeatSelection />}
+        />
+        <Route
+          path="booking/showtimes/:showtimeId/combo"
+          element={<ComboMenu />}
+        />
+        <Route
+          path="booking/showtimes/:showtimeId/invoice"
+          element={<InvoiceSummary />}
+        />
 
         {/* Movies Page */}
         <Route path="movies" element={<MoviesPage />} />
         <Route path="movies/:movieId" element={<MovieDetailPage />} />
+
+        {/* News & Promotions */}
+        <Route path="news-promotions" element={<NewsPromotions />} />
 
         <Route path="ticket" element={<TicketResult />} />
 
