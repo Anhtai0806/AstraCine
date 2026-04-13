@@ -63,8 +63,12 @@ export async function getAllPromotions() {
  * Validate một mã promotion theo code.
  * Throws nếu không hợp lệ / hết hạn / hết lượt.
  * @param {string} code
+ * @param {string} customerUsername
  * @returns {Promise<Object>} PromotionDTO
  */
-export async function validatePromotion(code) {
-    return request(`/api/promotions/validate/${encodeURIComponent(code)}`);
+export async function validatePromotion(code, customerUsername) {
+    const query = customerUsername
+        ? `?customerUsername=${encodeURIComponent(customerUsername)}`
+        : "";
+    return request(`/api/promotions/validate/${encodeURIComponent(code)}${query}`);
 }

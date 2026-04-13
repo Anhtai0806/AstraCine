@@ -45,6 +45,9 @@ public class Promotion {
     @Column(name = "max_usage")
     private Integer maxUsage; // NULL means unlimited
 
+    @Column(name = "max_usage_per_user")
+    private Integer maxUsagePerUser; // NULL means unlimited per user
+
     @Column(name = "current_usage")
     private Integer currentUsage = 0;
 
@@ -53,6 +56,9 @@ public class Promotion {
 
     @Column(name = "min_order_amount", precision = 12, scale = 2)
     private BigDecimal minOrderAmount = BigDecimal.ZERO;
+
+    @Column(name = "max_discount_amount", precision = 12, scale = 2)
+    private BigDecimal maxDiscountAmount; // NULL means no cap
 
     @Column(name = "applicable_to", length = 20)
     private String applicableTo = "ALL";

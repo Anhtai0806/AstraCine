@@ -3,6 +3,7 @@ package com.astracine.backend.core.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -11,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.astracine.backend.core.entity.Promotion;
+import com.astracine.backend.core.repository.InvoicePromotionRepository;
 import com.astracine.backend.core.repository.PromotionRepository;
+import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.PromotionDTO;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 public class PromotionService {
 
     private final PromotionRepository promotionRepository;
+    private final InvoicePromotionRepository invoicePromotionRepository;
+    private final UserRepository userRepository;
 
     public List<PromotionDTO> getAllPromotions() {
         return promotionRepository.findAll().stream()
@@ -86,9 +91,11 @@ public class PromotionService {
         promotion.setEndDate(promotionDTO.getEndDate());
         promotion.setStatus(promotionDTO.getStatus());
         promotion.setMaxUsage(promotionDTO.getMaxUsage());
+        promotion.setMaxUsagePerUser(promotionDTO.getMaxUsagePerUser());
         promotion.setDescription(promotionDTO.getDescription());
         promotion.setMinOrderAmount(
                 promotionDTO.getMinOrderAmount() != null ? promotionDTO.getMinOrderAmount() : BigDecimal.ZERO);
+        promotion.setMaxDiscountAmount(promotionDTO.getMaxDiscountAmount());
         
         // Cập nhật trường applicableTo
         promotion.setApplicableTo(promotionDTO.getApplicableTo() != null ? promotionDTO.getApplicableTo() : "ALL");
@@ -105,6 +112,10 @@ public class PromotionService {
     }
 
     public PromotionDTO validatePromotionCode(String code) {
+        return validatePromotionCode(code, null);
+    }
+
+    public PromotionDTO validatePromotionCode(String code, String customerUsername) {
         Promotion promotion = promotionRepository.findValidPromotionByCode(code, LocalDate.now())
                 .orElseThrow(() -> new RuntimeException("Invalid or expired promotion code"));
 
@@ -112,6 +123,18 @@ public class PromotionService {
         if (promotion.getMaxUsage() != null &&
                 promotion.getCurrentUsage() >= promotion.getMaxUsage()) {
             throw new RuntimeException("Promotion code has reached maximum usage limit");
+        }
+
+        if (promotion.getMaxUsagePerUser() != null && customerUsername != null && !customerUsername.isBlank()) {
+            List<String> identityCandidates = buildCustomerIdentityCandidates(customerUsername);
+            if (!identityCandidates.isEmpty()) {
+                long usedByCustomer = invoicePromotionRepository.countUsageByPromotionAndCustomerUsernames(
+                        promotion.getId(),
+                        identityCandidates);
+                if (usedByCustomer >= promotion.getMaxUsagePerUser()) {
+                    throw new RuntimeException("Promotion code has reached per-user usage limit");
+                }
+            }
         }
 
         return convertToDTO(promotion);
@@ -134,6 +157,7 @@ public class PromotionService {
             promotion.setEndDate(LocalDate.now().plusMonths(3)); // Hạn sử dụng 3 tháng
             promotion.setStatus("ACTIVE");
             promotion.setMaxUsage(1); 
+            promotion.setMaxUsagePerUser(1);
             promotion.setCurrentUsage(0);
             promotion.setDescription("Quà tặng thăng hạng " + levelName);
             promotion.setMinOrderAmount(BigDecimal.ZERO);
@@ -155,9 +179,11 @@ public class PromotionService {
         dto.setEndDate(promotion.getEndDate());
         dto.setStatus(promotion.getStatus());
         dto.setMaxUsage(promotion.getMaxUsage());
+        dto.setMaxUsagePerUser(promotion.getMaxUsagePerUser());
         dto.setCurrentUsage(promotion.getCurrentUsage());
         dto.setDescription(promotion.getDescription());
         dto.setMinOrderAmount(promotion.getMinOrderAmount());
+        dto.setMaxDiscountAmount(promotion.getMaxDiscountAmount());
         
         // Map trường applicableTo
         dto.setApplicableTo(promotion.getApplicableTo());
@@ -174,13 +200,35 @@ public class PromotionService {
         promotion.setEndDate(dto.getEndDate());
         promotion.setStatus(dto.getStatus());
         promotion.setMaxUsage(dto.getMaxUsage());
+        promotion.setMaxUsagePerUser(dto.getMaxUsagePerUser());
         promotion.setCurrentUsage(dto.getCurrentUsage() != null ? dto.getCurrentUsage() : 0);
         promotion.setDescription(dto.getDescription());
         promotion.setMinOrderAmount(dto.getMinOrderAmount() != null ? dto.getMinOrderAmount() : BigDecimal.ZERO);
+        promotion.setMaxDiscountAmount(dto.getMaxDiscountAmount());
         
         // Map trường applicableTo (Mặc định là ALL nếu người dùng không truyền)
         promotion.setApplicableTo(dto.getApplicableTo() != null ? dto.getApplicableTo() : "ALL");
         
         return promotion;
+    }
+
+    private List<String> buildCustomerIdentityCandidates(String customerIdentifier) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        if (customerIdentifier != null && !customerIdentifier.isBlank()) {
+            String normalized = customerIdentifier.trim();
+            candidates.add(normalized);
+            userRepository.findByUsernameOrEmailOrPhone(normalized, normalized, normalized).ifPresent(user -> {
+                if (user.getUsername() != null && !user.getUsername().isBlank()) {
+                    candidates.add(user.getUsername().trim());
+                }
+                if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                    candidates.add(user.getEmail().trim());
+                }
+                if (user.getPhone() != null && !user.getPhone().isBlank()) {
+                    candidates.add(user.getPhone().trim());
+                }
+            });
+        }
+        return new ArrayList<>(candidates);
     }
 }

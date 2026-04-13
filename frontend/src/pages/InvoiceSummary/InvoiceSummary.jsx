@@ -111,28 +111,54 @@ const InvoiceSummary = () => {
 
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState(null);
+    const promoValidationUsername = user?.username || null;
 
     useEffect(() => {
+        let cancelled = false;
+
         if (!user) {
             navigate("/login", { state: { returnUrl: `/booking/showtimes/${showtimeId}` } });
-            return;
+            return () => {
+                cancelled = true;
+            };
         }
 
         const userId = user.id || user.userId;
         if (userId) {
             memberApi.getProfile(userId)
-                .then(res => setAvailablePoints(res.data.points || 0))
+                .then(res => {
+                    if (!cancelled) setAvailablePoints(res.data.points || 0);
+                })
                 .catch(err => console.error("Lỗi lấy điểm thành viên:", err));
         }
 
-        getAllPromotions()
-            .then(data => {
+        (async () => {
+            try {
+                const data = await getAllPromotions();
                 const valid = (data || []).filter(isPromoValid);
-                setPromotions(valid);
-            })
-            .catch(err => console.warn('[Promo] load failed:', err))
-            .finally(() => setPromoLoading(false));
-    }, [user, navigate, showtimeId]);
+                const checked = await Promise.all(
+                    valid.map(async (promo) => {
+                        try {
+                            await validatePromotion(promo.code, promoValidationUsername);
+                            return promo;
+                        } catch (_) {
+                            return null;
+                        }
+                    })
+                );
+                if (!cancelled) setPromotions(checked.filter(Boolean));
+            } catch (err) {
+                console.warn('[Promo] load failed:', err);
+                if (!cancelled) setPromotions([]);
+            } finally {
+                if (!cancelled) setPromoLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user, navigate, showtimeId, promoValidationUsername]);
 
     const eligiblePromotions = useMemo(
         () => promotions.filter((promo) => isPromoEligibleForOrder(promo, seatTotal, comboTotal, grandTotal)),
@@ -140,9 +166,11 @@ const InvoiceSummary = () => {
     );
 
     useEffect(() => {
+        if (promoTicket && !promotions.some((p) => p.id === promoTicket.id)) setPromoTicket(null);
+        if (promoCombo && !promotions.some((p) => p.id === promoCombo.id)) setPromoCombo(null);
         if (promoTicket && !isPromoEligibleForOrder(promoTicket, seatTotal, comboTotal, grandTotal)) setPromoTicket(null);
         if (promoCombo && !isPromoEligibleForOrder(promoCombo, seatTotal, comboTotal, grandTotal)) setPromoCombo(null);
-    }, [promoTicket, promoCombo, seatTotal, comboTotal, grandTotal]);
+    }, [promoTicket, promoCombo, promotions, seatTotal, comboTotal, grandTotal]);
 
     const ticketDiscountAmount = useMemo(() => calcDiscountFromPromo(promoTicket, seatTotal, comboTotal, grandTotal), [promoTicket, seatTotal, comboTotal, grandTotal]);
     const comboDiscountAmount = useMemo(() => calcDiscountFromPromo(promoCombo, seatTotal, comboTotal, grandTotal), [promoCombo, seatTotal, comboTotal, grandTotal]);
@@ -162,7 +190,17 @@ const InvoiceSummary = () => {
     const finalTotal = Math.max(0, grandTotal - totalDiscount);
 
     // 🚀 ĐÃ SỬA: Hàm tự động thay thế mã cực kỳ thông minh
-    const applyPromoToSlot = (promo) => {
+    const applyPromoToSlot = async (promo) => {
+        try {
+            promo = await validatePromotion(promo.code, promoValidationUsername);
+        } catch (err) {
+            setCodeError(err?.message || 'Mã không hợp lệ hoặc đã hết hạn.');
+            setPromotions((prev) => prev.filter((p) => p.code !== promo.code));
+            if (promoTicket?.id === promo.id) setPromoTicket(null);
+            if (promoCombo?.id === promo.id) setPromoCombo(null);
+            return;
+        }
+
         setCodeError(null);
         setCodeInput('');
 
@@ -196,7 +234,7 @@ const InvoiceSummary = () => {
         setCodeError(null);
         setCodeValidating(true);
         try {
-            const promo = await validatePromotion(code);
+            const promo = await validatePromotion(code, promoValidationUsername);
             
             if (!isPromoValid(promo)) {
                 throw new Error('Mã không còn hiệu lực hoặc đã hết lượt sử dụng.');
@@ -214,7 +252,7 @@ const InvoiceSummary = () => {
                 throw new Error(errorMsg);
             }
 
-            applyPromoToSlot(promo);
+            await applyPromoToSlot(promo);
         } catch (err) {
             setCodeError(err?.message || 'Mã không hợp lệ hoặc đã hết hạn.');
         } finally {
@@ -461,7 +499,7 @@ const InvoiceSummary = () => {
                                             <button
                                                 key={promo.id}
                                                 className={`discount-chip ${isSelected ? 'selected' : ''}`}
-                                                onClick={() => applyPromoToSlot(promo)}
+                                                onClick={() => { void applyPromoToSlot(promo); }}
                                                 title={promo.description || label}
                                             >
                                                 <span className="chip-code">{promo.code}</span>

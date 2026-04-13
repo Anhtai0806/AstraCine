@@ -51,8 +51,10 @@ public class AdminPromotionController {
     }
 
     @GetMapping("/validate/{code}")
-    public ResponseEntity<PromotionDTO> validatePromotionCode(@PathVariable String code) {
-        PromotionDTO promotion = promotionService.validatePromotionCode(code);
+    public ResponseEntity<PromotionDTO> validatePromotionCode(
+            @PathVariable String code,
+            @RequestParam(required = false) String customerUsername) {
+        PromotionDTO promotion = promotionService.validatePromotionCode(code, customerUsername);
         return ResponseEntity.ok(promotion);
     }
 }

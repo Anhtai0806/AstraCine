@@ -2,7 +2,9 @@ package com.astracine.backend.core.service.payment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -182,7 +184,7 @@ public class InvoiceService {
         }
 
         saveInvoiceCombos(invoice, comboItems);
-        saveInvoicePromotion(invoice, promotionCodes);
+        saveInvoicePromotion(invoice, promotionCodes, customerUsername);
 
         try {
             seatHoldService.confirmHoldToSold(holdId, actorUserId);
@@ -246,24 +248,17 @@ public class InvoiceService {
                                 String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase()
                                         : "ALL";
 
-                                BigDecimal discountValue = p.getDiscountValue();
                                 BigDecimal discountAmt = BigDecimal.ZERO;
 
                                 if ("TICKET".equals(applyType)) {
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
-                                            ? rawTicketAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
-                                            : discountValue;
+                                    discountAmt = calculateDiscountAmount(p, rawTicketAmount);
                                     actualTicketAmount = actualTicketAmount.subtract(discountAmt);
                                 } else if ("COMBO".equals(applyType)) {
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
-                                            ? rawComboAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
-                                            : discountValue;
+                                    discountAmt = calculateDiscountAmount(p, rawComboAmount);
                                     actualComboAmount = actualComboAmount.subtract(discountAmt);
                                 } else {
                                     // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
-                                            ? totalRaw.multiply(discountValue).divide(BigDecimal.valueOf(100))
-                                            : discountValue;
+                                    discountAmt = calculateDiscountAmount(p, totalRaw);
 
                                     BigDecimal temp = actualTicketAmount.subtract(discountAmt);
                                     if (temp.compareTo(BigDecimal.ZERO) < 0) {
@@ -370,7 +365,7 @@ public class InvoiceService {
         }
     }
 
-    private void saveInvoicePromotion(Invoice invoice, List<String> promotionCodes) {
+    private void saveInvoicePromotion(Invoice invoice, List<String> promotionCodes, String customerUsername) {
         if (promotionCodes == null || promotionCodes.isEmpty()) {
             return;
         }
@@ -378,12 +373,71 @@ public class InvoiceService {
         for (String code : promotionCodes) {
             if (code != null && !code.isBlank()) {
                 promotionRepository.findByCode(code).ifPresentOrElse(promo -> {
+                    if (promo.getMaxUsage() != null && promo.getCurrentUsage() != null
+                            && promo.getCurrentUsage() >= promo.getMaxUsage()) {
+                        log.warn("[Invoice] Promotion '{}' reached global max usage, skipping", code);
+                        return;
+                    }
+
+                    if (promo.getMaxUsagePerUser() != null && customerUsername != null && !customerUsername.isBlank()) {
+                        List<String> identityCandidates = buildCustomerIdentityCandidates(customerUsername);
+                        if (!identityCandidates.isEmpty()) {
+                            long usedByCustomer = invoicePromotionRepository.countUsageByPromotionAndCustomerUsernames(
+                                    promo.getId(),
+                                    identityCandidates);
+                            if (usedByCustomer >= promo.getMaxUsagePerUser()) {
+                                log.warn("[Invoice] Promotion '{}' reached per-user limit for '{}', skipping",
+                                        code, customerUsername);
+                                return;
+                            }
+                        }
+                    }
+
                     invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
                     promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
                     promotionRepository.save(promo);
                 }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", code));
             }
         }
+    }
+
+    private BigDecimal calculateDiscountAmount(Promotion promo, BigDecimal baseAmount) {
+        if (promo == null || baseAmount == null || baseAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal discount;
+        if ("PERCENTAGE".equals(promo.getDiscountType())) {
+            discount = baseAmount.multiply(promo.getDiscountValue()).divide(BigDecimal.valueOf(100));
+        } else {
+            discount = promo.getDiscountValue() != null ? promo.getDiscountValue() : BigDecimal.ZERO;
+        }
+
+        if (promo.getMaxDiscountAmount() != null) {
+            discount = discount.min(promo.getMaxDiscountAmount());
+        }
+
+        return discount.min(baseAmount).max(BigDecimal.ZERO);
+    }
+
+    private List<String> buildCustomerIdentityCandidates(String customerIdentifier) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        if (customerIdentifier != null && !customerIdentifier.isBlank()) {
+            String normalized = customerIdentifier.trim();
+            candidates.add(normalized);
+            userRepository.findByUsernameOrEmailOrPhone(normalized, normalized, normalized).ifPresent(user -> {
+                if (user.getUsername() != null && !user.getUsername().isBlank()) {
+                    candidates.add(user.getUsername().trim());
+                }
+                if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                    candidates.add(user.getEmail().trim());
+                }
+                if (user.getPhone() != null && !user.getPhone().isBlank()) {
+                    candidates.add(user.getPhone().trim());
+                }
+            });
+        }
+        return new ArrayList<>(candidates);
     }
 
     private String resolveCustomerUsername(
@@ -691,3 +745,4 @@ public class InvoiceService {
                 .build();
     }
 }
+
