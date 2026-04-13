@@ -38,8 +38,9 @@ const formatDateTime = (value) => {
 
 const statusLabels = {
     DRAFT: "Nháp",
-    PUBLISHED: "Chờ xác nhận",
+    PUBLISHED: "Chờ phản hồi",
     CONFIRMED: "Đã xác nhận",
+    REJECTED: "Đã từ chối",
     ABSENT: "Vắng mặt",
 };
 
@@ -96,6 +97,7 @@ export default function StaffMySchedule() {
         total: assignments.length,
         confirmed: assignments.filter((item) => item.status === "CONFIRMED").length,
         pending: assignments.filter((item) => item.status === "PUBLISHED").length,
+        rejected: assignments.filter((item) => item.status === "REJECTED").length,
     }), [assignments]);
 
     const nextPendingAssignment = useMemo(() => {
@@ -119,6 +121,24 @@ export default function StaffMySchedule() {
             await loadSchedule(fromDate, toDate);
         } catch (err) {
             setError(getErrorMessage(err, "Không thể xác nhận ca làm."));
+        } finally {
+            setActionKey("");
+        }
+    };
+
+    const handleReject = async (assignmentId) => {
+        const reason = window.prompt("Nhập lý do từ chối ca (có thể bỏ trống):", "");
+        if (reason === null) return;
+
+        try {
+            setActionKey(`reject-${assignmentId}`);
+            setError("");
+            setSuccess("");
+            await staffSchedulingStaffApi.rejectAssignment(assignmentId, { reason });
+            setSuccess("Đã gửi phản hồi từ chối ca làm.");
+            await loadSchedule(fromDate, toDate);
+        } catch (err) {
+            setError(getErrorMessage(err, "Không thể từ chối ca làm."));
         } finally {
             setActionKey("");
         }
@@ -157,18 +177,22 @@ export default function StaffMySchedule() {
                     <strong>{summary.total}</strong>
                 </div>
                 <div className="staff-my-schedule-stat-card">
-                    <span>Chờ xác nhận</span>
+                    <span>Chờ phản hồi</span>
                     <strong>{summary.pending}</strong>
                 </div>
                 <div className="staff-my-schedule-stat-card">
                     <span>Đã xác nhận</span>
                     <strong>{summary.confirmed}</strong>
                 </div>
+                <div className="staff-my-schedule-stat-card">
+                    <span>Đã từ chối</span>
+                    <strong>{summary.rejected}</strong>
+                </div>
             </div>
 
             {nextPendingAssignment && (
                 <div className="staff-next-shift-card">
-                    <span className="staff-next-shift-label">Ca gần nhất cần xác nhận</span>
+                    <span className="staff-next-shift-label">Ca gần nhất cần phản hồi</span>
                     <strong>{nextPendingAssignment.shiftName || nextPendingAssignment.shiftCode || "Ca làm việc"}</strong>
                     <div>
                         {formatDateTime(nextPendingAssignment.shiftStart)} - {formatDateTime(nextPendingAssignment.shiftEnd)}
@@ -216,15 +240,32 @@ export default function StaffMySchedule() {
                                         {item.explanation || "Ca được hệ thống phân công dựa trên nhu cầu vận hành theo ca và vị trí làm việc của bạn."}
                                     </p>
 
+                                    {item.respondedAt && (
+                                        <div className="assignment-response-meta">
+                                            Phản hồi lúc {formatDateTime(item.respondedAt)}
+                                            {item.responseNote ? ` · Lý do: ${item.responseNote}` : ""}
+                                        </div>
+                                    )}
+
                                     {item.status === "PUBLISHED" && (
-                                        <button
-                                            type="button"
-                                            className="confirm-button"
-                                            onClick={() => handleConfirm(item.id)}
-                                            disabled={actionKey === `confirm-${item.id}`}
-                                        >
-                                            {actionKey === `confirm-${item.id}` ? "Đang xác nhận..." : "Xác nhận đã nhận ca"}
-                                        </button>
+                                        <div className="assignment-actions">
+                                            <button
+                                                type="button"
+                                                className="confirm-button"
+                                                onClick={() => handleConfirm(item.id)}
+                                                disabled={actionKey === `confirm-${item.id}` || actionKey === `reject-${item.id}`}
+                                            >
+                                                {actionKey === `confirm-${item.id}` ? "Đang xác nhận..." : "Xác nhận đã nhận ca"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="reject-button"
+                                                onClick={() => handleReject(item.id)}
+                                                disabled={actionKey === `confirm-${item.id}` || actionKey === `reject-${item.id}`}
+                                            >
+                                                {actionKey === `reject-${item.id}` ? "Đang gửi..." : "Từ chối ca"}
+                                            </button>
+                                        </div>
                                     )}
                                 </article>
                             ))}

@@ -1,8 +1,10 @@
 package com.astracine.backend.presentation.dto.staffschedule;
 
+import com.astracine.backend.core.enums.AssignmentSource;
 import com.astracine.backend.core.enums.ScheduleAssignmentStatus;
 import com.astracine.backend.core.enums.SchedulePlanStatus;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -148,7 +150,37 @@ public class StaffScheduleDTO {
         private LocalDateTime shiftStart;
         private LocalDateTime shiftEnd;
         private ScheduleAssignmentStatus status;
+        private AssignmentSource source;
         private String explanation;
+        private LocalDateTime respondedAt;
+        private String responseNote;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StaffOptionResponse {
+        private Long id;
+        private String fullName;
+        private String username;
+        private String staffPosition;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ManualAssignmentUpsertRequest {
+        @NotNull
+        private Long planId;
+
+        @NotNull
+        private Long staffId;
+
+        @NotNull
+        private Long shiftTemplateId;
+
+        @NotBlank
+        private String assignedPosition;
     }
 
     @Data
@@ -165,6 +197,13 @@ public class StaffScheduleDTO {
     public static class ConfirmAssignmentRequest {
         @NotNull
         private Long assignmentId;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RejectAssignmentRequest {
+        private String reason;
     }
 
     @Data
