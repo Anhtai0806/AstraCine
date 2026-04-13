@@ -550,3 +550,43 @@
         padding: 10px 8px;
     }
 }
+
+/* ── Bổ sung Badge cho Member và Elite ── */
+.mp-tier-member {
+    background: rgba(255, 255, 255, 0.07);
+    color: #94a3b8;
+}
+
+.mp-tier-elite {
+    background: rgba(45, 212, 191, 0.15); /* Màu Teal/Cyan hợp vibe Cinematic */
+    color: #2dd4bf;
+}
+
+/* ── Định dạng Danh sách Quyền lợi (Dark Theme) ── */
+.mp-benefit-title {
+    color: #f8fafc; /* Chữ trắng sáng cho tiêu đề */
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.mp-benefit-list {
+    margin: 0;
+    padding-left: 22px;
+    color: #8fa3bf; /* Chữ xanh xám cho nội dung */
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.mp-benefit-list li {
+    margin-bottom: 4px;
+}
+
+.mp-benefit-condition {
+    color: #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+}

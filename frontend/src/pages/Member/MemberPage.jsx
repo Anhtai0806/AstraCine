@@ -43,13 +43,58 @@ export default function MemberPage() {
         { key: "overview", label: "Tổng quan" },
         { key: "points", label: "Điểm tích lũy" },
         { key: "benefits", label: "Quyền lợi" },
-        { key: "history", label: "Lịch sử" },
     ];
 
+    // Mảng TIERS đã được cập nhật logic quà tặng thực tế và cấu trúc lại để hiển thị UI dạng danh sách
     const TIERS = [
-        { name: "Standard", min: "0 đ", perks: "Tích điểm cơ bản · 1 điểm / 10.000 đ" },
-        { name: "VIP", min: "10,000,000 đ", perks: "Giảm giá vé, combo · Tích điểm ×1.5" },
-        { name: "VVIP", min: "25,000,000 đ", perks: "Ưu tiên đặt chỗ · Quà sinh nhật · ×2" },
+        { 
+            name: "MEMBER", 
+            min: "0 đ", 
+            pointRate: [
+                "Quầy vé: 5%", 
+                "Quầy bắp nước: 3%"
+            ],
+            gifts: [] 
+        },
+        { 
+            name: "ELITE", 
+            min: "2.500.000 đ", 
+            pointRate: [
+                "Quầy vé: 5%", 
+                "Quầy bắp nước: 3%"
+            ],
+            gifts: [
+                "x2 Coupon giảm 50% vé phim (tối đa 100.000đ)",
+                "x1 Coupon giảm 20% F&B (tối đa 50.000đ)"
+            ]
+        },
+        { 
+            name: "VIP", 
+            min: "3.500.000 đ", 
+            pointRate: [
+                "Quầy vé: 7%", 
+                "Quầy bắp nước: 4%"
+            ],
+            gifts: [
+                "x2 Coupon giảm 100% vé phim (tối đa 100.000đ)",
+                "x1 Coupon giảm 20% F&B (tối đa 50.000đ)",
+                "x1 Coupon giảm 30% F&B (tối đa 80.000đ)"
+            ]
+        },
+        { 
+            name: "VVIP", 
+            min: "6.500.000 đ", 
+            pointRate: [
+                "Quầy vé: 10%", 
+                "Quầy bắp nước: 5%"
+            ],
+            gifts: [
+                "x6 Coupon giảm 100% vé phim (tối đa 100.000đ)",
+                "x1 Coupon giảm 20% F&B (tối đa 50.000đ)",
+                "x1 Coupon giảm 30% F&B (tối đa 80.000đ)",
+                "x1 Coupon giảm 50% F&B (tối đa 150.000đ)"
+            ]
+        },
     ];
 
     const renderContent = () => {
@@ -132,21 +177,22 @@ export default function MemberPage() {
                 );
 
             case "benefits":
+                // Giao diện đã được căn chỉnh thành danh sách (bullet points) giống CGV
                 return (
                     <div className="mp-card">
                         <p className="mp-card-title">Quyền lợi theo hạng</p>
                         <table className="mp-table">
                             <thead>
                                 <tr>
-                                    <th>Hạng</th>
-                                    <th>Chi tiêu tối thiểu</th>
-                                    <th>Ưu đãi</th>
+                                    <th style={{ width: "20%" }}>Hạng</th>
+                                    <th style={{ width: "20%" }}>Điều kiện</th>
+                                    <th style={{ width: "60%" }}>Chi tiết ưu đãi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {TIERS.map(tier => (
                                     <tr key={tier.name} className={tier.name === membership ? "mp-row-active" : ""}>
-                                        <td>
+                                        <td style={{ verticalAlign: "top", paddingTop: "16px" }}>
                                             <span className={`mp-tier-badge mp-tier-${tier.name.toLowerCase()}`}>
                                                 {tier.name === "VVIP" && (
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "inline-block", marginRight: "6px", verticalAlign: "middle" }}>
@@ -161,50 +207,45 @@ export default function MemberPage() {
                                                 {tier.name}
                                             </span>
                                         </td>
-                                        <td>{tier.min}</td>
-                                        <td>{tier.perks}</td>
+                                        <td style={{ verticalAlign: "top", paddingTop: "16px" }}>
+                                            <span className="mp-benefit-condition">{tier.min}</span>
+                                        </td>
+                                        <td style={{ verticalAlign: "top", paddingTop: "16px", paddingBottom: "16px" }}>
+                                            
+                                            {/* Phần 1: Tỉ lệ tích điểm */}
+                                            <div style={{ marginBottom: tier.gifts.length > 0 ? "12px" : "0" }}>
+                                                <div className="mp-benefit-title">
+                                                    ⭐ Tỉ lệ tích điểm
+                                                </div>
+                                                <ul className="mp-benefit-list">
+                                                    {tier.pointRate.map((rate, idx) => (
+                                                        <li key={idx}>{rate}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+
+                                            {/* Phần 2: Quà tặng nâng hạng (Ẩn nếu không có quà) */}
+                                            {tier.gifts.length > 0 && (
+                                                <div>
+                                                    <div className="mp-benefit-title">
+                                                        🎁 Quà tặng nâng hạng
+                                                    </div>
+                                                    <ul className="mp-benefit-list">
+                                                        {tier.gifts.map((gift, idx) => (
+                                                            <li key={idx}>{gift}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 );
-
-            case "history":
-                return (
-                    <div className="mp-card">
-                        <p className="mp-card-title">Lịch sử điểm</p>
-                        <table className="mp-table">
-                            <thead>
-                                <tr>
-                                    <th>Thời gian</th>
-                                    <th>Nội dung</th>
-                                    <th style={{ textAlign: "right" }}>Điểm</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.history && data.history.length > 0 ? (
-                                    data.history.map((item, i) => (
-                                        <tr key={i}>
-                                            <td className="mp-date">{item.date || "—"}</td>
-                                            <td>{item.description || "—"}</td>
-                                            <td style={{ textAlign: "right" }}>
-                                                <span className={item.points >= 0 ? "mp-pts-pos" : "mp-pts-neg"}>
-                                                    {item.points >= 0 ? "+" : ""}{item.points ?? 0}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={3} className="mp-empty">Chưa có lịch sử điểm</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                );
-
+            
             default:
                 return null;
         }
