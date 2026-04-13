@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Spin, Empty, message } from 'antd';
 import { comboAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import './ComboMenu.css';
+import { buildExpiredSeatRedirectState, buildSeatSelectionPath, getRemainingHoldSeconds } from '../../utils/holdSession';
 
 const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
@@ -34,6 +35,7 @@ const ComboMenu = () => {
         startTime,
         endTime,
         roomName,
+        holdExpiresAt = null,
         cartItems: restoredCartItems, // có khi quay lại từ InvoiceSummary
     } = location.state || {};
 
@@ -48,6 +50,42 @@ const ComboMenu = () => {
         }
         return {};
     });
+
+    const holdExpiredHandledRef = useRef(false);
+
+    useEffect(() => {
+        if (!holdId || !holdExpiresAt) {
+            holdExpiredHandledRef.current = false;
+            return;
+        }
+
+        const seatPath = buildSeatSelectionPath(isStaffMode, showtimeId);
+        const seatState = buildExpiredSeatRedirectState({ movieTitle, startTime, endTime, roomName });
+
+        const handleExpired = () => {
+            if (holdExpiredHandledRef.current) return;
+            holdExpiredHandledRef.current = true;
+            message.warning('Đã hết thời gian giữ ghế. Hệ thống sẽ đưa bạn về màn hình chọn ghế.');
+            navigate(seatPath, { replace: true, state: seatState });
+        };
+
+        const tick = () => {
+            const secs = getRemainingHoldSeconds(holdExpiresAt);
+            if ((secs ?? 0) <= 0) {
+                handleExpired();
+                return 0;
+            }
+            return secs;
+        };
+
+        tick();
+        const timer = setInterval(() => {
+            const secs = tick();
+            if ((secs ?? 0) <= 0) clearInterval(timer);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [holdId, holdExpiresAt, isStaffMode, movieTitle, navigate, roomName, showtimeId, startTime, endTime]);
 
     // --- API ---
     const fetchCombos = async (kw = keyword) => {
@@ -99,12 +137,13 @@ const ComboMenu = () => {
     // --- NAVIGATION ---
     const handleGoBack = () => {
         // Truyền lại thông tin ghế để SeatSelection khôi phục
-        navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`, {
+        navigate(buildSeatSelectionPath(isStaffMode, showtimeId), {
             state: {
                 movieTitle,
                 startTime,
                 endTime,
                 roomName,
+                holdExpiresAt,
                 restoredHoldId: holdId,
                 restoredSeatIds: seatDetails.map(s => s.seatId),
             },
@@ -114,7 +153,10 @@ const ComboMenu = () => {
     const handleContinue = () => {
         if (!holdId) {
             message.warning('Phiên đặt vé đã hết hạn, vui lòng chọn ghế lại.');
-            navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`);
+            navigate(buildSeatSelectionPath(isStaffMode, showtimeId), {
+                replace: true,
+                state: buildExpiredSeatRedirectState({ movieTitle, startTime, endTime, roomName }),
+            });
             return;
         }
         navigate(isStaffMode ? `/staff/showtimes/${showtimeId}/checkout` : `/booking/showtimes/${showtimeId}/invoice`, {
@@ -130,6 +172,7 @@ const ComboMenu = () => {
                 startTime,
                 endTime,
                 roomName,
+                holdExpiresAt,
             },
         });
     };
@@ -244,7 +287,7 @@ const ComboMenu = () => {
                             <span>🎬 Ghế đã chọn</span>
                             <span
                                 className="summary-edit-link"
-                                onClick={() => navigate(isStaffMode ? `/staff/showtimes/${showtimeId}` : `/booking/showtimes/${showtimeId}`)}
+                                onClick={handleGoBack}
                             >
                                 Đổi ghế
                             </span>

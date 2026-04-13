@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { createPaymentLink } from '../../api/payosApi';
 import { getAllPromotions, validatePromotion } from '../../api/promotionApi';
 import { memberApi } from '../../api/memberApi';
 import './InvoiceSummary.css';
+import { buildExpiredSeatRedirectState, buildSeatSelectionPath, getRemainingHoldSeconds } from '../../utils/holdSession';
 
 const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
@@ -93,6 +94,7 @@ const InvoiceSummary = () => {
         startTime,
         endTime,
         roomName,
+        holdExpiresAt = null,
     } = location.state || {};
 
     const [promotions, setPromotions] = useState([]);
@@ -112,6 +114,43 @@ const InvoiceSummary = () => {
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState(null);
     const promoValidationUsername = user?.username || null;
+
+    const holdExpiredHandledRef = useRef(false);
+
+    useEffect(() => {
+        if (!holdId || !holdExpiresAt) {
+            holdExpiredHandledRef.current = false;
+            return;
+        }
+
+        const seatPath = buildSeatSelectionPath(false, showtimeId);
+        const seatState = buildExpiredSeatRedirectState({ movieTitle, startTime, endTime, roomName });
+
+        const handleExpired = () => {
+            if (holdExpiredHandledRef.current) return;
+            holdExpiredHandledRef.current = true;
+            setPayError('Phiên giữ ghế đã hết hạn. Vui lòng chọn lại ghế.');
+            alert('Đã hết thời gian giữ ghế. Hệ thống sẽ đưa bạn về màn hình chọn ghế.');
+            navigate(seatPath, { replace: true, state: seatState });
+        };
+
+        const tick = () => {
+            const secs = getRemainingHoldSeconds(holdExpiresAt);
+            if ((secs ?? 0) <= 0) {
+                handleExpired();
+                return 0;
+            }
+            return secs;
+        };
+
+        tick();
+        const timer = setInterval(() => {
+            const secs = tick();
+            if ((secs ?? 0) <= 0) clearInterval(timer);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [holdId, holdExpiresAt, movieTitle, navigate, roomName, showtimeId, startTime, endTime]);
 
     useEffect(() => {
         let cancelled = false;
@@ -624,7 +663,7 @@ const InvoiceSummary = () => {
                         <button
                             className={`btn-pay${paying ? ' btn-pay--loading' : ''}`}
                             onClick={handlePayment}
-                            disabled={paying}
+                            disabled={paying || (getRemainingHoldSeconds(holdExpiresAt) ?? 0) <= 0}
                         >
                             {paying ? (
                                 <><span className="pay-spinner" /> Đang xử lý giao dịch...</>
