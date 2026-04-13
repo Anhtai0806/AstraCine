@@ -1,22 +1,8 @@
 package com.astracine.backend.core.service.showtime;
 
-import com.astracine.backend.core.entity.Movie;
-import com.astracine.backend.core.entity.Room;
-import com.astracine.backend.core.entity.Seat;
-import com.astracine.backend.core.entity.Showtime;
-import com.astracine.backend.core.entity.ShowtimeSeat;
-import com.astracine.backend.core.entity.TimeSlot;
-import com.astracine.backend.core.enums.MovieStatus;
-import com.astracine.backend.core.enums.RoomStatus;
-import com.astracine.backend.core.enums.SeatBookingStatus;
-import com.astracine.backend.core.enums.SeatStatus;
-import com.astracine.backend.core.enums.ShowtimeStatus;
-import com.astracine.backend.core.repository.MovieRepository;
-import com.astracine.backend.core.repository.RoomRepository;
-import com.astracine.backend.core.repository.SeatRepository;
-import com.astracine.backend.core.repository.ShowtimeRepository;
-import com.astracine.backend.core.repository.ShowtimeSeatRepository;
-import com.astracine.backend.core.repository.TimeSlotRepository;
+import com.astracine.backend.core.entity.*;
+import com.astracine.backend.core.enums.*;
+import com.astracine.backend.core.repository.*;
 import com.astracine.backend.presentation.dto.ShowtimeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -52,6 +38,7 @@ public class ShowtimeService {
     private final TimeSlotRepository timeSlotRepository;
     private final RoomRepository roomRepository;
     private final MovieRepository movieRepository;
+    private final SeatPriceConfigRepository seatPriceConfigRepository;
     private final ShowtimeSchedulingScoreService showtimeSchedulingScoreService;
 
     public ShowtimeDTO.ManualCreateResponse createShowtime(ShowtimeDTO.CreateRequest request) {
@@ -295,12 +282,16 @@ public class ShowtimeService {
                 continue;
             }
 
+            BigDecimal seatBasePrice = seatPriceConfigRepository.findById(seat.getSeatType())
+                    .map(SeatPriceConfig::getBasePrice)
+                    .orElse(BigDecimal.ZERO);
+
             ShowtimeDTO.SeatInfo seatInfo = new ShowtimeDTO.SeatInfo(
                     showtimeSeat.getId(),
                     seat.getRowLabel(),
                     seat.getColumnNumber(),
                     seat.getSeatType(),
-                    seat.getBasePrice(),
+                    seatBasePrice,
                     showtimeSeat.getFinalPrice(),
                     showtimeSeat.getStatus(),
                     seat.getPairedSeatId());
@@ -489,8 +480,14 @@ public class ShowtimeService {
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
         BigDecimal effectiveRoomMultiplier = roomMultiplier != null ? roomMultiplier : BigDecimal.ONE;
 
+        // Lấy tất cả cấu hình giá một lần để tối ưu
+        Map<SeatType, BigDecimal> priceMap = seatPriceConfigRepository.findAll().stream()
+                .collect(Collectors.toMap(SeatPriceConfig::getSeatType, SeatPriceConfig::getBasePrice));
+
         for (Seat seat : originalSeats) {
-            BigDecimal finalPrice = seat.getBasePrice()
+            BigDecimal basePrice = priceMap.getOrDefault(seat.getSeatType(), BigDecimal.ZERO);
+            
+            BigDecimal finalPrice = basePrice
                     .multiply(timeSlotMultiplier)
                     .multiply(effectiveRoomMultiplier)
                     .setScale(0, RoundingMode.HALF_UP);

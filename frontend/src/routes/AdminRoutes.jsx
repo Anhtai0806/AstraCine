@@ -18,6 +18,7 @@ import CustomerManagement from '../pages/Admin/CustomerManagement';
 import AdminCombo from '../pages/Admin/Combo';
 import AdminInvoices from '../pages/Admin/AdminInvoices';
 import AdminBanner from '../pages/Admin/AdminBanner';
+import SeatPriceManager from '../pages/Admin/SeatPriceManager';
 
 const AdminRoutes = () => {
     const { user } = useAuth();
@@ -53,6 +54,7 @@ const AdminRoutes = () => {
                 <Route path="combos" element={<AdminCombo />} />
                 <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="banners" element={<AdminBanner />} />
+                <Route path="seat-prices" element={<SeatPriceManager />} />
             </Route>
         </Routes>
     );

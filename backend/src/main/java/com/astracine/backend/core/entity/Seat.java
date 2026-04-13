@@ -43,9 +43,6 @@ public class Seat {
     @Column(name = "seat_type", nullable = false, length = 20)
     private SeatType seatType;
 
-    @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal basePrice;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
     private SeatStatus status;
@@ -54,12 +51,11 @@ public class Seat {
     private Long pairedSeatId;
 
     public Seat(Long roomId, String rowLabel, Integer columnNumber,
-            SeatType seatType, BigDecimal basePrice) {
+            SeatType seatType) {
         this.roomId = roomId;
         this.rowLabel = rowLabel;
         this.columnNumber = columnNumber;
         this.seatType = seatType;
-        this.basePrice = basePrice;
         this.status = SeatStatus.ACTIVE;
     }
 }
