@@ -1,6 +1,7 @@
 package com.astracine.backend.core.service.payment;
 
 import com.astracine.backend.core.service.SeatHoldService;
+import com.astracine.backend.core.service.PromotionService;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 import com.astracine.backend.presentation.dto.payment.PayOSCreateResponse;
 import com.astracine.backend.presentation.exception.HoldNotFoundException;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,15 +60,18 @@ public class PayOSService {
     private final StringRedisTemplate redis;
     private final InvoiceService invoiceService;
     private final SeatHoldService seatHoldService;
+    private final PromotionService promotionService;
     private final ObjectMapper objectMapper;
 
     public PayOSService(PayOS payOS, StringRedisTemplate redis,
             InvoiceService invoiceService, SeatHoldService seatHoldService,
+            PromotionService promotionService,
             ObjectMapper objectMapper) {
         this.payOS = payOS;
         this.redis = redis;
         this.invoiceService = invoiceService;
         this.seatHoldService = seatHoldService;
+        this.promotionService = promotionService;
         this.objectMapper = objectMapper;
     }
 
@@ -80,6 +85,8 @@ public class PayOSService {
             Long discountAmount, Integer pointsUsed) {
 
         HoldMeta hold = readHoldMeta(holdId, userId);
+        List<String> normalizedPromotionCodes = normalizePromotionCodes(promotionCodes);
+        validatePromotionCodesForUser(normalizedPromotionCodes, userId);
 
         String existingOrderCode = redis.opsForValue().get(PAYOS_HOLD_KEY_PREFIX + holdId);
         if (existingOrderCode != null) {
@@ -116,7 +123,7 @@ public class PayOSService {
 
             try {
                 invoiceService.createInvoice(
-                        holdId, userId, orderCode, BigDecimal.ZERO, promotionCodes,
+                        holdId, userId, orderCode, BigDecimal.ZERO, normalizedPromotionCodes,
                         comboItems, showtimeId, seatIds, finalPointsUsed);
             } catch (Exception ex) {
                 log.error("[PayOS] Invoice creation failed for 0 VND orderCode={}: {}", orderCode, ex.getMessage(), ex);
@@ -128,7 +135,7 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PAID");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+            sessionData.put("promotionCodes", normalizedPromotionCodes);
                                                                                                                   // ĐÃ
                                                                                                                   // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
@@ -158,8 +165,8 @@ public class PayOSService {
                     .build();
         }
 
-        String desc = (promotionCodes != null && !promotionCodes.isEmpty())
-                ? "AC-" + (orderCode % 1_000_000L) + "-" + promotionCodes.get(0)
+        String desc = (!normalizedPromotionCodes.isEmpty())
+                ? "AC-" + (orderCode % 1_000_000L) + "-" + normalizedPromotionCodes.get(0)
                 : "AstraCine-" + (orderCode % 1_000_000L);
         String description = desc.length() > 25 ? desc.substring(0, 25) : desc;
 
@@ -206,8 +213,8 @@ public class PayOSService {
 
         if (discount > 0) {
             String discountLabel = "Giam gia";
-            if (promotionCodes != null && !promotionCodes.isEmpty()) {
-                String suffix = " (" + String.join(",", promotionCodes) + ")";
+            if (!normalizedPromotionCodes.isEmpty()) {
+                String suffix = " (" + String.join(",", normalizedPromotionCodes) + ")";
                 discountLabel = ("Giam gia" + suffix).length() <= 50
                         ? "Giam gia" + suffix
                         : "Giam gia";
@@ -241,7 +248,7 @@ public class PayOSService {
             sessionData.put("userId", userId);
             sessionData.put("status", "PENDING");
             sessionData.put("amount", amount);
-            sessionData.put("promotionCodes", promotionCodes != null ? promotionCodes : Collections.emptyList()); // <---
+            sessionData.put("promotionCodes", normalizedPromotionCodes);
                                                                                                                   // ĐÃ
                                                                                                                   // SỬA
             sessionData.put("comboItems", comboItems != null ? comboItems : Collections.emptyList());
@@ -500,6 +507,28 @@ public class PayOSService {
     private static long generateOrderCode(String holdId) {
         long hash = Math.abs((long) holdId.hashCode());
         return (hash % 9_000_000_000L) + 1_000_000_000L;
+    }
+
+    private List<String> normalizePromotionCodes(List<String> promotionCodes) {
+        if (promotionCodes == null || promotionCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<String> normalizedCodes = new LinkedHashSet<>();
+        for (String code : promotionCodes) {
+            if (code != null && !code.isBlank()) {
+                normalizedCodes.add(code.trim().toUpperCase());
+            }
+        }
+        return new java.util.ArrayList<>(normalizedCodes);
+    }
+
+    private void validatePromotionCodesForUser(List<String> promotionCodes, String userId) {
+        if (promotionCodes == null || promotionCodes.isEmpty()) {
+            return;
+        }
+        for (String code : promotionCodes) {
+            promotionService.validatePromotionCode(code, userId);
+        }
     }
 
     private record HoldMeta(long expiresAt, int seatCount) {

@@ -19,14 +19,31 @@ const formatDateTime = (iso) => {
     });
 };
 
-function calcDiscountFromPromo(promo, baseTotal) {
+function getAmountForPromoType(promo, seatTotal, comboTotal, grandTotal) {
+    if (!promo) return grandTotal;
+    if (promo.applicableTo === "TICKET") return seatTotal;
+    if (promo.applicableTo === "COMBO") return comboTotal;
+    return grandTotal;
+}
+
+function calcDiscountFromPromo(promo, seatTotal, comboTotal, grandTotal) {
     if (!promo) return 0;
+    const baseAmount = getAmountForPromoType(promo, seatTotal, comboTotal, grandTotal);
     const value = parseFloat(promo.discountValue) || 0;
     const minOrder = parseFloat(promo.minOrderAmount) || 0;
-    if (baseTotal < minOrder) return 0;
-    if (promo.discountType === "PERCENTAGE") return Math.round((baseTotal * value) / 100);
-    if (promo.discountType === "FIXED") return Math.min(value, baseTotal);
-    return 0;
+
+    if (baseAmount < minOrder) return 0;
+
+    let discount = 0;
+    if (promo.discountType === "PERCENTAGE") discount = Math.round((baseAmount * value) / 100);
+    if (promo.discountType === "FIXED") discount = value;
+
+    const maxDiscount = parseFloat(promo.maxDiscountAmount);
+    if (!Number.isNaN(maxDiscount) && maxDiscount > 0) {
+        discount = Math.min(discount, maxDiscount);
+    }
+
+    return Math.min(discount, baseAmount);
 }
 
 function isPromoValid(p) {
@@ -38,9 +55,43 @@ function isPromoValid(p) {
     return true;
 }
 
-function isPromoEligibleForOrder(promo, orderTotal) {
+function isPromoEligibleForOrder(promo, seatTotal, comboTotal, grandTotal) {
+    if (!promo) return false;
+    if (promo.applicableTo === "TICKET" && seatTotal <= 0) return false;
+    if (promo.applicableTo === "COMBO" && comboTotal <= 0) return false;
+
+    const minOrder = parseFloat(promo.minOrderAmount) || 0;
+    const amountToCheck = getAmountForPromoType(promo, seatTotal, comboTotal, grandTotal);
+    return amountToCheck >= minOrder;
+}
+
+function getPromoTypeLabel(promo) {
+    if (!promo) return "đơn hàng";
+    if (promo.applicableTo === "TICKET") return "tiền vé";
+    if (promo.applicableTo === "COMBO") return "tiền bắp nước";
+    return "đơn hàng";
+}
+
+function getMinOrderMessage(promo) {
     const minOrder = parseFloat(promo?.minOrderAmount) || 0;
-    return orderTotal >= minOrder;
+    const typeLabel = getPromoTypeLabel(promo);
+    return `${typeLabel.charAt(0).toUpperCase()}${typeLabel.slice(1)} tối thiểu ${formatCurrency(minOrder)} mới áp dụng được mã này.`;
+}
+
+function getPromoDescription(promo) {
+    const discountText = promo.discountType === "PERCENTAGE"
+        ? `Giảm ${promo.discountValue}%`
+        : `Giảm ${formatCurrency(promo.discountValue)}`;
+    const scopeText = promo.applicableTo === "TICKET"
+        ? " (Vé)"
+        : promo.applicableTo === "COMBO"
+            ? " (Bắp nước)"
+            : " (Toàn bộ)";
+    const maxDiscount = parseFloat(promo.maxDiscountAmount);
+    const capText = !Number.isNaN(maxDiscount) && maxDiscount > 0
+        ? `, tối đa ${formatCurrency(maxDiscount)}`
+        : "";
+    return `${discountText}${scopeText}${capText}`;
 }
 
 export default function StaffCounterCheckout() {
@@ -90,20 +141,41 @@ export default function StaffCounterCheckout() {
     }, [holdId, seatDetails.length, navigate]);
 
     const discountAmount = useMemo(
-        () => calcDiscountFromPromo(selectedPromo, grandTotal),
-        [selectedPromo, grandTotal]
+        () => calcDiscountFromPromo(selectedPromo, seatTotal, comboTotal, grandTotal),
+        [selectedPromo, seatTotal, comboTotal, grandTotal]
     );
     const eligiblePromotions = useMemo(
-        () => promotions.filter((promo) => isPromoEligibleForOrder(promo, grandTotal)),
-        [promotions, grandTotal]
+        () => promotions.filter((promo) => isPromoEligibleForOrder(promo, seatTotal, comboTotal, grandTotal)),
+        [promotions, seatTotal, comboTotal, grandTotal]
     );
     const finalTotal = Math.max(0, grandTotal - discountAmount);
 
     useEffect(() => {
-        if (selectedPromo && !isPromoEligibleForOrder(selectedPromo, grandTotal)) {
+        if (selectedPromo && !isPromoEligibleForOrder(selectedPromo, seatTotal, comboTotal, grandTotal)) {
             setSelectedPromo(null);
         }
-    }, [selectedPromo, grandTotal]);
+    }, [selectedPromo, seatTotal, comboTotal, grandTotal]);
+
+    const handleSelectPromo = async (promo) => {
+        const active = selectedPromo?.id === promo.id;
+        if (active) {
+            setSelectedPromo(null);
+            return;
+        }
+
+        setCodeError(null);
+        try {
+            const validatedPromo = await validatePromotion(promo.code);
+            if (!isPromoValid(validatedPromo)) throw new Error("Mã không còn hiệu lực.");
+            if (!isPromoEligibleForOrder(validatedPromo, seatTotal, comboTotal, grandTotal)) {
+                setCodeError(getMinOrderMessage(validatedPromo));
+                return;
+            }
+            setSelectedPromo(validatedPromo);
+        } catch (err) {
+            setCodeError(err?.message || "Mã không hợp lệ hoặc đã hết hạn.");
+        }
+    };
 
     const handleValidateCode = async () => {
         const code = codeInput.trim().toUpperCase();
@@ -113,9 +185,8 @@ export default function StaffCounterCheckout() {
         try {
             const promo = await validatePromotion(code);
             if (!isPromoValid(promo)) throw new Error("Mã không còn hiệu lực.");
-            const minOrder = parseFloat(promo.minOrderAmount) || 0;
-            if (grandTotal < minOrder) {
-                setCodeError(`Đơn tối thiểu ${formatCurrency(minOrder)} mới áp dụng được mã này.`);
+            if (!isPromoEligibleForOrder(promo, seatTotal, comboTotal, grandTotal)) {
+                setCodeError(getMinOrderMessage(promo));
                 return;
             }
             setSelectedPromo(promo);
@@ -254,14 +325,10 @@ export default function StaffCounterCheckout() {
                                     <button
                                         key={promo.id}
                                         className={`staff-promo-chip ${active ? "active" : ""}`}
-                                        onClick={() => setSelectedPromo(active ? null : promo)}
+                                        onClick={() => { void handleSelectPromo(promo); }}
                                     >
                                         <strong>{promo.code}</strong>
-                                        <span>
-                                            {promo.discountType === "PERCENTAGE"
-                                                ? `Giảm ${promo.discountValue}%`
-                                                : `Giảm ${formatCurrency(promo.discountValue)}`}
-                                        </span>
+                                        <span>{getPromoDescription(promo)}</span>
                                     </button>
                                 );
                             })}
@@ -274,7 +341,7 @@ export default function StaffCounterCheckout() {
                             {codeValidating ? "..." : "Áp dụng"}
                         </button>
                     </div>
-                    {codeError && <div className="staff-error-inline">{codeError}</div>}
+                    {codeError && <div className="staff-error-inline">⚠️ {codeError}</div>}
                 </section>
 
                 <aside className="staff-order-card">

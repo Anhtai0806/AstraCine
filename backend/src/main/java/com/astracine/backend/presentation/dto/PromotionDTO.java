@@ -44,12 +44,18 @@ public class PromotionDTO {
     @Min(value = 1, message = "Max usage must be at least 1 if specified")
     private Integer maxUsage; // NULL means unlimited
 
+    @Min(value = 1, message = "Max usage per user must be at least 1 if specified")
+    private Integer maxUsagePerUser;
+
     private Integer currentUsage;
 
     private String description;
 
     @DecimalMin(value = "0", message = "Minimum order amount must be 0 or greater")
     private BigDecimal minOrderAmount;
+
+    @DecimalMin(value = "0.01", message = "Maximum discount amount must be greater than 0 if specified")
+    private BigDecimal maxDiscountAmount;
 
     @jakarta.validation.constraints.Pattern(regexp = "^(ALL|TICKET|COMBO)$", message = "Applicable to must be ALL, TICKET, or COMBO")
     private String applicableTo;

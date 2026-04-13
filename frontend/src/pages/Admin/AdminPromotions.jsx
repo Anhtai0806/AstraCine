@@ -3,30 +3,37 @@ import { promotionAPI } from '../../api/adminApi';
 import { FaEdit, FaTrash, FaPlus, FaTicketAlt } from 'react-icons/fa';
 import './AdminPromotions.css';
 
+const emptyPromotion = {
+    code: '',
+    description: '',
+    discountType: 'PERCENTAGE',
+    discountValue: '',
+    startDate: '',
+    endDate: '',
+    status: 'ACTIVE',
+    maxUsage: '',
+    maxUsagePerUser: '',
+    minOrderAmount: '0',
+    maxDiscountAmount: '',
+    applicableTo: 'ALL'
+};
+
 const AdminPromotions = () => {
     const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [currentPromotion, setCurrentPromotion] = useState({
-        code: '',
-        description: '',
-        discountType: 'PERCENTAGE',
-        discountValue: '',
-        startDate: '',
-        endDate: '',
-        status: 'ACTIVE',
-        maxUsage: '',
-        minOrderAmount: '0',
-        applicableTo: 'ALL' // Thêm trường applicableTo mặc định là ALL
-    });
+    const [currentPromotion, setCurrentPromotion] = useState(emptyPromotion);
     const [isEditing, setIsEditing] = useState(false);
+
     const codeRef = useRef(null);
     const discountValueRef = useRef(null);
     const startDateRef = useRef(null);
     const endDateRef = useRef(null);
     const maxUsageRef = useRef(null);
+    const maxUsagePerUserRef = useRef(null);
     const minOrderAmountRef = useRef(null);
+    const maxDiscountAmountRef = useRef(null);
 
     useEffect(() => {
         fetchPromotions();
@@ -57,7 +64,9 @@ const AdminPromotions = () => {
         startDate: startDateRef,
         endDate: endDateRef,
         maxUsage: maxUsageRef,
+        maxUsagePerUser: maxUsagePerUserRef,
         minOrderAmount: minOrderAmountRef,
+        maxDiscountAmount: maxDiscountAmountRef,
     };
 
     const fetchPromotions = async () => {
@@ -79,23 +88,14 @@ const AdminPromotions = () => {
             setCurrentPromotion({
                 ...promotion,
                 maxUsage: promotion.maxUsage || '',
+                maxUsagePerUser: promotion.maxUsagePerUser || '',
                 minOrderAmount: promotion.minOrderAmount || '0',
-                applicableTo: promotion.applicableTo || 'ALL' // Đảm bảo load được applicableTo nếu có
+                maxDiscountAmount: promotion.maxDiscountAmount || '',
+                applicableTo: promotion.applicableTo || 'ALL'
             });
             setIsEditing(true);
         } else {
-            setCurrentPromotion({
-                code: '',
-                description: '',
-                discountType: 'PERCENTAGE',
-                discountValue: '',
-                startDate: '',
-                endDate: '',
-                status: 'ACTIVE',
-                maxUsage: '',
-                minOrderAmount: '0',
-                applicableTo: 'ALL' // Reset về ALL
-            });
+            setCurrentPromotion({ ...emptyPromotion });
             setIsEditing(false);
         }
         setShowModal(true);
@@ -103,18 +103,7 @@ const AdminPromotions = () => {
 
     const handleCloseModal = () => {
         setShowModal(false);
-        setCurrentPromotion({
-            code: '',
-            description: '',
-            discountType: 'PERCENTAGE',
-            discountValue: '',
-            startDate: '',
-            endDate: '',
-            status: 'ACTIVE',
-            maxUsage: '',
-            minOrderAmount: '0',
-            applicableTo: 'ALL' // Reset về ALL
-        });
+        setCurrentPromotion({ ...emptyPromotion });
         setError(null);
         [
             codeRef,
@@ -122,7 +111,9 @@ const AdminPromotions = () => {
             startDateRef,
             endDateRef,
             maxUsageRef,
+            maxUsagePerUserRef,
             minOrderAmountRef,
+            maxDiscountAmountRef,
         ].forEach(clearFieldValidity);
     };
 
@@ -135,7 +126,9 @@ const AdminPromotions = () => {
             startDateRef,
             endDateRef,
             maxUsageRef,
+            maxUsagePerUserRef,
             minOrderAmountRef,
+            maxDiscountAmountRef,
         ].forEach(clearFieldValidity);
 
         const normalizedCode = (currentPromotion.code || '').trim().toUpperCase();
@@ -155,7 +148,6 @@ const AdminPromotions = () => {
             return;
         }
 
-        // Client-side validation
         if (currentPromotion.discountType === 'PERCENTAGE' &&
             (parseFloat(currentPromotion.discountValue) <= 0 || parseFloat(currentPromotion.discountValue) > 100)) {
             showFieldError(discountValueRef, 'Giá trị phần trăm phải nằm trong khoảng từ 1 đến 100.');
@@ -188,8 +180,20 @@ const AdminPromotions = () => {
             return;
         }
 
+        const parsedMaxUsagePerUser = currentPromotion.maxUsagePerUser === '' ? null : parseInt(currentPromotion.maxUsagePerUser, 10);
+        if (parsedMaxUsagePerUser !== null && (Number.isNaN(parsedMaxUsagePerUser) || parsedMaxUsagePerUser < 1)) {
+            showFieldError(maxUsagePerUserRef, 'Giới hạn theo user phải từ 1 trở lên nếu bạn có nhập giá trị này.');
+            return;
+        }
+
         if ((parseFloat(currentPromotion.minOrderAmount) || 0) < 0) {
             showFieldError(minOrderAmountRef, 'Đơn hàng tối thiểu không được nhỏ hơn 0.');
+            return;
+        }
+
+        const parsedMaxDiscountAmount = currentPromotion.maxDiscountAmount === '' ? null : parseFloat(currentPromotion.maxDiscountAmount);
+        if (parsedMaxDiscountAmount !== null && (Number.isNaN(parsedMaxDiscountAmount) || parsedMaxDiscountAmount <= 0)) {
+            showFieldError(maxDiscountAmountRef, 'Giảm tối đa phải lớn hơn 0 nếu bạn có nhập giá trị này.');
             return;
         }
 
@@ -198,8 +202,9 @@ const AdminPromotions = () => {
                 ...currentPromotion,
                 code: normalizedCode,
                 maxUsage: parsedMaxUsage,
+                maxUsagePerUser: parsedMaxUsagePerUser,
                 minOrderAmount: parseFloat(currentPromotion.minOrderAmount) || 0,
-                // Đảm bảo gửi applicableTo lên backend
+                maxDiscountAmount: parsedMaxDiscountAmount,
                 applicableTo: currentPromotion.applicableTo || 'ALL'
             };
 
@@ -269,11 +274,14 @@ const AdminPromotions = () => {
     };
 
     const getDiscountDisplay = (promotion) => {
-        if (promotion.discountType === 'PERCENTAGE') {
-            return `${promotion.discountValue}%`;
-        } else {
-            return `${parseFloat(promotion.discountValue).toLocaleString('vi-VN')}đ`;
+        const discount = promotion.discountType === 'PERCENTAGE'
+            ? `${promotion.discountValue}%`
+            : `${parseFloat(promotion.discountValue).toLocaleString('vi-VN')}đ`;
+        const maxDiscount = parseFloat(promotion.maxDiscountAmount);
+        if (!Number.isNaN(maxDiscount) && maxDiscount > 0) {
+            return `${discount} (tối đa ${formatCurrency(maxDiscount)})`;
         }
+        return discount;
     };
 
     const getUsageDisplay = (promotion) => {
@@ -283,16 +291,15 @@ const AdminPromotions = () => {
         return `${promotion.currentUsage || 0} / ${promotion.maxUsage}`;
     };
 
-    // Thêm hàm hiển thị badge cho applicableTo
     const getApplicableToBadge = (applicableTo) => {
         switch (applicableTo) {
             case 'TICKET':
-                return <span className="badge-custom badge-info" style={{backgroundColor: '#0ea5e9'}}>Chỉ Vé</span>;
+                return <span className="badge-custom badge-info" style={{ backgroundColor: '#0ea5e9' }}>Chỉ Vé</span>;
             case 'COMBO':
-                return <span className="badge-custom badge-warning" style={{backgroundColor: '#eab308'}}>Chỉ Bắp Nước</span>;
+                return <span className="badge-custom badge-warning" style={{ backgroundColor: '#eab308' }}>Chỉ Bắp Nước</span>;
             case 'ALL':
             default:
-                return <span className="badge-custom badge-primary" style={{backgroundColor: '#8b5cf6'}}>Tất cả</span>;
+                return <span className="badge-custom badge-primary" style={{ backgroundColor: '#8b5cf6' }}>Tất cả</span>;
         }
     };
 
@@ -327,9 +334,10 @@ const AdminPromotions = () => {
                             <tr>
                                 <th>Mã</th>
                                 <th>Mô tả</th>
-                                <th>Áp dụng cho</th> {/* Thêm cột này */}
+                                <th>Áp dụng cho</th>
                                 <th>Đơn hàng tối thiểu</th>
                                 <th>Giá trị giảm</th>
+                                <th>Giới hạn / user</th>
                                 <th>Sử dụng</th>
                                 <th>Ngày bắt đầu</th>
                                 <th>Ngày kết thúc</th>
@@ -343,9 +351,10 @@ const AdminPromotions = () => {
                                     <tr key={promotion.id}>
                                         <td className="promotion-code"><strong>{promotion.code}</strong></td>
                                         <td className="promotion-description">{promotion.description || 'N/A'}</td>
-                                        <td>{getApplicableToBadge(promotion.applicableTo)}</td> {/* Hiển thị dữ liệu */}
+                                        <td>{getApplicableToBadge(promotion.applicableTo)}</td>
                                         <td>{formatCurrency(promotion.minOrderAmount)}</td>
                                         <td className="promotion-value">{getDiscountDisplay(promotion)}</td>
+                                        <td>{promotion.maxUsagePerUser ?? 'Unlimited'}</td>
                                         <td>{getUsageDisplay(promotion)}</td>
                                         <td>{formatDate(promotion.startDate)}</td>
                                         <td>{formatDate(promotion.endDate)}</td>
@@ -364,7 +373,7 @@ const AdminPromotions = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="10" className="no-data-message">Chưa có mã khuyến mãi nào.</td>
+                                    <td colSpan="11" className="no-data-message">Chưa có mã khuyến mãi nào.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -444,8 +453,7 @@ const AdminPromotions = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    {/* THÊM TRƯỜNG "ÁP DỤNG CHO" VÀO ĐÂY */}
+
                                     <div className="form-group-custom mb-3">
                                         <label>Áp dụng cho *</label>
                                         <select
@@ -513,11 +521,28 @@ const AdminPromotions = () => {
                                                         setCurrentPromotion({ ...currentPromotion, maxUsage: e.target.value });
                                                     }}
                                                 />
-                                                <small className="text-muted mt-1 d-block">
-                                                    Số lần tối đa mã có thể được sử dụng
-                                                </small>
                                             </div>
                                         </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom mb-3">
+                                                <label>Giới hạn / user</label>
+                                                <input
+                                                    type="number"
+                                                    className="form-control-custom"
+                                                    placeholder="Để trống = không giới hạn"
+                                                    min="1"
+                                                    ref={maxUsagePerUserRef}
+                                                    value={currentPromotion.maxUsagePerUser}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(maxUsagePerUserRef);
+                                                        setCurrentPromotion({ ...currentPromotion, maxUsagePerUser: e.target.value });
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-row">
                                         <div className="form-col">
                                             <div className="form-group-custom mb-3">
                                                 <label>Đơn hàng tối thiểu (đ)</label>
@@ -531,6 +556,23 @@ const AdminPromotions = () => {
                                                     onChange={(e) => {
                                                         clearFieldValidity(minOrderAmountRef);
                                                         setCurrentPromotion({ ...currentPromotion, minOrderAmount: e.target.value });
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-col">
+                                            <div className="form-group-custom mb-3">
+                                                <label>Giảm tối đa (đ)</label>
+                                                <input
+                                                    type="number"
+                                                    step="1000"
+                                                    className="form-control-custom"
+                                                    placeholder="Để trống = không giới hạn"
+                                                    ref={maxDiscountAmountRef}
+                                                    value={currentPromotion.maxDiscountAmount}
+                                                    onChange={(e) => {
+                                                        clearFieldValidity(maxDiscountAmountRef);
+                                                        setCurrentPromotion({ ...currentPromotion, maxDiscountAmount: e.target.value });
                                                     }}
                                                 />
                                             </div>
