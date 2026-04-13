@@ -1,6 +1,7 @@
 package com.astracine.backend.core.service.payment;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -33,12 +34,13 @@ import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
 import com.astracine.backend.core.repository.UserRepository;
-import com.astracine.backend.core.service.EmailService;
-import com.astracine.backend.core.service.MemberService;
-import com.astracine.backend.core.service.SeatHoldService;
+import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
-import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
+
+import com.astracine.backend.core.service.SeatHoldService;
+import com.astracine.backend.core.service.EmailService;
+import com.astracine.backend.core.service.MemberService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,15 +68,15 @@ public class InvoiceService {
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
-            BigDecimal amount, List<String> promotionCodes, // <--- 1. Đổi thành List<String>
+            BigDecimal amount, List<String> promotionCodes,
             List<ComboCartItemDTO> comboItems,
-            long showtimeId, List<Long> seatIds, int pointsUsed) { 
+            long showtimeId, List<Long> seatIds, int pointsUsed) {
 
         return createInvoiceInternal(
                 holdId,
                 userId,
                 amount,
-                promotionCodes, // <--- Truyền List<String> vào hàm Internal
+                promotionCodes,
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -84,14 +86,14 @@ public class InvoiceService {
                 null,
                 "PAYOS",
                 String.valueOf(orderCode),
-                pointsUsed); 
+                pointsUsed);
     }
 
     @Transactional
     public Invoice createCounterInvoice(String holdId,
             String staffUsername,
             BigDecimal amount,
-            List<String> promotionCodes, // <--- 2. Đổi thành List<String>
+            List<String> promotionCodes,
             List<ComboCartItemDTO> comboItems,
             long showtimeId,
             List<Long> seatIds,
@@ -108,7 +110,7 @@ public class InvoiceService {
                 holdId,
                 staffUsername,
                 amount,
-                promotionCodes, // <--- Truyền List<String>
+                promotionCodes,
                 comboItems,
                 showtimeId,
                 seatIds,
@@ -118,13 +120,13 @@ public class InvoiceService {
                 customerPhone,
                 paymentMethod,
                 generateCounterTransactionCode(),
-                0); 
+                0);
     }
 
     private Invoice createInvoiceInternal(String holdId,
             String actorUserId,
             BigDecimal amount,
-            List<String> promotionCodes, // <--- 3. Đổi thành List<String>
+            List<String> promotionCodes,
             List<ComboCartItemDTO> comboItems,
             long showtimeId,
             List<Long> seatIds,
@@ -134,7 +136,7 @@ public class InvoiceService {
             String customerPhone,
             String paymentMethod,
             String transactionCode,
-            int pointsUsed) { 
+            int pointsUsed) {
 
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new IllegalStateException("Showtime not found: " + showtimeId));
@@ -180,7 +182,7 @@ public class InvoiceService {
         }
 
         saveInvoiceCombos(invoice, comboItems);
-        saveInvoicePromotion(invoice, promotionCodes); // <--- 4. Gọi hàm xử lý lưu List Mảng Promotion
+        saveInvoicePromotion(invoice, promotionCodes);
 
         try {
             seatHoldService.confirmHoldToSold(holdId, actorUserId);
@@ -191,7 +193,7 @@ public class InvoiceService {
             markSeatsAsSold(showtimeId, seatIds);
         }
 
-        // ===== MEMBERSHIP LOGIC =====
+        // ===== MEMBERSHIP LOGIC CỦA TEAM =====
         try {
             if (invoice.isMembershipProcessed()) {
                 log.warn("[Membership] Invoice {} already processed, skip", invoice.getId());
@@ -235,35 +237,36 @@ public class InvoiceService {
                     BigDecimal actualComboAmount = rawComboAmount;
                     BigDecimal totalRaw = rawTicketAmount.add(rawComboAmount);
 
-                    // 👇 5. TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER (Double Voucher Logic)
+                    // TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER
                     if (promotionCodes != null && !promotionCodes.isEmpty()) {
                         for (String code : promotionCodes) {
                             Optional<Promotion> appliedPromo = promotionRepository.findByCode(code);
                             if (appliedPromo.isPresent()) {
                                 Promotion p = appliedPromo.get();
-                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase() : "ALL";
-                                
+                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase()
+                                        : "ALL";
+
                                 BigDecimal discountValue = p.getDiscountValue();
                                 BigDecimal discountAmt = BigDecimal.ZERO;
 
                                 if ("TICKET".equals(applyType)) {
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
-                                        ? rawTicketAmount.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
-                                        : discountValue;
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? rawTicketAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
                                     actualTicketAmount = actualTicketAmount.subtract(discountAmt);
                                 } else if ("COMBO".equals(applyType)) {
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
-                                        ? rawComboAmount.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
-                                        : discountValue;
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? rawComboAmount.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
                                     actualComboAmount = actualComboAmount.subtract(discountAmt);
                                 } else {
                                     // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
-                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType()) 
-                                        ? totalRaw.multiply(discountValue).divide(BigDecimal.valueOf(100)) 
-                                        : discountValue;
-                                    
+                                    discountAmt = "PERCENTAGE".equals(p.getDiscountType())
+                                            ? totalRaw.multiply(discountValue).divide(BigDecimal.valueOf(100))
+                                            : discountValue;
+
                                     BigDecimal temp = actualTicketAmount.subtract(discountAmt);
-                                    if(temp.compareTo(BigDecimal.ZERO) < 0) {
+                                    if (temp.compareTo(BigDecimal.ZERO) < 0) {
                                         actualComboAmount = actualComboAmount.add(temp); // Cộng số âm = trừ
                                         actualTicketAmount = BigDecimal.ZERO;
                                     } else {
@@ -275,8 +278,10 @@ public class InvoiceService {
                     }
 
                     // Chốt chặn cuối cùng: Không để tiền bị âm
-                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) actualTicketAmount = BigDecimal.ZERO;
-                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) actualComboAmount = BigDecimal.ZERO;
+                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0)
+                        actualTicketAmount = BigDecimal.ZERO;
+                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0)
+                        actualComboAmount = BigDecimal.ZERO;
 
                     // Gọi hàm cộng điểm với SỐ TIỀN THỰC TRẢ ĐÃ PHÂN BỔ ĐÚNG
                     memberService.processAfterPayment(customer, actualTicketAmount, actualComboAmount);
@@ -307,7 +312,8 @@ public class InvoiceService {
 
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
-                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi
+                // proxy/chưa commit
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
 
                 // Tạo một luồng mới để gửi thư
@@ -364,7 +370,6 @@ public class InvoiceService {
         }
     }
 
-    // 👇 6. Nâng cấp hàm lưu lịch sử sử dụng khuyến mãi thành Vòng lặp List<String>
     private void saveInvoicePromotion(Invoice invoice, List<String> promotionCodes) {
         if (promotionCodes == null || promotionCodes.isEmpty()) {
             return;
@@ -452,10 +457,8 @@ public class InvoiceService {
         }
         String normalized = paymentMethod.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "PAYOS", "CASH", "CARD" ->
-                normalized;
-            default ->
-                normalized;
+            case "PAYOS", "CASH", "CARD" -> normalized;
+            default -> normalized;
         };
     }
 
@@ -477,6 +480,8 @@ public class InvoiceService {
         }
     }
 
+    // ===== TÍNH NĂNG CỦA THANH (Admin Invoices) =====
+
     public List<InvoiceHistoryDTO> getInvoiceHistory(String username) {
         Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(username, username, username);
         if (userOpt.isEmpty()) {
@@ -488,67 +493,115 @@ public class InvoiceService {
         List<Invoice> invoices = invoiceRepository
                 .findByCustomerUsernameOrderByCreatedAtDesc(user.getUsername());
 
-        return invoices.stream().map(inv -> {
-            Showtime showtime = inv.getShowtime();
+        return invoices.stream().map(this::mapInvoiceToDTO).toList();
+    }
 
-            String movieTitle = null;
-            String moviePosterUrl = null;
-            if (showtime != null && showtime.getMovieId() != null) {
-                Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
-                if (movieOpt.isPresent()) {
-                    movieTitle = movieOpt.get().getTitle();
-                    moviePosterUrl = movieOpt.get().getPosterUrl();
-                }
+    @Transactional(readOnly = true)
+    public List<InvoiceHistoryDTO> getAllInvoicesForAdmin(
+            String search, String status,
+            LocalDateTime from, LocalDateTime to) {
+
+        List<Invoice> invoices;
+
+        boolean hasSearch = search != null && !search.isBlank();
+        boolean hasStatus = status != null && !status.isBlank();
+        boolean hasDate = from != null && to != null;
+
+        if (hasSearch && hasDate) {
+            invoices = invoiceRepository
+                    .findByCustomerUsernameContainingIgnoreCaseAndCreatedAtBetweenOrderByCreatedAtDesc(
+                            search.trim(), from, to);
+            // filter thêm status nếu có
+            if (hasStatus) {
+                final String s = status;
+                invoices = invoices.stream().filter(i -> s.equalsIgnoreCase(i.getStatus())).toList();
             }
-
-            List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
-            List<InvoiceHistoryDTO.SeatItem> seats = tickets.stream().map(t -> {
-                ShowtimeSeat ss = t.getShowtimeSeat();
-                Seat seat = ss != null ? ss.getSeat() : null;
-                String code = seat != null ? seat.getRowLabel() + seat.getColumnNumber() : "?";
-                String type = seat != null && seat.getSeatType() != null ? seat.getSeatType().name() : "";
-                return InvoiceHistoryDTO.SeatItem.builder()
-                        .seatCode(code)
-                        .seatType(type)
-                        .price(t.getPrice())
-                        .build();
-            }).toList();
-
-            List<InvoiceCombo> combos = invoiceComboRepository.findByInvoiceId(inv.getId());
-            List<InvoiceHistoryDTO.ComboItem> comboItems = combos.stream().map(ic -> {
-                String comboName = ic.getCombo() != null ? ic.getCombo().getName() : "Combo";
-                return InvoiceHistoryDTO.ComboItem.builder()
-                        .comboName(comboName)
-                        .quantity(ic.getQuantity())
-                        .price(ic.getPrice())
-                        .build();
-            }).toList();
-
-            String transCode = null;
-            // Lấy Payment theo invoiceId
-            Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
-            if (paymentOpt.isPresent()) {
-                transCode = paymentOpt.get().getTransactionCode();
+        } else if (hasSearch) {
+            invoices = invoiceRepository
+                    .findByCustomerUsernameContainingIgnoreCaseOrderByCreatedAtDesc(search.trim());
+            if (hasStatus) {
+                final String s = status;
+                invoices = invoices.stream().filter(i -> s.equalsIgnoreCase(i.getStatus())).toList();
             }
+        } else if (hasStatus && hasDate) {
+            invoices = invoiceRepository
+                    .findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(status, from, to);
+        } else if (hasStatus) {
+            invoices = invoiceRepository.findByStatusOrderByCreatedAtDesc(status);
+        } else if (hasDate) {
+            invoices = invoiceRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        } else {
+            invoices = invoiceRepository.findAllByOrderByCreatedAtDesc();
+        }
 
-            return InvoiceHistoryDTO.builder()
-                    .invoiceId(inv.getId())
-                    .status(inv.getStatus())
-                    .totalAmount(inv.getTotalAmount())
-                    .createdAt(inv.getCreatedAt())
-                    .showtimeId(showtime != null ? showtime.getId() : null)
-                    .movieId(showtime != null ? showtime.getMovieId() : null)
-                    .movieTitle(movieTitle)
-                    .moviePosterUrl(moviePosterUrl)
-                    .startTime(showtime != null ? showtime.getStartTime() : null)
-                    .endTime(showtime != null ? showtime.getEndTime() : null)
-                    .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
-                    .seats(seats)
-                    .combos(comboItems)
-                    .orderCode(transCode)
+        return invoices.stream().map(this::mapInvoiceToDTO).toList();
+    }
+
+    private InvoiceHistoryDTO mapInvoiceToDTO(Invoice inv) {
+        Showtime showtime = inv.getShowtime();
+
+        String movieTitle = null;
+        String moviePosterUrl = null;
+        if (showtime != null && showtime.getMovieId() != null) {
+            Optional<Movie> movieOpt = movieRepository.findById(showtime.getMovieId());
+            if (movieOpt.isPresent()) {
+                movieTitle = movieOpt.get().getTitle();
+                moviePosterUrl = movieOpt.get().getPosterUrl();
+            }
+        }
+
+        List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
+        List<InvoiceHistoryDTO.SeatItem> seats = tickets.stream().map(t -> {
+            ShowtimeSeat ss = t.getShowtimeSeat();
+            Seat seat = ss != null ? ss.getSeat() : null;
+            String code = seat != null ? seat.getRowLabel() + seat.getColumnNumber() : "?";
+            String type = seat != null && seat.getSeatType() != null ? seat.getSeatType().name() : "";
+            return InvoiceHistoryDTO.SeatItem.builder()
+                    .seatCode(code)
+                    .seatType(type)
+                    .price(t.getPrice())
                     .build();
         }).toList();
+
+        List<InvoiceCombo> combos = invoiceComboRepository.findByInvoiceId(inv.getId());
+        List<InvoiceHistoryDTO.ComboItem> comboItems = combos.stream().map(ic -> {
+            String comboName = ic.getCombo() != null ? ic.getCombo().getName() : "Combo";
+            return InvoiceHistoryDTO.ComboItem.builder()
+                    .comboName(comboName)
+                    .quantity(ic.getQuantity())
+                    .price(ic.getPrice())
+                    .build();
+        }).toList();
+
+        String transCode = null;
+        String paymentMethod = null;
+        Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(inv.getId());
+        if (paymentOpt.isPresent()) {
+            transCode = paymentOpt.get().getTransactionCode();
+            paymentMethod = paymentOpt.get().getPaymentMethod();
+        }
+
+        return InvoiceHistoryDTO.builder()
+                .invoiceId(inv.getId())
+                .status(inv.getStatus())
+                .totalAmount(inv.getTotalAmount())
+                .createdAt(inv.getCreatedAt())
+                .customerUsername(inv.getCustomerUsername())
+                .paymentMethod(paymentMethod)
+                .showtimeId(showtime != null ? showtime.getId() : null)
+                .movieId(showtime != null ? showtime.getMovieId() : null)
+                .movieTitle(movieTitle)
+                .moviePosterUrl(moviePosterUrl)
+                .startTime(showtime != null ? showtime.getStartTime() : null)
+                .endTime(showtime != null ? showtime.getEndTime() : null)
+                .roomName(showtime != null && showtime.getRoom() != null ? showtime.getRoom().getName() : null)
+                .seats(seats)
+                .combos(comboItems)
+                .orderCode(transCode)
+                .build();
     }
+
+    // =================================================
 
     @Transactional(readOnly = true)
     public ETicketDTO getETicketByOrderCode(String orderCode) {
