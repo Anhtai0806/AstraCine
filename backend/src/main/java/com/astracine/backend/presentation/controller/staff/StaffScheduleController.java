@@ -26,4 +26,16 @@ public class StaffScheduleController {
     public ResponseEntity<StaffScheduleDTO.AssignmentResponse> confirmAssignment(@PathVariable Long assignmentId) {
         return ResponseEntity.ok(staffScheduleService.confirmAssignment(assignmentId));
     }
+
+    @PostMapping("/{assignmentId}/reject")
+    public ResponseEntity<StaffScheduleDTO.AssignmentResponse> rejectAssignment(
+            @PathVariable Long assignmentId,
+            @RequestBody(required = false) StaffScheduleDTO.RejectAssignmentRequest request) {
+        return ResponseEntity.ok(
+                staffScheduleService.rejectAssignment(
+                        assignmentId,
+                        request != null ? request.getReason() : null
+                )
+        );
+    }
 }

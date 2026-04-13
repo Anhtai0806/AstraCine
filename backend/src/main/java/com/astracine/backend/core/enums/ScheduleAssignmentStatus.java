@@ -4,5 +4,6 @@ public enum ScheduleAssignmentStatus {
     DRAFT,
     PUBLISHED,
     CONFIRMED,
+    REJECTED,
     ABSENT
 }

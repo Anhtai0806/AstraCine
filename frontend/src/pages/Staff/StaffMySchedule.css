@@ -62,7 +62,8 @@
 
 .staff-my-schedule-filter input,
 .staff-my-schedule-filter button,
-.confirm-button {
+.confirm-button,
+.reject-button {
     padding: 10px 14px;
     border-radius: 12px;
     border: 1px solid #d8dff2;
@@ -77,7 +78,8 @@
 }
 
 .staff-my-schedule-filter button:disabled,
-.confirm-button:disabled {
+.confirm-button:disabled,
+.reject-button:disabled {
     opacity: 0.72;
     cursor: not-allowed;
 }
@@ -227,6 +229,11 @@
     color: #b74848;
 }
 
+.assignment-status.rejected {
+    background: #fff4f4;
+    color: #c05656;
+}
+
 .assignment-status.draft {
     background: #fff8e7;
     color: #b88711;
@@ -236,9 +243,29 @@
     margin: 0;
 }
 
-.confirm-button {
+.assignment-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.confirm-button,
+.reject-button {
     width: fit-content;
 }
+
+.reject-button {
+    background: #ffffff;
+    color: #c25a5a;
+    border-color: #f0c9c9;
+    cursor: pointer;
+}
+
+.assignment-response-meta {
+    font-size: 0.9rem;
+    color: #6b7796;
+}
+
 
 @media (max-width: 768px) {
     .staff-my-schedule-hero,
@@ -253,8 +280,13 @@
 
     .staff-my-schedule-filter label,
     .staff-my-schedule-filter button,
-    .confirm-button {
+    .confirm-button,
+    .reject-button {
         width: 100%;
+    }
+
+    .assignment-actions {
+        flex-direction: column;
     }
 
     .assignment-main {

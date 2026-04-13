@@ -56,6 +56,12 @@ public class ScheduleAssignment {
     @Column(name = "explanation", length = 1000)
     private String explanation;
 
+    @Column(name = "responded_at")
+    private LocalDateTime respondedAt;
+
+    @Column(name = "response_note", length = 255)
+    private String responseNote;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

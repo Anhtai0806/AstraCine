@@ -201,10 +201,103 @@ public class StaffScheduleService {
 
     @Transactional(readOnly = true)
     public List<StaffScheduleDTO.AssignmentResponse> getAssignmentsByDate(LocalDate businessDate) {
-        return scheduleAssignmentRepository.findByBusinessDate(businessDate)
+        return scheduleAssignmentRepository.findByBusinessDateDetailed(businessDate)
                 .stream()
                 .map(this::mapAssignment)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffScheduleDTO.StaffOptionResponse> getEligibleStaffOptions(LocalDate businessDate) {
+        return userRepository.findEligibleStaffForDate(businessDate)
+                .stream()
+                .filter(this::isEligibleForScheduling)
+                .map(user -> new StaffScheduleDTO.StaffOptionResponse(
+                        user.getId(),
+                        resolveStaffName(user),
+                        user.getUsername(),
+                        normalizePosition(user.getStaffPosition())
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffScheduleDTO.ShiftTemplateResponse> getActiveShiftTemplates() {
+        return shiftTemplateRepository.findByActiveTrueOrderByStartTimeAsc()
+                .stream()
+                .map(template -> new StaffScheduleDTO.ShiftTemplateResponse(
+                        template.getId(),
+                        template.getCode(),
+                        template.getName(),
+                        template.getStartTime(),
+                        template.getEndTime()
+                ))
+                .toList();
+    }
+
+    public StaffScheduleDTO.AssignmentResponse createManualAssignment(StaffScheduleDTO.ManualAssignmentUpsertRequest request) {
+        SchedulePlan plan = requireEditableDraftPlan(request.getPlanId());
+        User staff = requireEligibleStaff(request.getStaffId(), plan.getBusinessDate());
+        ShiftTemplate shiftTemplate = requireShiftTemplate(request.getShiftTemplateId());
+        String position = normalizePosition(request.getAssignedPosition());
+        validatePositionForStaff(staff, position);
+
+        LocalDateTime shiftStart = resolveShiftStart(plan.getBusinessDate(), shiftTemplate.getStartTime());
+        LocalDateTime shiftEnd = resolveShiftEnd(plan.getBusinessDate(), shiftTemplate.getStartTime(), shiftTemplate.getEndTime());
+
+        validateNoOverlap(staff.getId(), shiftStart, shiftEnd, null);
+
+        ScheduleAssignment assignment = new ScheduleAssignment();
+        assignment.setPlan(plan);
+        assignment.setStaff(staff);
+        assignment.setShiftTemplate(shiftTemplate);
+        assignment.setAssignedPosition(position);
+        assignment.setShiftStart(shiftStart);
+        assignment.setShiftEnd(shiftEnd);
+        assignment.setStatus(ScheduleAssignmentStatus.DRAFT);
+        assignment.setSource(AssignmentSource.MANUAL);
+        assignment.setExplanation(buildManualExplanation(staff, position, shiftTemplate));
+
+        return mapAssignment(scheduleAssignmentRepository.save(assignment));
+    }
+
+    public StaffScheduleDTO.AssignmentResponse updateManualAssignment(Long assignmentId, StaffScheduleDTO.ManualAssignmentUpsertRequest request) {
+        ScheduleAssignment assignment = scheduleAssignmentRepository.findDetailedById(assignmentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy assignment"));
+        SchedulePlan plan = requireEditableDraftPlan(assignment.getPlan().getId());
+        if (!Objects.equals(plan.getId(), request.getPlanId())) {
+            throw new RuntimeException("Assignment chỉ được cập nhật trong chính draft plan hiện tại");
+        }
+
+        User staff = requireEligibleStaff(request.getStaffId(), plan.getBusinessDate());
+        ShiftTemplate shiftTemplate = requireShiftTemplate(request.getShiftTemplateId());
+        String position = normalizePosition(request.getAssignedPosition());
+        validatePositionForStaff(staff, position);
+
+        LocalDateTime shiftStart = resolveShiftStart(plan.getBusinessDate(), shiftTemplate.getStartTime());
+        LocalDateTime shiftEnd = resolveShiftEnd(plan.getBusinessDate(), shiftTemplate.getStartTime(), shiftTemplate.getEndTime());
+
+        validateNoOverlap(staff.getId(), shiftStart, shiftEnd, assignmentId);
+
+        assignment.setStaff(staff);
+        assignment.setShiftTemplate(shiftTemplate);
+        assignment.setAssignedPosition(position);
+        assignment.setShiftStart(shiftStart);
+        assignment.setShiftEnd(shiftEnd);
+        assignment.setSource(AssignmentSource.MANUAL);
+        assignment.setExplanation(buildManualExplanation(staff, position, shiftTemplate));
+
+        return mapAssignment(scheduleAssignmentRepository.save(assignment));
+    }
+
+    public void deleteManualAssignment(Long assignmentId) {
+        ScheduleAssignment assignment = scheduleAssignmentRepository.findDetailedById(assignmentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy assignment"));
+        requireEditableDraftPlan(assignment.getPlan().getId());
+        if (assignment.getStatus() != ScheduleAssignmentStatus.DRAFT) {
+            throw new RuntimeException("Chỉ có thể xóa assignment ở trạng thái DRAFT");
+        }
+        scheduleAssignmentRepository.delete(assignment);
     }
 
     @Transactional(readOnly = true)
@@ -232,6 +325,22 @@ public class StaffScheduleService {
     }
 
     public StaffScheduleDTO.AssignmentResponse confirmAssignment(Long assignmentId) {
+        ScheduleAssignment assignment = getOwnedPublishedAssignment(assignmentId);
+        assignment.setStatus(ScheduleAssignmentStatus.CONFIRMED);
+        assignment.setRespondedAt(LocalDateTime.now());
+        assignment.setResponseNote(null);
+        return mapAssignment(scheduleAssignmentRepository.save(assignment));
+    }
+
+    public StaffScheduleDTO.AssignmentResponse rejectAssignment(Long assignmentId, String reason) {
+        ScheduleAssignment assignment = getOwnedPublishedAssignment(assignmentId);
+        assignment.setStatus(ScheduleAssignmentStatus.REJECTED);
+        assignment.setRespondedAt(LocalDateTime.now());
+        assignment.setResponseNote(trimToNull(reason));
+        return mapAssignment(scheduleAssignmentRepository.save(assignment));
+    }
+
+    private ScheduleAssignment getOwnedPublishedAssignment(Long assignmentId) {
         ScheduleAssignment assignment = scheduleAssignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy assignment"));
 
@@ -240,14 +349,71 @@ public class StaffScheduleService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
 
         if (!Objects.equals(assignment.getStaff().getId(), currentUser.getId())) {
-            throw new RuntimeException("Bạn không thể xác nhận ca của người khác");
+            throw new RuntimeException("Bạn không thể thao tác với ca của người khác");
         }
         if (assignment.getStatus() != ScheduleAssignmentStatus.PUBLISHED) {
-            throw new RuntimeException("Chỉ có thể xác nhận assignment đang ở trạng thái PUBLISHED");
+            throw new RuntimeException("Chỉ có thể phản hồi assignment đang ở trạng thái PUBLISHED");
         }
 
-        assignment.setStatus(ScheduleAssignmentStatus.CONFIRMED);
-        return mapAssignment(scheduleAssignmentRepository.save(assignment));
+        return assignment;
+    }
+
+
+    private SchedulePlan requireEditableDraftPlan(Long planId) {
+        SchedulePlan plan = schedulePlanRepository.findById(planId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy schedule plan"));
+        if (plan.getStatus() != SchedulePlanStatus.DRAFT) {
+            throw new RuntimeException("Chỉ được chỉnh tay assignment trong plan DRAFT");
+        }
+        return plan;
+    }
+
+    private User requireEligibleStaff(Long staffId, LocalDate businessDate) {
+        User user = userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
+        if (!isEligibleForScheduling(user)) {
+            throw new RuntimeException("Nhân viên này không đủ điều kiện để xếp lịch");
+        }
+        if (Boolean.TRUE.equals(user.getSeasonalOnly())) {
+            if (user.getSeasonalStartDate() == null || user.getSeasonalEndDate() == null
+                    || businessDate.isBefore(user.getSeasonalStartDate())
+                    || businessDate.isAfter(user.getSeasonalEndDate())) {
+                throw new RuntimeException("Nhân viên thời vụ không nằm trong khoảng ngày làm việc hợp lệ");
+            }
+        }
+        return user;
+    }
+
+    private ShiftTemplate requireShiftTemplate(Long shiftTemplateId) {
+        ShiftTemplate template = shiftTemplateRepository.findById(shiftTemplateId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca làm việc"));
+        if (!Boolean.TRUE.equals(template.getActive())) {
+            throw new RuntimeException("Ca làm việc đã ngừng hoạt động");
+        }
+        return template;
+    }
+
+    private void validatePositionForStaff(User staff, String position) {
+        if (!canWorkPosition(staff, position)) {
+            throw new RuntimeException("Nhân viên này không phù hợp với vị trí " + position);
+        }
+    }
+
+    private void validateNoOverlap(Long staffId, LocalDateTime shiftStart, LocalDateTime shiftEnd, Long ignoredAssignmentId) {
+        boolean hasOverlap = scheduleAssignmentRepository.findForStaffBetween(staffId, shiftStart, shiftEnd)
+                .stream()
+                .filter(existing -> ignoredAssignmentId == null || !Objects.equals(existing.getId(), ignoredAssignmentId))
+                .anyMatch(existing -> existing.getShiftStart().isBefore(shiftEnd) && existing.getShiftEnd().isAfter(shiftStart));
+
+        if (hasOverlap) {
+            throw new RuntimeException("Nhân viên đã có ca trùng thời gian này");
+        }
+    }
+
+    private String buildManualExplanation(User staff, String position, ShiftTemplate template) {
+        return "Admin chỉnh tay: xếp " + resolveStaffName(staff)
+                + " vào " + template.getName()
+                + " vị trí " + position + ".";
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
@@ -461,7 +627,10 @@ public class StaffScheduleService {
                 assignment.getShiftStart(),
                 assignment.getShiftEnd(),
                 assignment.getStatus(),
-                assignment.getExplanation()
+                assignment.getSource(),
+                assignment.getExplanation(),
+                assignment.getRespondedAt(),
+                assignment.getResponseNote()
         );
     }
 
@@ -481,6 +650,14 @@ public class StaffScheduleService {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private boolean isEligibleForScheduling(User user) {

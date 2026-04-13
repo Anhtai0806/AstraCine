@@ -81,11 +81,47 @@ public class AdminStaffSchedulingController {
         return ResponseEntity.ok(staffScheduleService.publishPlan(planId));
     }
 
+
+    @GetMapping("/staff-options")
+    public ResponseEntity<List<StaffScheduleDTO.StaffOptionResponse>> getStaffOptions(
+            @RequestParam LocalDate businessDate
+    ) {
+        return ResponseEntity.ok(staffScheduleService.getEligibleStaffOptions(businessDate));
+    }
+
+    @GetMapping("/shift-templates")
+    public ResponseEntity<List<StaffScheduleDTO.ShiftTemplateResponse>> getShiftTemplates() {
+        return ResponseEntity.ok(staffScheduleService.getActiveShiftTemplates());
+    }
+
     @GetMapping("/assignments")
     public ResponseEntity<List<StaffScheduleDTO.AssignmentResponse>> getAssignments(
             @RequestParam LocalDate businessDate
     ) {
         return ResponseEntity.ok(staffScheduleService.getAssignmentsByDate(businessDate));
+    }
+
+    @PostMapping("/assignments")
+    public ResponseEntity<StaffScheduleDTO.AssignmentResponse> createManualAssignment(
+            @Valid @RequestBody StaffScheduleDTO.ManualAssignmentUpsertRequest request
+    ) {
+        return ResponseEntity.ok(staffScheduleService.createManualAssignment(request));
+    }
+
+    @PutMapping("/assignments/{assignmentId}")
+    public ResponseEntity<StaffScheduleDTO.AssignmentResponse> updateManualAssignment(
+            @PathVariable Long assignmentId,
+            @Valid @RequestBody StaffScheduleDTO.ManualAssignmentUpsertRequest request
+    ) {
+        return ResponseEntity.ok(staffScheduleService.updateManualAssignment(assignmentId, request));
+    }
+
+    @DeleteMapping("/assignments/{assignmentId}")
+    public ResponseEntity<Void> deleteManualAssignment(
+            @PathVariable Long assignmentId
+    ) {
+        staffScheduleService.deleteManualAssignment(assignmentId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/assignments/{assignmentId}/explanation")
