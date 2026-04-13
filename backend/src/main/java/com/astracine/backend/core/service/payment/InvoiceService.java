@@ -1,4 +1,4 @@
-package com.astracine.backend.core.service;
+package com.astracine.backend.core.service.payment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,6 +38,10 @@ import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 
+import com.astracine.backend.core.service.SeatHoldService;
+import com.astracine.backend.core.service.EmailService;
+import com.astracine.backend.core.service.MemberService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -64,9 +68,9 @@ public class InvoiceService {
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
-                                 BigDecimal amount, List<String> promotionCodes,
-                                 List<ComboCartItemDTO> comboItems,
-                                 long showtimeId, List<Long> seatIds, int pointsUsed) {
+            BigDecimal amount, List<String> promotionCodes,
+            List<ComboCartItemDTO> comboItems,
+            long showtimeId, List<Long> seatIds, int pointsUsed) {
 
         return createInvoiceInternal(
                 holdId,
@@ -87,16 +91,16 @@ public class InvoiceService {
 
     @Transactional
     public Invoice createCounterInvoice(String holdId,
-                                        String staffUsername,
-                                        BigDecimal amount,
-                                        List<String> promotionCodes,
-                                        List<ComboCartItemDTO> comboItems,
-                                        long showtimeId,
-                                        List<Long> seatIds,
-                                        String customerName,
-                                        String customerEmail,
-                                        String customerPhone,
-                                        String paymentMethod) {
+            String staffUsername,
+            BigDecimal amount,
+            List<String> promotionCodes,
+            List<ComboCartItemDTO> comboItems,
+            long showtimeId,
+            List<Long> seatIds,
+            String customerName,
+            String customerEmail,
+            String customerPhone,
+            String paymentMethod) {
 
         Long staffId = userRepository.findByUsername(staffUsername)
                 .map(User::getId)
@@ -120,19 +124,19 @@ public class InvoiceService {
     }
 
     private Invoice createInvoiceInternal(String holdId,
-                                          String actorUserId,
-                                          BigDecimal amount,
-                                          List<String> promotionCodes,
-                                          List<ComboCartItemDTO> comboItems,
-                                          long showtimeId,
-                                          List<Long> seatIds,
-                                          Long staffId,
-                                          String customerName,
-                                          String customerEmail,
-                                          String customerPhone,
-                                          String paymentMethod,
-                                          String transactionCode,
-                                          int pointsUsed) {
+            String actorUserId,
+            BigDecimal amount,
+            List<String> promotionCodes,
+            List<ComboCartItemDTO> comboItems,
+            long showtimeId,
+            List<Long> seatIds,
+            Long staffId,
+            String customerName,
+            String customerEmail,
+            String customerPhone,
+            String paymentMethod,
+            String transactionCode,
+            int pointsUsed) {
 
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new IllegalStateException("Showtime not found: " + showtimeId));
@@ -239,7 +243,8 @@ public class InvoiceService {
                             Optional<Promotion> appliedPromo = promotionRepository.findByCode(code);
                             if (appliedPromo.isPresent()) {
                                 Promotion p = appliedPromo.get();
-                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase() : "ALL";
+                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase()
+                                        : "ALL";
 
                                 BigDecimal discountValue = p.getDiscountValue();
                                 BigDecimal discountAmt = BigDecimal.ZERO;
@@ -261,7 +266,7 @@ public class InvoiceService {
                                             : discountValue;
 
                                     BigDecimal temp = actualTicketAmount.subtract(discountAmt);
-                                    if(temp.compareTo(BigDecimal.ZERO) < 0) {
+                                    if (temp.compareTo(BigDecimal.ZERO) < 0) {
                                         actualComboAmount = actualComboAmount.add(temp); // Cộng số âm = trừ
                                         actualTicketAmount = BigDecimal.ZERO;
                                     } else {
@@ -273,8 +278,10 @@ public class InvoiceService {
                     }
 
                     // Chốt chặn cuối cùng: Không để tiền bị âm
-                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0) actualTicketAmount = BigDecimal.ZERO;
-                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0) actualComboAmount = BigDecimal.ZERO;
+                    if (actualTicketAmount.compareTo(BigDecimal.ZERO) < 0)
+                        actualTicketAmount = BigDecimal.ZERO;
+                    if (actualComboAmount.compareTo(BigDecimal.ZERO) < 0)
+                        actualComboAmount = BigDecimal.ZERO;
 
                     // Gọi hàm cộng điểm với SỐ TIỀN THỰC TRẢ ĐÃ PHÂN BỔ ĐÚNG
                     memberService.processAfterPayment(customer, actualTicketAmount, actualComboAmount);
@@ -305,7 +312,8 @@ public class InvoiceService {
 
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
-                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy/chưa commit
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi
+                // proxy/chưa commit
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
 
                 // Tạo một luồng mới để gửi thư
@@ -497,7 +505,7 @@ public class InvoiceService {
 
         boolean hasSearch = search != null && !search.isBlank();
         boolean hasStatus = status != null && !status.isBlank();
-        boolean hasDate   = from != null && to != null;
+        boolean hasDate = from != null && to != null;
 
         if (hasSearch && hasDate) {
             invoices = invoiceRepository
