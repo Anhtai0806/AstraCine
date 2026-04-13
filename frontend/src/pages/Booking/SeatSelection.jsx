@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { message } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { seatHoldApi } from "../../api/seatHoldApi.js";
 import { connectSeatSocket } from "/src/services/seatHoldSocket.js";
@@ -8,10 +9,8 @@ import SeatGrid from "../../components/admin/SeatGrid.jsx";
 import "../../components/admin/SeatGrid.css";
 
 import "./SeatSelection.css";
+import { getRemainingHoldSeconds } from "../../utils/holdSession.js";
 
-function nowMs() {
-    return Date.now();
-}
 
 function formatCurrencyVND(value) {
     if (value == null) return "";
@@ -55,8 +54,8 @@ export default function SeatSelection() {
     const [error, setError] = useState(null);
 
     const disconnectRef = useRef(null);
-    const renewTimerRef = useRef(null);
     const holdIdRef = useRef(restoredHoldId || null);
+    const holdExpiredHandledRef = useRef(false);
 
     function restoreMyHeldSeats(data) {
         const myHeldSeats = (data || []).filter(
@@ -120,8 +119,6 @@ export default function SeatSelection() {
             } catch (_) {}
             disconnectRef.current = null;
 
-            if (renewTimerRef.current) clearInterval(renewTimerRef.current);
-            renewTimerRef.current = null;
         };
     }, [sid]);
 
@@ -145,48 +142,41 @@ export default function SeatSelection() {
         };
     }, [sid]);
 
-    useEffect(() => {
-        if (renewTimerRef.current) clearInterval(renewTimerRef.current);
-        renewTimerRef.current = null;
-
-        if (!hold?.holdId) return;
-
-        renewTimerRef.current = setInterval(async () => {
-            try {
-                const renewed = await seatHoldApi.renewHold(hold.holdId);
-                setHold(renewed);
-            } catch (e) {
-                console.warn("renew failed", e);
-            }
-        }, 30000);
-
-        return () => {
-            if (renewTimerRef.current) clearInterval(renewTimerRef.current);
-            renewTimerRef.current = null;
-        };
-    }, [hold?.holdId]);
-
     const [remainingSeconds, setRemainingSeconds] = useState(null);
 
     useEffect(() => {
         if (!hold?.expiresAt) {
+            holdExpiredHandledRef.current = false;
             setRemainingSeconds(null);
             return;
         }
 
-        // Tính ngay lập tức
-        const calc = () => Math.max(0, Math.floor((hold.expiresAt - Date.now()) / 1000));
-        setRemainingSeconds(calc());
-
-        // Cập nhật mỗi 1 giây
-        const timer = setInterval(() => {
-            const secs = calc();
+        const updateRemaining = () => {
+            const secs = getRemainingHoldSeconds(hold.expiresAt);
             setRemainingSeconds(secs);
-            if (secs <= 0) clearInterval(timer);
+
+            if ((secs ?? 0) <= 0 && !holdExpiredHandledRef.current) {
+                holdExpiredHandledRef.current = true;
+                setHold(null);
+                setSelectedSeatIds([]);
+                message.warning("Đã hết thời gian giữ ghế. Vui lòng chọn lại ghế.");
+                load({ restoreSelection: true }).catch((e) => {
+                    console.error("reload after hold expired failed", e);
+                });
+            }
+
+            return secs;
+        };
+
+        updateRemaining();
+        const timer = setInterval(() => {
+            const secs = updateRemaining();
+            if ((secs ?? 0) <= 0) clearInterval(timer);
         }, 1000);
 
         return () => clearInterval(timer);
     }, [hold?.expiresAt]);
+
 
     // sort seats
     const sortedSeats = useMemo(() => {
@@ -357,6 +347,7 @@ export default function SeatSelection() {
                 startTime,
                 endTime,
                 roomName: roomName || null,
+                holdExpiresAt: hold.expiresAt || null,
             },
         });
     }

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getAllPromotions, validatePromotion } from "../../api/promotionApi";
 import { staffApi } from "../../api/staffApi";
 import "./StaffCounterCheckout.css";
+import { buildExpiredSeatRedirectState, buildSeatSelectionPath, getRemainingHoldSeconds } from "../../utils/holdSession";
 
 const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount || 0);
@@ -58,6 +59,7 @@ export default function StaffCounterCheckout() {
         movieTitle,
         startTime,
         roomName,
+        holdExpiresAt = null,
     } = location.state || {};
 
     const [promotions, setPromotions] = useState([]);
@@ -76,6 +78,43 @@ export default function StaffCounterCheckout() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(null);
     const [result, setResult] = useState(null);
+
+    const holdExpiredHandledRef = useRef(false);
+
+    useEffect(() => {
+        if (!holdId || !holdExpiresAt) {
+            holdExpiredHandledRef.current = false;
+            return;
+        }
+
+        const seatPath = buildSeatSelectionPath(true, showtimeId);
+        const seatState = buildExpiredSeatRedirectState({ movieTitle, startTime, roomName });
+
+        const handleExpired = () => {
+            if (holdExpiredHandledRef.current) return;
+            holdExpiredHandledRef.current = true;
+            setSubmitError("Phiên giữ ghế đã hết hạn. Vui lòng chọn lại ghế.");
+            alert("Đã hết thời gian giữ ghế. Hệ thống sẽ đưa bạn về màn hình chọn ghế.");
+            navigate(seatPath, { replace: true, state: seatState });
+        };
+
+        const tick = () => {
+            const secs = getRemainingHoldSeconds(holdExpiresAt);
+            if ((secs ?? 0) <= 0) {
+                handleExpired();
+                return 0;
+            }
+            return secs;
+        };
+
+        tick();
+        const timer = setInterval(() => {
+            const secs = tick();
+            if ((secs ?? 0) <= 0) clearInterval(timer);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [holdId, holdExpiresAt, movieTitle, navigate, roomName, showtimeId, startTime]);
 
     useEffect(() => {
         if (!holdId || seatDetails.length === 0) {
