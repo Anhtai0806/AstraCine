@@ -18,7 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 public class MemberService {
 
     private final MembershipRepository membershipRepository;
-    private final PromotionService promotionService; // Inject PromotionService để gọi hàm sinh mã
+    // Đã thay thế PromotionService bằng UserCouponService
+    private final UserCouponService userCouponService; 
 
     // 🎯 Tính điểm
     public int calculatePoints(Customer customer, BigDecimal ticketAmount, BigDecimal comboAmount) {
@@ -73,31 +74,27 @@ public class MemberService {
         }
     }
 
-    // 🎁 Hàm chia quà
+    // 🎁 Hàm chia quà (Đã được cập nhật để gọi UserCouponService)
     private void distributeUpgradeRewards(Customer customer, String levelName) {
-        int numCodes = 0;
-
+        
+        // Gọi thẳng vào kho chứa hàm sinh mã mà chúng ta đã làm ở Giai đoạn 2
+        // Giả định Customer entity của bạn có liên kết tới User (customer.getUser())
         if ("ELITE".equalsIgnoreCase(levelName)) {
-            numCodes = 2;
+            userCouponService.giftEliteCoupons(customer.getUser());
         } else if ("VIP".equalsIgnoreCase(levelName)) {
-            numCodes = 6;
+            userCouponService.giftVipCoupons(customer.getUser());
         } else if ("VVIP".equalsIgnoreCase(levelName)) {
-            numCodes = 9;
+            userCouponService.giftVvipCoupons(customer.getUser());
         }
 
-        if (numCodes > 0) {
-            // 1. Sinh mã tự động
-            List<String> rewardCodes = promotionService.generateUpgradeRewards(customer.getId(), levelName, numCodes);
+        // In log ra console để dễ kiểm tra
+        log.info("🎉🎉🎉 CHÚC MỪNG KHÁCH HÀNG THĂNG HẠNG {} 🎉🎉🎉", levelName);
+        log.info("Đã phát quà nâng hạng thành công vào ví của User ID: {}", customer.getUser().getId());
 
-            // 2. In ra console để bạn dễ kiểm tra
-            log.info("🎉🎉🎉 CHÚC MỪNG KHÁCH HÀNG THĂNG HẠNG {} 🎉🎉🎉", levelName);
-            log.info("Tặng user ID {} các mã giảm 100% vé phim: {}", customer.getId(), rewardCodes);
-
-            // 3. (Gợi ý nâng cấp) Gọi EmailService gửi danh sách rewardCodes cho khách
-            // String targetEmail = customer.getEmail() != null ? customer.getEmail() :
-            // customer.getUser().getEmail();
-            // emailService.sendUpgradeRewardEmail(targetEmail, levelName, rewardCodes);
-        }
+        // (Gợi ý nâng cấp) Gọi EmailService gửi thông báo cho khách
+        // String targetEmail = customer.getEmail() != null ? customer.getEmail() :
+        // customer.getUser().getEmail();
+        // emailService.sendUpgradeRewardEmail(targetEmail, levelName);
     }
 
     // 💰 Xử lý sau khi thanh toán

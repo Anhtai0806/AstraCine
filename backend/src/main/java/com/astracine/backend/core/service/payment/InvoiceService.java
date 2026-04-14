@@ -24,6 +24,7 @@ import com.astracine.backend.core.entity.Showtime;
 import com.astracine.backend.core.entity.ShowtimeSeat;
 import com.astracine.backend.core.entity.Ticket;
 import com.astracine.backend.core.entity.User;
+import com.astracine.backend.core.entity.UserCoupon; // THÊM MỚI
 import com.astracine.backend.core.repository.ComboRepository;
 import com.astracine.backend.core.repository.CustomerRepository;
 import com.astracine.backend.core.repository.InvoiceComboRepository;
@@ -35,12 +36,14 @@ import com.astracine.backend.core.repository.PromotionRepository;
 import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.core.repository.ShowtimeSeatRepository;
 import com.astracine.backend.core.repository.TicketRepository;
+import com.astracine.backend.core.repository.UserCouponRepository; // THÊM MỚI
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.invoice.ETicketDTO;
 import com.astracine.backend.presentation.dto.invoice.InvoiceHistoryDTO;
 import com.astracine.backend.presentation.dto.payment.ComboCartItemDTO;
 
 import com.astracine.backend.core.service.SeatHoldService;
+import com.astracine.backend.core.service.UserCouponService; // THÊM MỚI
 import com.astracine.backend.core.service.EmailService;
 import com.astracine.backend.core.service.MemberService;
 
@@ -67,6 +70,10 @@ public class InvoiceService {
     private final EmailService emailService;
     private final MemberService memberService;
     private final CustomerRepository customerRepository;
+    
+    // THÊM MỚI: Inject các Service và Repository của Ví Voucher
+    private final UserCouponService userCouponService;
+    private final UserCouponRepository userCouponRepository;
 
     @Transactional
     public Invoice createInvoice(String holdId, String userId, long orderCode,
@@ -184,7 +191,7 @@ public class InvoiceService {
         }
 
         saveInvoiceCombos(invoice, comboItems);
-        saveInvoicePromotion(invoice, promotionCodes, customerUsername);
+        saveInvoicePromotion(invoice, promotionCodes, customerUsername); // Sẽ xử lý khóa Voucher cá nhân ở hàm này
 
         try {
             seatHoldService.confirmHoldToSold(holdId, actorUserId);
@@ -239,15 +246,15 @@ public class InvoiceService {
                     BigDecimal actualComboAmount = rawComboAmount;
                     BigDecimal totalRaw = rawTicketAmount.add(rawComboAmount);
 
-                    // TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER
+                    // TÍNH TOÁN LẠI TIỀN THEO NHIỀU VOUCHER (Bao gồm cả Global và Cá nhân)
                     if (promotionCodes != null && !promotionCodes.isEmpty()) {
                         for (String code : promotionCodes) {
                             Optional<Promotion> appliedPromo = promotionRepository.findByCode(code);
+                            
+                            // NẾU LÀ MÃ GLOBAL (Khuyến mãi chung)
                             if (appliedPromo.isPresent()) {
                                 Promotion p = appliedPromo.get();
-                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase()
-                                        : "ALL";
-
+                                String applyType = p.getApplicableTo() != null ? p.getApplicableTo().toUpperCase() : "ALL";
                                 BigDecimal discountAmt = BigDecimal.ZERO;
 
                                 if ("TICKET".equals(applyType)) {
@@ -257,15 +264,30 @@ public class InvoiceService {
                                     discountAmt = calculateDiscountAmount(p, rawComboAmount);
                                     actualComboAmount = actualComboAmount.subtract(discountAmt);
                                 } else {
-                                    // "ALL" - Ưu tiên trừ vé, dư thì trừ tiếp bắp nước
                                     discountAmt = calculateDiscountAmount(p, totalRaw);
-
                                     BigDecimal temp = actualTicketAmount.subtract(discountAmt);
                                     if (temp.compareTo(BigDecimal.ZERO) < 0) {
-                                        actualComboAmount = actualComboAmount.add(temp); // Cộng số âm = trừ
+                                        actualComboAmount = actualComboAmount.add(temp);
                                         actualTicketAmount = BigDecimal.ZERO;
                                     } else {
                                         actualTicketAmount = temp;
+                                    }
+                                }
+                            } 
+                            // THÊM MỚI: NẾU LÀ MÃ CÁ NHÂN (Voucher nâng hạng)
+                            else {
+                                Optional<UserCoupon> appliedUserCoupon = userCouponRepository.findByCode(code);
+                                if (appliedUserCoupon.isPresent()) {
+                                    UserCoupon uc = appliedUserCoupon.get();
+                                    String applyType = uc.getTargetType(); // "TICKET" hoặc "FNB"
+                                    BigDecimal discountAmt = BigDecimal.ZERO;
+                                    
+                                    if ("TICKET".equalsIgnoreCase(applyType)) {
+                                        discountAmt = calculateUserCouponDiscount(uc, rawTicketAmount);
+                                        actualTicketAmount = actualTicketAmount.subtract(discountAmt);
+                                    } else if ("FNB".equalsIgnoreCase(applyType) || "COMBO".equalsIgnoreCase(applyType)) {
+                                        discountAmt = calculateUserCouponDiscount(uc, rawComboAmount);
+                                        actualComboAmount = actualComboAmount.subtract(discountAmt);
                                     }
                                 }
                             }
@@ -289,7 +311,7 @@ public class InvoiceService {
             }
 
         } catch (Exception e) {
-            log.error("[Membership] Error updating membership: {}", e.getMessage());
+            log.error("[Membership] Error updating membership: {}", e.getMessage(), e); // Log đầy đủ stacktrace
         }
 
         // KÍCH HOẠT GỬI EMAIL VÉ
@@ -307,11 +329,9 @@ public class InvoiceService {
 
             final String finalTargetEmail = targetEmail;
             if (finalTargetEmail != null && !finalTargetEmail.isBlank()) {
-                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi
-                // proxy/chưa commit
+                // Lấy thông tin vé đồng bộ ngay trong transaction hiện tại để tránh lỗi proxy
                 ETicketDTO printTicket = getETicketByOrderCode(transactionCode);
 
-                // Tạo một luồng mới để gửi thư
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
                         emailService.sendTicketEmail(finalTargetEmail, printTicket);
@@ -321,7 +341,7 @@ public class InvoiceService {
                     }
                 });
             } else {
-                log.info("[Invoice] No valid email found to send ticket for invoice=${}", invoice.getId());
+                log.info("[Invoice] No valid email found to send ticket for invoice={}", invoice.getId());
             }
 
         } catch (Exception e) {
@@ -341,7 +361,6 @@ public class InvoiceService {
                 continue;
             }
             comboRepository.findById(item.getComboId()).ifPresent(combo -> {
-                // Kiểm tra tồn kho
                 int currentStock = combo.getStockQuantity() != null ? combo.getStockQuantity() : 0;
                 int requested = item.getQuantity();
                 if (currentStock < requested) {
@@ -350,7 +369,6 @@ public class InvoiceService {
                                     + " sản phẩm, không đủ số lượng yêu cầu (" + requested + ").");
                 }
 
-                // Trừ tồn kho
                 combo.setStockQuantity(currentStock - requested);
                 comboRepository.save(combo);
 
@@ -372,11 +390,15 @@ public class InvoiceService {
 
         for (String code : promotionCodes) {
             if (code != null && !code.isBlank()) {
-                promotionRepository.findByCode(code).ifPresentOrElse(promo -> {
+                Optional<Promotion> promoOpt = promotionRepository.findByCode(code);
+                
+                // NẾU LÀ MÃ GLOBAL
+                if (promoOpt.isPresent()) {
+                    Promotion promo = promoOpt.get();
                     if (promo.getMaxUsage() != null && promo.getCurrentUsage() != null
                             && promo.getCurrentUsage() >= promo.getMaxUsage()) {
                         log.warn("[Invoice] Promotion '{}' reached global max usage, skipping", code);
-                        return;
+                        continue;
                     }
 
                     if (promo.getMaxUsagePerUser() != null && customerUsername != null && !customerUsername.isBlank()) {
@@ -388,7 +410,7 @@ public class InvoiceService {
                             if (usedByCustomer >= promo.getMaxUsagePerUser()) {
                                 log.warn("[Invoice] Promotion '{}' reached per-user limit for '{}', skipping",
                                         code, customerUsername);
-                                return;
+                                continue;
                             }
                         }
                     }
@@ -396,11 +418,24 @@ public class InvoiceService {
                     invoicePromotionRepository.save(new InvoicePromotion(invoice, promo));
                     promo.setCurrentUsage(promo.getCurrentUsage() != null ? promo.getCurrentUsage() + 1 : 1);
                     promotionRepository.save(promo);
-                }, () -> log.warn("[Invoice] Promotion '{}' not found, skipping", code));
+                } 
+                // THÊM MỚI: NẾU KHÔNG PHẢI MÃ GLOBAL, KIỂM TRA & KHÓA MÃ CÁ NHÂN
+                else {
+                    Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(customerUsername, customerUsername, customerUsername);
+                    if (uOpt.isPresent()) {
+                        try {
+                            userCouponService.consumeCoupon(uOpt.get().getId(), code);
+                            log.info("[Invoice] Đã sử dụng (khóa) Voucher cá nhân '{}' cho user {}", code, customerUsername);
+                        } catch (Exception e) {
+                            log.warn("[Invoice] Mã '{}' không hợp lệ hoặc đã sử dụng: {}", code, e.getMessage());
+                        }
+                    }
+                }
             }
         }
     }
 
+    // Hàm tính giảm giá cho mã Global
     private BigDecimal calculateDiscountAmount(Promotion promo, BigDecimal baseAmount) {
         if (promo == null || baseAmount == null || baseAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
@@ -417,6 +452,23 @@ public class InvoiceService {
             discount = discount.min(promo.getMaxDiscountAmount());
         }
 
+        return discount.min(baseAmount).max(BigDecimal.ZERO);
+    }
+
+    // THÊM MỚI: Hàm tính giảm giá cho mã Cá nhân (UserCoupon)
+    private BigDecimal calculateUserCouponDiscount(UserCoupon uc, BigDecimal baseAmount) {
+        if (uc == null || baseAmount == null || baseAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        
+        // Tính % giảm
+        BigDecimal discount = baseAmount.multiply(BigDecimal.valueOf(uc.getDiscountPercent())).divide(BigDecimal.valueOf(100));
+        
+        // Cắt theo mức giảm tối đa
+        if (uc.getMaxDiscountAmount() != null) {
+            discount = discount.min(uc.getMaxDiscountAmount());
+        }
+        
         return discount.min(baseAmount).max(BigDecimal.ZERO);
     }
 
@@ -463,7 +515,6 @@ public class InvoiceService {
                     customerPhone.trim());
         }
 
-        // Chỉ với luồng online mới được fallback sang actorUserId
         if (!counterSale && matchedUser.isEmpty() && actorUserId != null && !actorUserId.isBlank()) {
             matchedUser = userRepository.findByUsernameOrEmailOrPhone(
                     actorUserId.trim(),
@@ -475,7 +526,6 @@ public class InvoiceService {
             return matchedUser.get().getUsername();
         }
 
-        // Luồng quầy: ưu tiên tên khách hiển thị trên hóa đơn
         if (counterSale) {
             if (customerName != null && !customerName.isBlank()) {
                 return customerName.trim();
@@ -489,7 +539,6 @@ public class InvoiceService {
             return "WALK_IN";
         }
 
-        // Luồng online giữ nguyên fallback cũ
         if (customerEmail != null && !customerEmail.isBlank()) {
             return customerEmail.trim();
         }
@@ -534,8 +583,6 @@ public class InvoiceService {
         }
     }
 
-    // ===== TÍNH NĂNG CỦA THANH (Admin Invoices) =====
-
     public List<InvoiceHistoryDTO> getInvoiceHistory(String username) {
         Optional<User> userOpt = userRepository.findByUsernameOrEmailOrPhone(username, username, username);
         if (userOpt.isEmpty()) {
@@ -565,7 +612,6 @@ public class InvoiceService {
             invoices = invoiceRepository
                     .findByCustomerUsernameContainingIgnoreCaseAndCreatedAtBetweenOrderByCreatedAtDesc(
                             search.trim(), from, to);
-            // filter thêm status nếu có
             if (hasStatus) {
                 final String s = status;
                 invoices = invoices.stream().filter(i -> s.equalsIgnoreCase(i.getStatus())).toList();
@@ -655,16 +701,12 @@ public class InvoiceService {
                 .build();
     }
 
-    // =================================================
-
     @Transactional(readOnly = true)
     public ETicketDTO getETicketByOrderCode(String orderCode) {
-        // 1. Tìm Payment theo transactionCode = orderCode
         Payment payment = paymentRepository.findByTransactionCode(orderCode)
                 .orElseThrow(
                         () -> new IllegalArgumentException("Không tìm thấy thanh toán với orderCode=" + orderCode));
 
-        // 2. Lấy Invoice → Showtime → Movie, Room
         Invoice inv = payment.getInvoice();
         Showtime showtime = inv.getShowtime();
 
@@ -685,7 +727,6 @@ public class InvoiceService {
                 ? showtime.getRoom().getName()
                 : null;
 
-        // 3. Lấy tất cả Tickets → ShowtimeSeat → Seat
         List<Ticket> tickets = ticketRepository.findByInvoiceId(inv.getId());
 
         StringBuilder seatsBuilder = new StringBuilder();
@@ -704,20 +745,17 @@ public class InvoiceService {
                 }
                 seatsBuilder.append(seat.getRowLabel()).append(seat.getColumnNumber());
 
-                // Lấy loại ghế từ ghế đầu tiên
                 if (seatType == null && seat.getSeatType() != null) {
                     seatType = seat.getSeatType().name();
                 }
             }
 
-            // Lấy ticketCode và qrCode từ ticket đầu tiên
             if (ticketCode == null && t.getQrCode() != null) {
                 ticketCode = t.getQrCode();
                 qrCode = t.getQrCode();
             }
         }
 
-        // 4. LẤY THÔNG TIN COMBO (BẮP NƯỚC) TỪ INVOICE_COMBOS
         List<InvoiceCombo> invoiceCombos = invoiceComboRepository.findByInvoiceId(inv.getId());
         String comboDetails = null;
 
@@ -727,7 +765,6 @@ public class InvoiceService {
                     .collect(java.util.stream.Collectors.joining(", "));
         }
 
-        // 5. Trả về DTO
         return ETicketDTO.builder()
                 .movieTitle(movieTitle)
                 .ageRating(ageRating)
@@ -745,4 +782,3 @@ public class InvoiceService {
                 .build();
     }
 }
-

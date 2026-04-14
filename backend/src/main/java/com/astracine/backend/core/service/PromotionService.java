@@ -5,15 +5,18 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.astracine.backend.core.entity.Promotion;
+import com.astracine.backend.core.entity.User;
+import com.astracine.backend.core.entity.UserCoupon;
 import com.astracine.backend.core.repository.InvoicePromotionRepository;
 import com.astracine.backend.core.repository.PromotionRepository;
+import com.astracine.backend.core.repository.UserCouponRepository;
 import com.astracine.backend.core.repository.UserRepository;
 import com.astracine.backend.presentation.dto.PromotionDTO;
 
@@ -27,6 +30,9 @@ public class PromotionService {
     private final PromotionRepository promotionRepository;
     private final InvoicePromotionRepository invoicePromotionRepository;
     private final UserRepository userRepository;
+    
+    // Bổ sung kho chứa Ví Voucher cá nhân
+    private final UserCouponRepository userCouponRepository;
 
     public List<PromotionDTO> getAllPromotions() {
         return promotionRepository.findAll().stream()
@@ -115,58 +121,72 @@ public class PromotionService {
         return validatePromotionCode(code, null);
     }
 
+    // NÂNG CẤP: Tìm thẳng bằng Mã Code thay vì phải đợi Username
     public PromotionDTO validatePromotionCode(String code, String customerUsername) {
-        Promotion promotion = promotionRepository.findValidPromotionByCode(code, LocalDate.now())
-                .orElseThrow(() -> new RuntimeException("Invalid or expired promotion code"));
+        
+        // 1. TÌM TRONG BẢNG KHUYẾN MÃI CHUNG TRƯỚC
+        Optional<Promotion> promoOpt = promotionRepository.findValidPromotionByCode(code, LocalDate.now());
 
-        // Check if promotion has reached max usage
-        if (promotion.getMaxUsage() != null &&
-                promotion.getCurrentUsage() >= promotion.getMaxUsage()) {
-            throw new RuntimeException("Promotion code has reached maximum usage limit");
-        }
+        if (promoOpt.isPresent()) {
+            Promotion promotion = promoOpt.get();
+            if (promotion.getMaxUsage() != null && promotion.getCurrentUsage() >= promotion.getMaxUsage()) {
+                throw new RuntimeException("Promotion code has reached maximum usage limit");
+            }
 
-        if (promotion.getMaxUsagePerUser() != null && customerUsername != null && !customerUsername.isBlank()) {
-            List<String> identityCandidates = buildCustomerIdentityCandidates(customerUsername);
-            if (!identityCandidates.isEmpty()) {
-                long usedByCustomer = invoicePromotionRepository.countUsageByPromotionAndCustomerUsernames(
-                        promotion.getId(),
-                        identityCandidates);
-                if (usedByCustomer >= promotion.getMaxUsagePerUser()) {
-                    throw new RuntimeException("Promotion code has reached per-user usage limit");
+            if (promotion.getMaxUsagePerUser() != null && customerUsername != null && !customerUsername.isBlank()) {
+                List<String> identityCandidates = buildCustomerIdentityCandidates(customerUsername);
+                if (!identityCandidates.isEmpty()) {
+                    long usedByCustomer = invoicePromotionRepository.countUsageByPromotionAndCustomerUsernames(
+                            promotion.getId(), identityCandidates);
+                    if (usedByCustomer >= promotion.getMaxUsagePerUser()) {
+                        throw new RuntimeException("Promotion code has reached per-user usage limit");
+                    }
                 }
             }
+            return convertToDTO(promotion);
         }
 
-        return convertToDTO(promotion);
+        // 2. NẾU KHÔNG CÓ TRONG BẢNG CHUNG -> TÌM TRONG VÍ VOUCHER BẰNG MÃ CODE
+        Optional<UserCoupon> ucOpt = userCouponRepository.findByCode(code);
+if (ucOpt.isPresent()) {
+    UserCoupon uc = ucOpt.get();
+
+    // 🔥 FIX: check đúng user (tránh dùng nhầm voucher người khác)
+    if (customerUsername != null && !customerUsername.isBlank()) {
+        Optional<User> uOpt = userRepository.findByUsernameOrEmailOrPhone(
+                customerUsername, customerUsername, customerUsername);
+
+        if (uOpt.isPresent() && !uc.getUser().getId().equals(uOpt.get().getId())) {
+            throw new RuntimeException("Mã khuyến mãi này không thuộc về tài khoản của bạn.");
+        }
     }
 
-    // TỰ ĐỘNG TẠO MÃ THĂNG HẠNG (CHỈ ÁP DỤNG CHO VÉ)
-    public List<String> generateUpgradeRewards(Long customerId, String levelName, int quantity) {
-        List<String> generatedCodes = new ArrayList<>();
-        
-        for (int i = 0; i < quantity; i++) {
-            String uniqueString = UUID.randomUUID().toString().substring(0, 5).toUpperCase();
-            String code = "UPG-" + levelName.toUpperCase() + "-" + customerId + "-" + uniqueString;
+    if (uc.isUsed()) {
+        throw new RuntimeException("Mã khuyến mãi này đã được sử dụng.");
+    }
 
-            Promotion promotion = new Promotion();
-            promotion.setCode(code);
-            promotion.setDiscountType("PERCENTAGE");
-            promotion.setDiscountValue(new BigDecimal("100")); 
-            promotion.setApplicableTo("TICKET"); // Bắt buộc chỉ áp dụng cho Vé
-            promotion.setStartDate(LocalDate.now());
-            promotion.setEndDate(LocalDate.now().plusMonths(3)); // Hạn sử dụng 3 tháng
-            promotion.setStatus("ACTIVE");
-            promotion.setMaxUsage(1); 
-            promotion.setMaxUsagePerUser(1);
-            promotion.setCurrentUsage(0);
-            promotion.setDescription("Quà tặng thăng hạng " + levelName);
-            promotion.setMinOrderAmount(BigDecimal.ZERO);
+    if (uc.getExpiredAt().isBefore(java.time.LocalDateTime.now())) {
+        throw new RuntimeException("Mã khuyến mãi đã hết hạn.");
+    }
 
-            promotionRepository.save(promotion);
-            generatedCodes.add(code);
-        }
-        
-        return generatedCodes;
+    PromotionDTO dto = new PromotionDTO();
+    dto.setCode(uc.getCode());
+    dto.setDiscountType("PERCENTAGE");
+    dto.setDiscountValue(BigDecimal.valueOf(uc.getDiscountPercent()));
+    dto.setMaxDiscountAmount(uc.getMaxDiscountAmount());
+
+    String applyTo = uc.getTargetType();
+    if ("FNB".equalsIgnoreCase(applyTo)) {
+        applyTo = "COMBO";
+    }
+
+    dto.setApplicableTo(applyTo);
+    dto.setDescription("Voucher ưu đãi nâng hạng");
+    return dto;
+}
+
+        // 3. KHÔNG TÌM THẤY Ở ĐÂU CẢ
+        throw new RuntimeException("Mã không còn hiệu lực hoặc đã hết lượt sử dụng.");
     }
 
     private PromotionDTO convertToDTO(Promotion promotion) {
@@ -184,10 +204,7 @@ public class PromotionService {
         dto.setDescription(promotion.getDescription());
         dto.setMinOrderAmount(promotion.getMinOrderAmount());
         dto.setMaxDiscountAmount(promotion.getMaxDiscountAmount());
-        
-        // Map trường applicableTo
         dto.setApplicableTo(promotion.getApplicableTo());
-        
         return dto;
     }
 
@@ -205,10 +222,7 @@ public class PromotionService {
         promotion.setDescription(dto.getDescription());
         promotion.setMinOrderAmount(dto.getMinOrderAmount() != null ? dto.getMinOrderAmount() : BigDecimal.ZERO);
         promotion.setMaxDiscountAmount(dto.getMaxDiscountAmount());
-        
-        // Map trường applicableTo (Mặc định là ALL nếu người dùng không truyền)
         promotion.setApplicableTo(dto.getApplicableTo() != null ? dto.getApplicableTo() : "ALL");
-        
         return promotion;
     }
 
