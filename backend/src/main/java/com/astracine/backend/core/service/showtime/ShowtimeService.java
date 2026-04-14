@@ -493,7 +493,7 @@ public class ShowtimeService {
 
         for (Seat seat : originalSeats) {
             BigDecimal basePrice = priceMap.getOrDefault(seat.getSeatType(), BigDecimal.ZERO);
-            
+
             BigDecimal finalPrice = basePrice
                     .multiply(timeSlotMultiplier)
                     .multiply(effectiveRoomMultiplier)
@@ -523,7 +523,8 @@ public class ShowtimeService {
             }
         }
 
-        // 2. Phụ thu Ngày lễ (cộng dồn tất cả ngày lễ active mà ngày chiếu nằm trong khoảng)
+        // 2. Phụ thu Ngày lễ (cộng dồn tất cả ngày lễ active mà ngày chiếu nằm trong
+        // khoảng)
         List<HolidaySurcharge> holidays = holidaySurchargeRepository.findAllByOrderByStartDateDesc();
         for (HolidaySurcharge holiday : holidays) {
             if (Boolean.TRUE.equals(holiday.getActive())
@@ -641,7 +642,8 @@ public class ShowtimeService {
         return end;
     }
 
-    private LocalDateTime resolveFutureWindowStart(LocalDate scheduleDate, LocalTime openingTime, LocalDateTime windowEnd) {
+    private LocalDateTime resolveFutureWindowStart(LocalDate scheduleDate, LocalTime openingTime,
+            LocalDateTime windowEnd) {
         LocalDateTime requestedStart = scheduleDate.atTime(openingTime);
         LocalDateTime now = LocalDateTime.now();
 

@@ -168,7 +168,7 @@ const SeatPriceManager = () => {
             {successMsg && <div className="message-alert success"><RiCheckboxCircleLine />{successMsg}</div>}
 
             <table className="price-table">
-                <thead><tr><th>Loại ghế</th><th>Trạng thái</th><th style={{ textAlign: "right" }}>Giá cơ bản</th></tr></thead>
+                <thead><tr><th>Loại ghế</th><th style={{ textAlign: "right" }}>Giá cơ bản</th></tr></thead>
                 <tbody>
                     {prices.map(item => {
                         const meta = SEAT_META[item.seatType] || { icon: <RiArmchairFill />, cls: "normal", label: item.seatType, desc: "" };
@@ -180,7 +180,6 @@ const SeatPriceManager = () => {
                                         <div className="seat-type-info"><strong>{meta.label}</strong><span>{meta.desc}</span></div>
                                     </div>
                                 </td>
-                                <td className="status-cell"><span className="status-badge active">Đang dùng</span></td>
                                 <td className="price-cell">
                                     <div className="price-input-row">
                                         <input type="text" value={fmtPrice(item.basePrice)} onChange={e => handlePriceChange(item.seatType, e.target.value)} placeholder="0" />
@@ -291,7 +290,6 @@ const SeatPriceManager = () => {
                                     <th>Tên ngày lễ</th>
                                     <th>Ngày áp dụng</th>
                                     <th style={{ textAlign: "right" }}>Mức phụ thu</th>
-                                    <th>Trạng thái</th>
                                     <th style={{ textAlign: "center" }}>Hành động</th>
                                 </tr>
                             </thead>
@@ -302,11 +300,6 @@ const SeatPriceManager = () => {
                                         <td>{formatDate(h.startDate)} → {formatDate(h.endDate)}</td>
                                         <td style={{ textAlign: "right", fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500 }}>
                                             + {fmtPrice(h.surchargeAmount)} VND
-                                        </td>
-                                        <td className="status-cell">
-                                            <span className={`status-badge ${h.active ? "active" : "inactive"}`}>
-                                                {h.active ? "Đang dùng" : "Vô hiệu"}
-                                            </span>
                                         </td>
                                         <td className="actions-cell">
                                             <button className="icon-btn" title="Sửa" onClick={() => openEditForm(h)}><RiEditLine /></button>
