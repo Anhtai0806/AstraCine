@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -40,6 +42,8 @@ public class ShowtimeService {
     private final MovieRepository movieRepository;
     private final SeatPriceConfigRepository seatPriceConfigRepository;
     private final ShowtimeSchedulingScoreService showtimeSchedulingScoreService;
+    private final WeekendSurchargeRepository weekendSurchargeRepository;
+    private final HolidaySurchargeRepository holidaySurchargeRepository;
 
     public ShowtimeDTO.ManualCreateResponse createShowtime(ShowtimeDTO.CreateRequest request) {
         Room room = getActiveRoom(request.getRoomId());
@@ -484,18 +488,53 @@ public class ShowtimeService {
         Map<SeatType, BigDecimal> priceMap = seatPriceConfigRepository.findAll().stream()
                 .collect(Collectors.toMap(SeatPriceConfig::getSeatType, SeatPriceConfig::getBasePrice));
 
+        // ── Tính phụ thu dựa trên ngày chiếu ──
+        BigDecimal totalSurcharge = calculateSurcharge(showtime.getStartTime().toLocalDate());
+
         for (Seat seat : originalSeats) {
             BigDecimal basePrice = priceMap.getOrDefault(seat.getSeatType(), BigDecimal.ZERO);
             
             BigDecimal finalPrice = basePrice
                     .multiply(timeSlotMultiplier)
                     .multiply(effectiveRoomMultiplier)
+                    .add(totalSurcharge)
                     .setScale(0, RoundingMode.HALF_UP);
 
             showtimeSeats.add(new ShowtimeSeat(showtime, seat, finalPrice));
         }
 
         showtimeSeatRepository.saveAll(showtimeSeats);
+    }
+
+    /**
+     * Tính tổng phụ thu cho một ngày cụ thể.
+     * Cộng dồn phụ thu cuối tuần (nếu bật) và phụ thu các ngày lễ đang active.
+     */
+    private BigDecimal calculateSurcharge(LocalDate showtimeDate) {
+        BigDecimal surcharge = BigDecimal.ZERO;
+
+        // 1. Phụ thu Cuối tuần
+        DayOfWeek dayOfWeek = showtimeDate.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            WeekendSurchargeConfig weekendConfig = weekendSurchargeRepository.findById(1L).orElse(null);
+            if (weekendConfig != null && Boolean.TRUE.equals(weekendConfig.getEnabled())
+                    && weekendConfig.getSurchargeAmount() != null) {
+                surcharge = surcharge.add(weekendConfig.getSurchargeAmount());
+            }
+        }
+
+        // 2. Phụ thu Ngày lễ (cộng dồn tất cả ngày lễ active mà ngày chiếu nằm trong khoảng)
+        List<HolidaySurcharge> holidays = holidaySurchargeRepository.findAllByOrderByStartDateDesc();
+        for (HolidaySurcharge holiday : holidays) {
+            if (Boolean.TRUE.equals(holiday.getActive())
+                    && !showtimeDate.isBefore(holiday.getStartDate())
+                    && !showtimeDate.isAfter(holiday.getEndDate())
+                    && holiday.getSurchargeAmount() != null) {
+                surcharge = surcharge.add(holiday.getSurchargeAmount());
+            }
+        }
+
+        return surcharge;
     }
 
     private void validateRoomAvailability(Long roomId,

@@ -43,7 +43,7 @@
     gap: 24px;
     flex-wrap: wrap;
     background-image:
-            radial-gradient(ellipse 60% 50% at 100% 0%, rgba(37, 99, 235, 0.07) 0%, transparent 70%);
+        radial-gradient(ellipse 60% 50% at 100% 0%, rgba(37, 99, 235, 0.07) 0%, transparent 70%);
 }
 
 .admin-staff-header-copy {
@@ -250,7 +250,7 @@
     line-height: 1.65;
 }
 
-.admin-staff-credential-card p + small {
+.admin-staff-credential-card p+small {
     display: inline-block;
     margin-top: 8px;
     font-size: 0.8rem;
@@ -561,6 +561,7 @@
 
 /* ── Responsive ─────────────────────── */
 @media (max-width: 920px) {
+
     .admin-staff-header,
     .admin-staff-credential-card {
         padding: 22px 20px;

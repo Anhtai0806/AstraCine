@@ -348,4 +348,328 @@ input[type=number] {
     .price-table tbody td:nth-child(3) {
         display: none;
     }
+
+    .form-row {
+        flex-direction: column !important;
+    }
+}
+
+/* ══════════════════════════════════════════
+   BLOCK 2: Surcharges
+   ══════════════════════════════════════════ */
+
+.surcharge-section {
+    margin-top: 3.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid #e5e5e3;
+}
+
+.surcharge-section .manager-header {
+    margin-bottom: 1.5rem;
+}
+
+.section-icon {
+    vertical-align: -2px;
+    margin-right: 6px;
+    color: #b45309;
+}
+
+/* ── Weekend Card ─────────────────────── */
+.weekend-card {
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 2rem;
+}
+
+.weekend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.weekend-label strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+
+.weekend-label span {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+    display: block;
+}
+
+.toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e5e5e3;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #fafaf9;
+    color: #888;
+}
+
+.toggle-btn svg {
+    font-size: 20px;
+}
+
+.toggle-btn.on {
+    background: #f0fdf6;
+    border-color: #86efac;
+    color: #15803d;
+}
+
+.toggle-btn.on svg {
+    color: #22c55e;
+}
+
+.toggle-btn:hover {
+    border-color: #bbb;
+}
+
+.weekend-body {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0ee;
+    animation: spm-fadein 0.2s ease;
+}
+
+.weekend-field {
+    flex: 1;
+}
+
+.weekend-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.save-button.sm {
+    padding: 9px 16px;
+    font-size: 12px;
+}
+
+/* ── Prefix unit (the + sign) ─────────── */
+.price-input-row .unit.prefix {
+    border-left: none;
+    border-right: 1px solid #e5e5e3;
+    background: #fafaf9;
+    font-size: 14px;
+    font-weight: 600;
+    color: #15803d;
+}
+
+/* ── Holiday Block ────────────────────── */
+.holiday-block {
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.holiday-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e5e3;
+    background: #fafaf9;
+}
+
+.holiday-header strong {
+    font-size: 14px;
+    color: #111;
+}
+
+.add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.add-btn:hover {
+    background: #333;
+}
+
+/* ── Inline Form ──────────────────────── */
+.holiday-form {
+    padding: 20px;
+    border-bottom: 1px solid #e5e5e3;
+    background: #fffdf8;
+    animation: spm-fadein 0.2s ease;
+}
+
+.form-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #e5e5e3;
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: #111;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus {
+    border-color: #111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.06);
+}
+
+.price-input-row.compact {
+    width: 100%;
+}
+
+.price-input-row.compact input {
+    width: 100%;
+    min-width: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    color: #888;
+    border: 1px solid #e5e5e3;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cancel-btn:hover {
+    background: #f5f5f4;
+    color: #333;
+}
+
+/* ── Holiday Table ────────────────────── */
+.holiday-table {
+    border: none;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+.holiday-table thead th {
+    background: transparent;
+}
+
+.row-disabled td {
+    opacity: 0.45;
+}
+
+.row-disabled td .status-badge {
+    opacity: 1;
+}
+
+/* ── Action buttons ───────────────────── */
+.actions-cell {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    border: 1px solid #e5e5e3;
+    background: #fff;
+    color: #666;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.icon-btn:hover {
+    background: #f5f5f4;
+    color: #111;
+    border-color: #ccc;
+}
+
+.icon-btn.danger:hover {
+    background: #fff1f1;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.toggle-on {
+    color: #22c55e;
+}
+
+/* ── Status badges ────────────────────── */
+.status-badge.inactive {
+    background: #f5f5f4;
+    color: #999;
+    border: 1px solid #e5e5e3;
+}
+
+/* ── Empty state ──────────────────────── */
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: #bbb;
+    font-size: 13px;
 }
