@@ -5,10 +5,13 @@ import com.astracine.backend.core.entity.Seat;
 import com.astracine.backend.core.enums.RoomStatus;
 import com.astracine.backend.core.enums.SeatType;
 import com.astracine.backend.core.repository.RoomRepository;
+import com.astracine.backend.core.repository.SeatPriceConfigRepository;
 import com.astracine.backend.core.repository.SeatRepository;
 import com.astracine.backend.core.repository.ShowtimeRepository;
 import com.astracine.backend.presentation.dto.RoomDTO;
+import com.astracine.backend.presentation.dto.SeatResponseDTO;
 import com.astracine.backend.presentation.exception.RoomBusinessException;
+import com.astracine.backend.core.entity.SeatPriceConfig;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +32,7 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final SeatRepository seatRepository;
     private final ShowtimeRepository showtimeRepository;
+    private final SeatPriceConfigRepository seatPriceConfigRepository;
 
     // ===================== TẠO PHÒNG =====================
 
@@ -170,8 +176,21 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
-    public List<Seat> getRoomSeats(Long roomId) {
-        return seatRepository.findByRoomIdOrderByRowLabelAscColumnNumberAsc(roomId);
+    public List<SeatResponseDTO> getRoomSeats(Long roomId) {
+        List<Seat> seats = seatRepository.findByRoomIdOrderByRowLabelAscColumnNumberAsc(roomId);
+        Map<SeatType, BigDecimal> priceMap = seatPriceConfigRepository.findAll().stream()
+                .collect(Collectors.toMap(SeatPriceConfig::getSeatType, SeatPriceConfig::getBasePrice));
+                
+        return seats.stream().map(seat -> new SeatResponseDTO(
+                seat.getId(),
+                seat.getRoomId(),
+                seat.getRowLabel(),
+                seat.getColumnNumber(),
+                seat.getSeatType(),
+                seat.getStatus(),
+                seat.getPairedSeatId(),
+                priceMap.getOrDefault(seat.getSeatType(), BigDecimal.ZERO)
+        )).collect(Collectors.toList());
     }
 
     // ===================== HELPER METHODS =====================
@@ -194,14 +213,12 @@ public class RoomService {
 
             for (int j = 0; j < cols; j++) {
                 SeatType type = determineSeatType(i, j, rows, cols);
-                BigDecimal basePrice = new BigDecimal(type.getBasePrice());
 
                 Seat seat = new Seat(
                         room.getId(),
                         rowLabel,
                         j + 1,
-                        type,
-                        basePrice);
+                        type);
                 seats.add(seat);
             }
         }

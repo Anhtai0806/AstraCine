@@ -1,26 +1,14 @@
 package com.astracine.backend.core.service.showtime;
 
-import com.astracine.backend.core.entity.Movie;
-import com.astracine.backend.core.entity.Room;
-import com.astracine.backend.core.entity.Seat;
-import com.astracine.backend.core.entity.Showtime;
-import com.astracine.backend.core.entity.ShowtimeSeat;
-import com.astracine.backend.core.entity.TimeSlot;
-import com.astracine.backend.core.enums.MovieStatus;
-import com.astracine.backend.core.enums.RoomStatus;
-import com.astracine.backend.core.enums.SeatBookingStatus;
-import com.astracine.backend.core.enums.SeatStatus;
-import com.astracine.backend.core.enums.ShowtimeStatus;
-import com.astracine.backend.core.repository.MovieRepository;
-import com.astracine.backend.core.repository.RoomRepository;
-import com.astracine.backend.core.repository.SeatRepository;
-import com.astracine.backend.core.repository.ShowtimeRepository;
-import com.astracine.backend.core.repository.ShowtimeSeatRepository;
-import com.astracine.backend.core.repository.TimeSlotRepository;
+import com.astracine.backend.core.entity.*;
+import com.astracine.backend.core.enums.*;
+import com.astracine.backend.core.repository.*;
 import com.astracine.backend.presentation.dto.ShowtimeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.DayOfWeek;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,7 +40,10 @@ public class ShowtimeService {
     private final TimeSlotRepository timeSlotRepository;
     private final RoomRepository roomRepository;
     private final MovieRepository movieRepository;
+    private final SeatPriceConfigRepository seatPriceConfigRepository;
     private final ShowtimeSchedulingScoreService showtimeSchedulingScoreService;
+    private final WeekendSurchargeRepository weekendSurchargeRepository;
+    private final HolidaySurchargeRepository holidaySurchargeRepository;
 
     public ShowtimeDTO.ManualCreateResponse createShowtime(ShowtimeDTO.CreateRequest request) {
         Room room = getActiveRoom(request.getRoomId());
@@ -295,12 +286,16 @@ public class ShowtimeService {
                 continue;
             }
 
+            BigDecimal seatBasePrice = seatPriceConfigRepository.findById(seat.getSeatType())
+                    .map(SeatPriceConfig::getBasePrice)
+                    .orElse(BigDecimal.ZERO);
+
             ShowtimeDTO.SeatInfo seatInfo = new ShowtimeDTO.SeatInfo(
                     showtimeSeat.getId(),
                     seat.getRowLabel(),
                     seat.getColumnNumber(),
                     seat.getSeatType(),
-                    seat.getBasePrice(),
+                    seatBasePrice,
                     showtimeSeat.getFinalPrice(),
                     showtimeSeat.getStatus(),
                     seat.getPairedSeatId());
@@ -489,16 +484,57 @@ public class ShowtimeService {
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
         BigDecimal effectiveRoomMultiplier = roomMultiplier != null ? roomMultiplier : BigDecimal.ONE;
 
+        // Lấy tất cả cấu hình giá một lần để tối ưu
+        Map<SeatType, BigDecimal> priceMap = seatPriceConfigRepository.findAll().stream()
+                .collect(Collectors.toMap(SeatPriceConfig::getSeatType, SeatPriceConfig::getBasePrice));
+
+        // ── Tính phụ thu dựa trên ngày chiếu ──
+        BigDecimal totalSurcharge = calculateSurcharge(showtime.getStartTime().toLocalDate());
+
         for (Seat seat : originalSeats) {
-            BigDecimal finalPrice = seat.getBasePrice()
+            BigDecimal basePrice = priceMap.getOrDefault(seat.getSeatType(), BigDecimal.ZERO);
+            
+            BigDecimal finalPrice = basePrice
                     .multiply(timeSlotMultiplier)
                     .multiply(effectiveRoomMultiplier)
+                    .add(totalSurcharge)
                     .setScale(0, RoundingMode.HALF_UP);
 
             showtimeSeats.add(new ShowtimeSeat(showtime, seat, finalPrice));
         }
 
         showtimeSeatRepository.saveAll(showtimeSeats);
+    }
+
+    /**
+     * Tính tổng phụ thu cho một ngày cụ thể.
+     * Cộng dồn phụ thu cuối tuần (nếu bật) và phụ thu các ngày lễ đang active.
+     */
+    private BigDecimal calculateSurcharge(LocalDate showtimeDate) {
+        BigDecimal surcharge = BigDecimal.ZERO;
+
+        // 1. Phụ thu Cuối tuần
+        DayOfWeek dayOfWeek = showtimeDate.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            WeekendSurchargeConfig weekendConfig = weekendSurchargeRepository.findById(1L).orElse(null);
+            if (weekendConfig != null && Boolean.TRUE.equals(weekendConfig.getEnabled())
+                    && weekendConfig.getSurchargeAmount() != null) {
+                surcharge = surcharge.add(weekendConfig.getSurchargeAmount());
+            }
+        }
+
+        // 2. Phụ thu Ngày lễ (cộng dồn tất cả ngày lễ active mà ngày chiếu nằm trong khoảng)
+        List<HolidaySurcharge> holidays = holidaySurchargeRepository.findAllByOrderByStartDateDesc();
+        for (HolidaySurcharge holiday : holidays) {
+            if (Boolean.TRUE.equals(holiday.getActive())
+                    && !showtimeDate.isBefore(holiday.getStartDate())
+                    && !showtimeDate.isAfter(holiday.getEndDate())
+                    && holiday.getSurchargeAmount() != null) {
+                surcharge = surcharge.add(holiday.getSurchargeAmount());
+            }
+        }
+
+        return surcharge;
     }
 
     private void validateRoomAvailability(Long roomId,

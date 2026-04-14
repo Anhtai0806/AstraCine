@@ -1,9 +1,9 @@
 package com.astracine.backend.presentation.controller;
 
 import com.astracine.backend.core.entity.Room;
-import com.astracine.backend.core.entity.Seat;
 import com.astracine.backend.core.service.RoomService;
 import com.astracine.backend.presentation.dto.RoomDTO;
+import com.astracine.backend.presentation.dto.SeatResponseDTO;
 
 import java.util.List;
 import jakarta.validation.Valid;
@@ -103,7 +103,7 @@ public class RoomController {
 
     /** GET /api/admin/rooms/{id}/seats - Ghế của phòng */
     @GetMapping("/{id}/seats")
-    public ResponseEntity<List<Seat>> getRoomSeats(@PathVariable Long id) {
+    public ResponseEntity<List<SeatResponseDTO>> getRoomSeats(@PathVariable Long id) {
         return ResponseEntity.ok(roomService.getRoomSeats(id));
     }
 }

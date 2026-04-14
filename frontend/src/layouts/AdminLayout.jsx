@@ -9,7 +9,9 @@ import {
     FaUsers,
     FaMoneyBillWave,
     FaImages,
+    FaTags,
     FaFileInvoiceDollar
+
 } from "react-icons/fa";
 import { FaHouse } from "react-icons/fa6";
 import { MdAccessTime, MdOutlineManageAccounts, MdEventNote } from "react-icons/md";
@@ -48,7 +50,21 @@ const AdminLayout = () => {
                         <FaFilm className="icon-admin-layout" /> Quản lý Phim
                     </NavLink>
 
-                    <NavLink to="/admin/rooms" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                    <NavLink
+                        to="/admin/seat-prices"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
+                        <FaTags className="icon-admin-layout" /> Quản lý Giá Ghế
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/rooms"
+                        className={({ isActive }) =>
+                            isActive ? "nav-link active" : "nav-link"
+                        }
+                    >
                         <FaHouse className="icon-admin-layout" /> Quản lý Phòng
                     </NavLink>
 

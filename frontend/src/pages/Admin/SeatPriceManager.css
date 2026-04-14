@@ -1,0 +1,675 @@
+/* ─────────────────────────────────────────
+   SeatPriceManager.css — Operator UI
+   ───────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap');
+
+.seat-price-manager {
+    padding: 2.5rem 2.5rem 4rem;
+    color: #1a1a2e;
+    min-height: calc(100vh - 100px);
+    font-family: 'Sora', system-ui, sans-serif;
+    font-size: 14px;
+    background: #f7f7f5;
+}
+
+/* ── Header ───────────────────────────── */
+.manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2.5rem;
+}
+
+.header-info h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: #111;
+    letter-spacing: -0.02em;
+}
+
+.header-info p {
+    color: #888;
+    margin: 0;
+    font-size: 13px;
+}
+
+.save-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+}
+
+.save-button:hover:not(:disabled) {
+    background: #222;
+}
+
+.save-button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.save-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── Alert ────────────────────────────── */
+.message-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    font-weight: 500;
+    animation: spm-fadein 0.2s ease;
+}
+
+@keyframes spm-fadein {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-alert.error {
+    background: #fff1f1;
+    border: 1px solid #ffd5d5;
+    color: #c0392b;
+}
+
+.message-alert.success {
+    background: #f0fdf6;
+    border: 1px solid #c3f0d4;
+    color: #1a7a42;
+}
+
+/* ── Table layout ─────────────────────── */
+.price-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.price-table thead tr {
+    border-bottom: 1px solid #e5e5e3;
+}
+
+.price-table thead th {
+    padding: 11px 20px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: #fafaf9;
+}
+
+.price-table thead th:last-child {
+    text-align: right;
+}
+
+.price-table tbody tr {
+    border-bottom: 1px solid #f0f0ee;
+    transition: background 0.1s;
+}
+
+.price-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.price-table tbody tr:hover {
+    background: #fafaf9;
+}
+
+.price-table tbody td {
+    padding: 16px 20px;
+    vertical-align: middle;
+}
+
+/* ── Seat type cell ───────────────────── */
+.seat-type-cell {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.seat-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.seat-icon-wrap.normal {
+    background: #f0f4ff;
+    color: #3b5bdb;
+}
+
+.seat-icon-wrap.vip {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.seat-icon-wrap.premium {
+    background: #ecfeff;
+    color: #0891b2;
+}
+
+.seat-icon-wrap.couple {
+    background: #fff1f2;
+    color: #dc2626;
+}
+
+.seat-type-info strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+    letter-spacing: 0.01em;
+}
+
+.seat-type-info span {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 1px;
+    display: block;
+}
+
+/* ── Price input cell ─────────────────── */
+.price-cell {
+    text-align: right;
+}
+
+.price-input-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    border: 1.5px solid #e5e5e3;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.price-input-row:focus-within {
+    border-color: #111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.price-input-row input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    color: #111;
+    padding: 9px 0 9px 14px;
+    width: 160px;
+    text-align: right;
+}
+
+.price-input-row .unit {
+    padding: 9px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #aaa;
+    background: #fafaf9;
+    border-left: 1px solid #e5e5e3;
+    letter-spacing: 0.04em;
+    user-select: none;
+}
+
+/* ── Status badge ─────────────────────── */
+.status-cell {
+    text-align: center;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.status-badge.active {
+    background: #f0fdf6;
+    color: #1a7a42;
+    border: 1px solid #c3f0d4;
+}
+
+/* ── Notice ───────────────────────────── */
+.manager-notice {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: #fffdf0;
+    border: 1px solid #f0e68c;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.notice-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #b45309;
+}
+
+.manager-notice p {
+    margin: 0;
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.65;
+}
+
+/* ── Loading ──────────────────────────── */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 320px;
+    gap: 12px;
+    color: #aaa;
+    font-size: 13px;
+}
+
+.spinner {
+    font-size: 22px;
+    color: #bbb;
+    animation: spm-spin 0.9s linear infinite;
+}
+
+@keyframes spm-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Remove number arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* ── Responsive ───────────────────────── */
+@media (max-width: 640px) {
+    .seat-price-manager {
+        padding: 1.5rem 1rem 3rem;
+    }
+
+    .manager-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .price-input-row input {
+        width: 110px;
+    }
+
+    .price-table thead th:nth-child(3),
+    .price-table tbody td:nth-child(3) {
+        display: none;
+    }
+
+    .form-row {
+        flex-direction: column !important;
+    }
+}
+
+/* ══════════════════════════════════════════
+   BLOCK 2: Surcharges
+   ══════════════════════════════════════════ */
+
+.surcharge-section {
+    margin-top: 3.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid #e5e5e3;
+}
+
+.surcharge-section .manager-header {
+    margin-bottom: 1.5rem;
+}
+
+.section-icon {
+    vertical-align: -2px;
+    margin-right: 6px;
+    color: #b45309;
+}
+
+/* ── Weekend Card ─────────────────────── */
+.weekend-card {
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 2rem;
+}
+
+.weekend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.weekend-label strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+
+.weekend-label span {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+    display: block;
+}
+
+.toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e5e5e3;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #fafaf9;
+    color: #888;
+}
+
+.toggle-btn svg {
+    font-size: 20px;
+}
+
+.toggle-btn.on {
+    background: #f0fdf6;
+    border-color: #86efac;
+    color: #15803d;
+}
+
+.toggle-btn.on svg {
+    color: #22c55e;
+}
+
+.toggle-btn:hover {
+    border-color: #bbb;
+}
+
+.weekend-body {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0ee;
+    animation: spm-fadein 0.2s ease;
+}
+
+.weekend-field {
+    flex: 1;
+}
+
+.weekend-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.save-button.sm {
+    padding: 9px 16px;
+    font-size: 12px;
+}
+
+/* ── Prefix unit (the + sign) ─────────── */
+.price-input-row .unit.prefix {
+    border-left: none;
+    border-right: 1px solid #e5e5e3;
+    background: #fafaf9;
+    font-size: 14px;
+    font-weight: 600;
+    color: #15803d;
+}
+
+/* ── Holiday Block ────────────────────── */
+.holiday-block {
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.holiday-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e5e3;
+    background: #fafaf9;
+}
+
+.holiday-header strong {
+    font-size: 14px;
+    color: #111;
+}
+
+.add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.add-btn:hover {
+    background: #333;
+}
+
+/* ── Inline Form ──────────────────────── */
+.holiday-form {
+    padding: 20px;
+    border-bottom: 1px solid #e5e5e3;
+    background: #fffdf8;
+    animation: spm-fadein 0.2s ease;
+}
+
+.form-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #e5e5e3;
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: #111;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus {
+    border-color: #111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.06);
+}
+
+.price-input-row.compact {
+    width: 100%;
+}
+
+.price-input-row.compact input {
+    width: 100%;
+    min-width: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    color: #888;
+    border: 1px solid #e5e5e3;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cancel-btn:hover {
+    background: #f5f5f4;
+    color: #333;
+}
+
+/* ── Holiday Table ────────────────────── */
+.holiday-table {
+    border: none;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+.holiday-table thead th {
+    background: transparent;
+}
+
+.row-disabled td {
+    opacity: 0.45;
+}
+
+.row-disabled td .status-badge {
+    opacity: 1;
+}
+
+/* ── Action buttons ───────────────────── */
+.actions-cell {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    border: 1px solid #e5e5e3;
+    background: #fff;
+    color: #666;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.icon-btn:hover {
+    background: #f5f5f4;
+    color: #111;
+    border-color: #ccc;
+}
+
+.icon-btn.danger:hover {
+    background: #fff1f1;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.toggle-on {
+    color: #22c55e;
+}
+
+/* ── Status badges ────────────────────── */
+.status-badge.inactive {
+    background: #f5f5f4;
+    color: #999;
+    border: 1px solid #e5e5e3;
+}
+
+/* ── Empty state ──────────────────────── */
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: #bbb;
+    font-size: 13px;
+}
