@@ -22,6 +22,7 @@ import ResetPassword from "../pages/ResetPassword/ResetPassword";
 import OrderHistory from "../pages/OrderHistory/OrderHistory";
 import MemberPage from "../pages/Member/MemberPage";
 import NewsPromotions from "../pages/NewsPromotions/NewsPromotions";
+import PricePage from "../pages/Price/PricePage";
 
 export default function ClientRoutes() {
   const { user } = useAuth();
@@ -58,6 +59,7 @@ export default function ClientRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/price" element={<PricePage />} />
         <Route
           path="member"
           element={

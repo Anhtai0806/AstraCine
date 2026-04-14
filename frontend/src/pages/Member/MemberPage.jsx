@@ -2,21 +2,33 @@ import React, { useEffect, useState } from "react";
 import { memberApi } from "../../api/memberApi";
 import { useAuth } from "../../contexts/AuthContext";
 import "./MemberPage.css";
+// Lưu ý: Nếu giao diện thẻ voucher bị mất CSS, bạn hãy uncomment dòng dưới đây để import CSS từ trang News
+// import "../NewsPromotions/NewsPromotions.css"; 
 
 export default function MemberPage() {
     const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState("overview");
+    
+    // 1. THÊM STATE LƯU TRỮ VOUCHER
+    const [coupons, setCoupons] = useState([]);
 
     useEffect(() => {
         if (!user) return;
         const userId = user.id || user.userId;
         if (!userId) { setLoading(false); return; }
 
+        // Gọi API lấy thông tin Profile
         memberApi.getProfile(userId)
             .then(res => { setData(res.data); setLoading(false); })
             .catch(err => { console.error("API ERROR:", err); setLoading(false); });
+
+        // 2. THÊM LỆNH GỌI API LẤY VÍ VOUCHER
+        memberApi.getCoupons(userId)
+            .then(res => setCoupons(res.data))
+            .catch(err => console.error("API Coupon ERROR:", err));
+
     }, [user]);
 
     if (loading) return (
@@ -39,13 +51,14 @@ export default function MemberPage() {
     const remaining = Math.max(nextLevelMinSpent - totalSpent, 0);
     const progress = isMaxTier ? 100 : (nextLevelMinSpent ? Math.min((totalSpent / nextLevelMinSpent) * 100, 100) : 0);
 
+    // 3. THÊM TAB "VÍ VOUCHER" VÀO DANH SÁCH MENU
     const TABS = [
         { key: "overview", label: "Tổng quan" },
         { key: "points", label: "Điểm tích lũy" },
         { key: "benefits", label: "Quyền lợi" },
+        { key: "my_coupons", label: "Ví Voucher" },
     ];
 
-    // Mảng TIERS đã được cập nhật logic quà tặng thực tế và cấu trúc lại để hiển thị UI dạng danh sách
     const TIERS = [
         { 
             name: "MEMBER", 
@@ -177,7 +190,6 @@ export default function MemberPage() {
                 );
 
             case "benefits":
-                // Giao diện đã được căn chỉnh thành danh sách (bullet points) giống CGV
                 return (
                     <div className="mp-card">
                         <p className="mp-card-title">Quyền lợi theo hạng</p>
@@ -212,7 +224,6 @@ export default function MemberPage() {
                                         </td>
                                         <td style={{ verticalAlign: "top", paddingTop: "16px", paddingBottom: "16px" }}>
                                             
-                                            {/* Phần 1: Tỉ lệ tích điểm */}
                                             <div style={{ marginBottom: tier.gifts.length > 0 ? "12px" : "0" }}>
                                                 <div className="mp-benefit-title">
                                                     ⭐ Tỉ lệ tích điểm
@@ -224,7 +235,6 @@ export default function MemberPage() {
                                                 </ul>
                                             </div>
 
-                                            {/* Phần 2: Quà tặng nâng hạng (Ẩn nếu không có quà) */}
                                             {tier.gifts.length > 0 && (
                                                 <div>
                                                     <div className="mp-benefit-title">
@@ -246,6 +256,68 @@ export default function MemberPage() {
                     </div>
                 );
             
+            // 4. GIAO DIỆN TAB VÍ VOUCHER SỬ DỤNG CSS CỦA TRANG NEWS
+            case "my_coupons":
+                return (
+                    <div className="mp-card">
+                        <p className="mp-card-title">Ví Voucher Của Tôi</p>
+                        
+                        {coupons.length === 0 ? (
+                            <div className="mp-empty">
+                                Bạn chưa có voucher nào trong ví. Hãy tích lũy thêm chi tiêu để thăng hạng và nhận quà nhé!
+                            </div>
+                        ) : (
+                            <div className="promo-grid">
+                                {coupons.map((cp) => {
+                                    // Xác định màu sắc dựa theo loại voucher (Vé hay Bắp nước)
+                                    const typeClass = cp.targetType === 'TICKET' ? 'percentage' : 'fixed';
+                                    
+                                    return (
+                                        <div className="promo-card" key={cp.id}>
+                                            <div className="promo-card-glow" />
+                                            <div className="promo-card-top">
+                                                <div className={`promo-card-badge ${typeClass}`}>
+                                                    {cp.targetType === 'TICKET' ? '🎟️ Vé phim' : '🍿 Bắp nước'}
+                                                </div>
+                                                
+                                                <div className={`promo-discount-value ${typeClass}`}>
+                                                    -{cp.discountPercent}%
+                                                </div>
+                                                
+                                                <div className="promo-discount-label">
+                                                    Giảm tối đa {cp.maxDiscountAmount?.toLocaleString("vi-VN") || 0}đ
+                                                </div>
+                                            </div>
+                                            
+                                            <hr className="promo-card-dashed" />
+                                            
+                                            <div className="promo-card-bottom">
+                                                <div className="promo-code-box">
+                                                    <div className="promo-code-display" style={{letterSpacing: "2px", fontWeight: "bold"}}>
+                                                        {cp.code}
+                                                    </div>
+                                                    <button 
+                                                        className={`promo-code-copy ${cp.isUsed ? "copied" : ""}`} 
+                                                        disabled={cp.isUsed}
+                                                        style={{cursor: cp.isUsed ? "not-allowed" : "pointer"}}
+                                                    >
+                                                        {cp.isUsed ? "Đã dùng" : "Dùng ngay"}
+                                                    </button>
+                                                </div>
+                                                <div className="promo-meta">
+                                                    <div className="promo-meta-item">
+                                                        Hạn dùng: {new Date(cp.expiredAt).toLocaleDateString('vi-VN')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+
             default:
                 return null;
         }
